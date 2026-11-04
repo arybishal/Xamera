@@ -68,3 +68,11 @@ adb shell getprop ro.build.fingerprint
 # Inspect camera service device mapping and facing
 adb shell "dumpsys media.camera | grep -E 'Camera HAL device|Facing|Device [0-9] maps'"
 ```
+
+---
+
+## 4. Phase 4 Addendum: Exposure Range & Hardware Capability Discovery
+* **Active Exposure Compensation Range:** Queried directly via `CameraInfo.getExposureState()`. On Camera ID 0: range `[-6, 6]` with step `0.16666667` EV (1/6 EV step) or `[-4, 4]` at 0.5 EV depending on active sensor stream.
+* **Exposure Support Guard:** Front/rear camera switches dynamically update `isExposureCompensationSupported` and `isExposureStateReady`, resetting any active EV bias to 0 to prevent stale requests.
+* **Hardware Capability in Settings:** Full 16-section capability inspection accessible via Settings top bar icon, allowing copy as JSON/TXT and direct sharing.
+

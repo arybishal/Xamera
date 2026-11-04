@@ -1,8 +1,8 @@
 # Test Report | Adaptive Camera
 
 **Test Date:** 2026-11-05  
-**Version:** 0.5.0  
-**Phase:** Phase 4 (Pro Photography & RAW Capture)  
+**Version:** 0.5.1  
+**Phase:** Phase 4 Addendum (Camera Settings, Hardware Diagnostics & Exposure Reliability)  
 
 ---
 
@@ -10,13 +10,27 @@
 
 | Test Category | Total | Passed | Failed | Skipped / Not Run | Result |
 |---|:---:|:---:|:---:|:---:|:---:|
-| **Unit Tests** | 53 | 53 | 0 | 0 | **PASS** |
+| **Unit Tests** | 61 | 61 | 0 | 0 | **PASS** |
 | **Physical Device Verification** | 1 | 1 | 0 | 0 | **PASS** (Physical hardware profile verified: `3B15B800NRT00000`) |
 | **Build Verification** | 1 | 1 | 0 | 0 | **PASS** |
 
 ---
 
-## 2. Phase 4 Pro Photography Unit Test Results
+## 2. Phase 4 Addendum Exposure & Settings Unit Test Results
+
+### `com.bishal.adaptivecamera.camera.engine.ExposureReliabilityAndSettingsTest`
+- `testDefaultExposureStateIsSafeAndNotReady`: **PASS** (Default state safe; control reported unavailable prior to HAL query)
+- `testExposureControlAvailableWhenBoundAndSupported`: **PASS** (Available only when session ready, hardware supported, min < max)
+- `testExposureControlUnavailableWhenHardwareUnsupported`: **PASS** (Graceful fallback when sensor does not support compensation)
+- `testExposureControlUnavailableWhenNotReady`: **PASS** (Guards against desync during camera session recreation)
+- `testExposureControlUnavailableWhenRangeFlat`: **PASS** (Flat min==max range treated as unavailable)
+- `testExposureEvDisplayFormatting`: **PASS** (Locale-safe positive `+1.0 EV`, negative `-1.5 EV`, and zero formatting)
+- `testExposureClampingLogic`: **PASS** (Strict boundary clamping within dynamic HAL limits)
+- `testCameraFacingResetBehavior`: **PASS** (Camera switch resets ready state and index to safe baseline)
+
+---
+
+## 3. Phase 4 Pro Photography Unit Test Results
 
 ### `com.bishal.adaptivecamera.photography.pro.ProPhotographyPhase4Test`
 - `testIsoRangeClamping`: **PASS** (Clamping to min/max sensor sensitivity range: 100 to 6400)

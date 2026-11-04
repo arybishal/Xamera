@@ -37,3 +37,20 @@
 - **Detail:** When manual ISO sensitivity or manual shutter speed is requested, `CONTROL_AE_MODE` must be set to `CONTROL_AE_MODE_OFF`. In this state, hardware AE compensation (`CONTROL_AE_EXPOSURE_COMPENSATION`) is ignored by the camera HAL.
 - **Mitigation:** The application clearly displays whether manual sensor control is active via `ProAppliedTelemetryBadge` and disables the AE compensation slider during manual exposure to prevent conflicting requests.
 
+---
+
+## Phase 4 Addendum: Exposure Reliability & Settings
+
+### 7. Resolved: Exposure Slider Opening Failure & Desynchronization
+- **Status:** **RESOLVED**
+- **Symptoms:** The exposure interface sometimes appeared and sometimes failed to open; the slider position could desynchronize from actual camera exposure; rapid sliding caused jitter or canceled operations.
+- **Root Causes:**
+  1. *Empty rendering failure:* The slider composable contained `if (minIndex >= maxIndex) return`. Before CameraX finished binding the camera or if the camera reported an empty range, the slider rendered nothing, appearing as a broken or failed click.
+  2. *HAL Flooding & Stale State:* Dragging the slider continuously triggered dozens of `setExposureCompensationIndex` calls per second, flooding CameraX's ListenableFuture queue and throwing `CameraControl.OperationCanceledException`.
+  3. *Unchecked Hardware Support:* `CameraConfiguration` previously assumed a hardcoded `[-4, 4]` range before querying the camera HAL, leading to illegal requests on cameras with non-standard ranges.
+- **Fix:**
+  1. Added dynamic CameraX `ExposureState` querying in `CameraXEngine` to read `isExposureCompensationSupported`, `exposureCompensationRange`, and `exposureCompensationStep`.
+  2. Implemented readiness guards (`isExposureStateReady` and `isExposureControlAvailable`).
+  3. Added visual loading and disabled states in `ExposureSlider` (e.g. "Exposure Fixed - Sensor does not support compensation") with a close button and reset button.
+  4. Attached `future.addListener` to `setExposureCompensationIndex` on `cameraExecutor` to read actual applied indices and synchronize UI state with the HAL without flooding.
+

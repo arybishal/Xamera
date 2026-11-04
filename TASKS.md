@@ -68,6 +68,22 @@
 
 ---
 
+## Phase 4 Addendum: Camera Settings, Hardware Diagnostics & Exposure Reliability
+- [x] Relocate Hardware Intelligence into dedicated Settings screen (`SettingsScreen.kt`).
+- [x] Implement "Check Hardware Capability" section organizing all 16 Phase 2 capability categories.
+- [x] Add asynchronous capability re-scan with cached vs freshly scanned indicator.
+- [x] Implement copy diagnostics as JSON/TXT and system share sheet export.
+- [x] Fix exposure slider reliability: read actual CameraX `ExposureState` hardware range dynamically.
+- [x] Implement exposure readiness guards (`isExposureStateReady`, `isExposureControlAvailable`).
+- [x] Prevent HAL request flooding and desynchronization with `future.addListener` callback synchronization.
+- [x] Implement visible loading, disabled ("Exposure Fixed"), and reset controls in `ExposureSlider`.
+- [x] Reinitialize exposure state safely across camera switching and session recreation.
+- [x] Implement immersive camera screen hiding Android status bar using `WindowInsetsControllerCompat`.
+- [x] Restore normal status bar when navigating away from camera screen and on app pause.
+- [x] Add Phase 4 Addendum unit tests (`ExposureReliabilityAndSettingsTest`).
+
+---
+
 ## Phase 5: LUT Library
 - [ ] Design 5 original built-in 3D LUT presets (Natural, Cinematic Warm, Cinematic Cool, Filmic Contrast, Soft Vintage).
 - [ ] Implement `.cube` file parser with domain and dimension validation.

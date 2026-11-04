@@ -7,71 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.1.0] - Phase 0 Foundation - 2026-11-04
+## [0.5.1] - Phase 4 Addendum: Camera Settings, Hardware Diagnostics & Exposure Reliability - 2026-11-05
 
 ### Added
-- **Project Foundation:** Initialized Gradle Kotlin DSL project targeting Android API 35 with minSdk 29 (Android 10).
-- **Architecture Skeleton:** Established clean modular architecture structure conforming to Part 4 specifications (`core`, `camera`, `intelligence`, `photography`, `video`, `lut`, `graphics`, `gallery`, `data`, `ui`).
-- **Device Identification:** Added `DeviceInfo` model with detection logic specifically tailored for the primary test target, **OnePlus Ace 5 (China)** (`PKG110`/`PJR110`), separating it from the global OnePlus 13R (`CPH2645`).
-- **Hardware Capability Models:**
-  - `CapabilityStatus` enum (`SUPPORTED`, `UNSUPPORTED`, `UNAVAILABLE`, `NOT_VERIFIED`, `TEMPORARILY_UNAVAILABLE`).
-  - `CameraHardwareLevel` enum mapping Camera2 hardware levels (`LIMITED`, `FULL`, `LEVEL_3`, `LEGACY`, `EXTERNAL`).
-  - `CameraCapabilityProfile` capturing sensor resolution, FPS ranges, focal lengths, manual focus, manual sensor exposure (ISO & shutter), RAW, HDR, and stabilization.
-  - `DeviceCapabilityReport` with formatted text and JSON export capabilities.
-- **Hardware Intelligence Engine Prototype:** Implemented `CameraCapabilityScanner` utilizing Android Camera2 `CameraManager` and `CameraCharacteristics`.
-- **UI Diagnostics Screen:** Interactive Jetpack Compose diagnostics interface featuring:
-  - Device and firmware identification cards with primary target highlighting.
-  - Camera hardware summary and discovered sensors inventory.
-  - Diagnostics warnings and notices.
-  - Action buttons to copy report as JSON or formatted text, or share via Android system share sheet.
-- **Testing:** Unit test suite covering device identification, resolution calculations, exposure formatting, capability status usability, and report serialization.
-- **Build Verification:** Verified clean build producing `app/build/outputs/apk/debug/app-debug.apk` (SHA256: `837865C30AD7510BF52C2A7E90679A4BD15F8A1CA945908C1BF83C53114BCAF7`).
-- **Documentation:** Created `README.md`, `ARCHITECTURE.md`, `ROADMAP.md`, `TASKS.md`, `CHANGELOG.md`, `TEST_REPORT.md`, `DEVICE_COMPATIBILITY.md`, `KNOWN_ISSUES.md`, `LICENSES.md`, and `reports/phase-00-foundation.md`.
-
----
-
-## [0.2.0] - Phase 1 Camera Foundation & Diagnostic Correction - 2026-11-04
-
-### Added
-- **Camera Foundation:** Complete CameraX engine implementation (`CameraXEngine`) providing lifecycle-aware live preview, photo capture, video recording, front/rear camera switching, zoom, tap focus, and exposure compensation.
-- **Session State Machine:** Observable `CameraSessionState` (`CLOSED`, `OPENING`, `READY`, `CAPTURING`, `RECORDING`, `SWITCHING`, `ERROR`) with concurrent conflict guards.
-- **Scoped Media Storage:** `MediaStoreManager` integrating with Android scoped storage (`DCIM/AdaptiveCamera`) for automatic photo/video indexing with `IS_PENDING` safety.
-- **Local Media Gallery:** 3-column thumbnail browser with native hardware thumbnail loading, full-screen image viewer, integrated video player with transport controls, metadata inspector, and delete confirmation dialogs.
-- **Camera Viewfinder UI:** Dark-first professional camera interface featuring top bar (flash, timer, EV, diagnostics shortcut), bottom capture controls (mode tabs, shutter button with recording pulse, gallery thumbnail, camera switcher), animated tap-to-focus ring, zoom chips, and vertical EV slider.
-- **Hardware Diagnostic Correction:**
-  - Audited device classification to separate reported models, firmware identities, hardware platform families, and physical confidence (`CONFIRMED`, `PROBABLE`, `UNCONFIRMED`, `CONFLICTING`).
-  - Corrected `LENS_FACING` constants to accurately map `CameraMetadata.LENS_FACING_FRONT == 0` and `CameraMetadata.LENS_FACING_BACK == 1`, resolving the inverted "1 BACK, 3 FRONT" camera layout.
-  - Discovered true HAL mapping: Camera ID 0 is Back (Logical multi-camera), Camera ID 1 is Front (Physical), Camera ID 2 is Back (Physical), Camera ID 3 is Back (Physical).
-- **Unit Testing:** 19 unit tests passing covering device classification, camera facing, exposure formatting, session state transitions, zoom bounds, and MediaStore naming.
-- **Physical Device Verification:** Installed and verified on physical `OnePlus Ace 5 / CPH2691IN` (`3B15B800NRT00000`) running Android 17 (API 37).
-
----
-
-## [0.3.0] - Phase 2 Hardware Intelligence - 2026-11-04
-
-### Added
-- **Camera2 Characteristics Parser:** Deep introspection engine auditing sensor active arrays, pixel boundaries, physical sizes, CFA arrangements (`RGGB`/`BGGR`), timestamp sources, and black/white levels.
-- **Logical & Physical Sensor Mapping:** Automatic classification of logical multi-cameras (`CameraRelationship.LOGICAL`) and physical sub-cameras (`CameraRelationship.PHYSICAL_REFERENCE`), accurately identifying OnePlus Ace 5 / 13R constituent cameras (Main 5.59mm + Ultra-wide 1.68mm).
-- **Stream Configuration & Combination Analyzer:** Comprehensive mapping of output formats (`JPEG`, `PRIVATE`, `YUV_420_888`, `RAW_SENSOR`, `RAW10`, `RAW_PRIVATE`), resolutions, min durations, stall durations, max frame rates, and guaranteed Camera2 stream combinations.
-- **Dynamic Range Intelligence (API 33+):** Detection of 10-bit HDR dynamic range profiles (`HLG10`, `HDR10`, `HDR10+`).
-- **Stabilization & Zoom Intelligence:** Discovery of optical stabilization (OIS), electronic stabilization (EIS), preview stabilization, and continuous digital/optical zoom ranges.
-- **Persistent Capability Cache:** `CameraCapabilityRepository` with JSON persistence in app files directory validated by `Build.FINGERPRINT` to avoid redundant 150ms+ HAL scans.
-- **Unit Testing Suite:** 27 unit tests passing across debug and release, validating relationship models, dynamic range details, stream sizes, video quality profiles, manual controls, and hardware validation metrics.
-- **Hardware Telemetry Verified:** Validated live on physical OnePlus Ace 5 / 13R device (`3B15B800NRT00000`), persisting 25.5 KB capability cache and confirming `LEVEL_3` capabilities across all 4 cameras.
-
----
-
-## [0.4.0] - Phase 3 Smart Auto Photography - 2026-11-04
-
-### Added
-- **Frame Metrics Analyzer:** High-performance real-time frame analyzer utilizing 4x4 spatial striding over YUV_420_888 plane 0 to compute mean luminance, RMS contrast, shadow ratio, highlight ratio, dynamic range span, and temporal motion delta in < 3ms.
-- **Rule-Based Scene Classifier:** Deterministic photographic scene classifier supporting 7 categories (`PORTRAIT`, `LANDSCAPE`, `NIGHT`, `MACRO`, `BACKLIT`, `ACTION_MOVEMENT`, `STANDARD`) with confidence ratings and explainable rationale.
-- **Smart Configuration Generator:** Produces hardware-clamped ISO targets, high-speed shutter targets (up to 1/1000s for action), exposure compensation adjustments, and HDR / night stacking flags.
-- **Lens Recommendation Policy:** Recommends optimal physical lens switches based on scene composition (e.g. Ultra-wide 1.68mm for wide landscapes, Main 5.59mm f/1.88 for low-light scenes).
-- **Explainable Scene Suggestion UI:** Translucent viewfinder HUD chip displaying detected scene emoji, category name, confidence pill, one-tap "Apply" button, dismiss action, and expandable real-time telemetry drawer.
-- **Concurrent CameraX ImageAnalysis:** Configured `ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST` use case on dedicated background executor bound to lifecycle without preview stutter.
-- **Unit Testing Suite:** Added 12 new unit tests in `SmartAutoPhase3Test` bringing total test count to 39 passing tests across debug and release builds.
-- **Physical Device Validation:** Verified live execution on physical OnePlus Ace 5 / 13R (`3B15B800NRT00000`) with smooth concurrent preview and frame analysis.
+- **Dedicated Settings Screen (`SettingsScreen`):**
+  - High-level camera preferences (storage folder, capture pipeline details, app build information).
+  - Dedicated, central **"Check Hardware Capability"** section relocating technical diagnostics from the main camera viewfinder into settings.
+  - Complete discovery breakdown covering all 16 Phase 2 capability categories: Device identity, Camera inventory, Front/rear sensors, Logical/physical sensor relationships, Active sensor arrays, Lens focal lengths & apertures, Supported photo & video resolutions, Stream configurations, 10-bit dynamic range, RAW/DNG formats, Manual ISO/shutter ranges, Lens focus diopters, Zoom bounds, and Stabilization modes.
+  - Asynchronous background scan with cached vs live status badge, JSON export, TXT export, and system share sheet integration.
+- **Exposure Controls & Camera Opening Reliability Fixes:**
+  - Dynamic hardware capability checking for `isExposureCompensationSupported` avoiding assumed [-4, 4] EV ranges.
+  - Readiness guards (`isExposureStateReady` and `isExposureControlAvailable`) ensuring the exposure slider waits for camera session initialization before enabling controls.
+  - Eliminated HAL flooding by throttling continuous touch gesture requests and attaching `future.addListener` callbacks to synchronize slider state with actual HAL applied values.
+  - Added visible loading and disabled states in `ExposureSlider` (e.g. "Exposure Fixed - Sensor does not support compensation") instead of returning empty composables.
+  - Locale-safe decimal point formatting (`Locale.US`) and step conversions (1/2 EV, 1/3 EV).
+  - Clean exposure state re-initialization and restoration across front/rear camera switching, Settings navigation, and app backgrounding.
+- **Immersive Camera Viewfinder:**
+  - Automated status bar hiding on the camera screen using `WindowInsetsControllerCompat` and `WindowInsetsCompat.Type.statusBars()` with transient swipe behavior (`BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE`), hiding time, battery, Wi-Fi, and network indicators for maximum preview estate.
+  - Safe status bar restoration upon navigating to Settings, Gallery, Media Viewer, or app background (`onPause`).
+- **Main Camera Interface Polish:**
+  - Settings icon shortcut in top bar replacing old diagnostics button.
+  - Preserved all Phase 0–4 photography, Smart Auto scene recommendations, zoom, flash, countdown timer, and Pro photography features intact.
+- **Unit Testing Suite:** Added `ExposureReliabilityAndSettingsTest` with 8 new unit tests validating exposure availability flags, unsupported hardware fallbacks, readiness guards, EV formatting, clamping, and camera facing resets, bringing total project test count to 61 passing unit tests.
 
 ---
 
@@ -105,3 +62,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Smart Auto Compatibility:** Smart Auto recommendations remain purely advisory during Pro mode, never silently overwriting manually locked sensor settings.
 - **Unit Testing Suite:** Added 13 new unit tests in `ProPhotographyPhase4Test` covering ISO clamping, shutter conversion, diopter formatting, white balance mapping, histogram analysis, focus peaking, DNG header validation, and manual override safety, bringing total project test count to 53 passing tests.
 
+---
+
+## [0.4.0] - Phase 3 Smart Auto Photography - 2026-11-04
+
+### Added
+- **Frame Metrics Analyzer:** High-performance real-time frame analyzer utilizing 4x4 spatial striding over YUV_420_888 plane 0 to compute mean luminance, RMS contrast, shadow ratio, highlight ratio, dynamic range span, and temporal motion delta in < 3ms.
+- **Rule-Based Scene Classifier:** Deterministic photographic scene classifier supporting 7 categories (`PORTRAIT`, `LANDSCAPE`, `NIGHT`, `MACRO`, `BACKLIT`, `ACTION_MOVEMENT`, `STANDARD`) with confidence ratings and explainable rationale.
+- **Smart Configuration Generator:** Produces hardware-clamped ISO targets, high-speed shutter targets (up to 1/1000s for action), exposure compensation adjustments, and HDR / night stacking flags.
+- **Lens Recommendation Policy:** Recommends optimal physical lens switches based on scene composition (e.g. Ultra-wide 1.68mm for wide landscapes, Main 5.59mm f/1.88 for low-light scenes).
+- **Explainable Scene Suggestion UI:** Translucent viewfinder HUD chip displaying detected scene emoji, category name, confidence pill, one-tap "Apply" button, dismiss action, and expandable real-time telemetry drawer.
+- **Concurrent CameraX ImageAnalysis:** Configured `ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST` use case on dedicated background executor bound to lifecycle without preview stutter.
+- **Unit Testing Suite:** Added 12 new unit tests in `SmartAutoPhase3Test` bringing total test count to 39 passing tests across debug and release builds.
+- **Physical Device Validation:** Verified live execution on physical OnePlus Ace 5 / 13R (`3B15B800NRT00000`) with smooth concurrent preview and frame analysis.
+
+---
+
+## [0.3.0] - Phase 2 Hardware Intelligence - 2026-11-04
+
+### Added
+- **Camera2 Characteristics Parser:** Deep introspection engine auditing sensor active arrays, pixel boundaries, physical sizes, CFA arrangements (`RGGB`/`BGGR`), timestamp sources, and black/white levels.
+- **Logical & Physical Sensor Mapping:** Automatic classification of logical multi-cameras (`CameraRelationship.LOGICAL`) and physical sub-cameras (`CameraRelationship.PHYSICAL_REFERENCE`), accurately identifying OnePlus Ace 5 / 13R constituent cameras (Main 5.59mm + Ultra-wide 1.68mm).
+- **Stream Configuration & Combination Analyzer:** Comprehensive mapping of output formats (`JPEG`, `PRIVATE`, `YUV_420_888`, `RAW_SENSOR`, `RAW10`, `RAW_PRIVATE`), resolutions, min durations, stall durations, max frame rates, and guaranteed Camera2 stream combinations.
+- **Dynamic Range Intelligence (API 33+):** Detection of 10-bit HDR dynamic range profiles (`HLG10`, `HDR10`, `HDR10+`).
+- **Stabilization & Zoom Intelligence:** Discovery of optical stabilization (OIS), electronic stabilization (EIS), preview stabilization, and continuous digital/optical zoom ranges.
+- **Persistent Capability Cache:** `CameraCapabilityRepository` with JSON persistence in app files directory validated by `Build.FINGERPRINT` to avoid redundant 150ms+ HAL scans.
+- **Unit Testing Suite:** 27 unit tests passing across debug and release, validating relationship models, dynamic range details, stream sizes, video quality profiles, manual controls, and hardware validation metrics.
+- **Hardware Telemetry Verified:** Validated live on physical OnePlus Ace 5 / 13R device (`3B15B800NRT00000`), persisting 25.5 KB capability cache and confirming `LEVEL_3` capabilities across all 4 cameras.
+
+---
+
+## [0.2.0] - Phase 1 Camera Foundation & Diagnostic Correction - 2026-11-04
+
+### Added
+- **Camera Foundation:** Complete CameraX engine implementation (`CameraXEngine`) providing lifecycle-aware live preview, photo capture, video recording, front/rear camera switching, zoom, tap focus, and exposure compensation.
+- **Session State Machine:** Observable `CameraSessionState` (`CLOSED`, `OPENING`, `READY`, `CAPTURING`, `RECORDING`, `SWITCHING`, `ERROR`) with concurrent conflict guards.
+- **Scoped Media Storage:** `MediaStoreManager` integrating with Android scoped storage (`DCIM/AdaptiveCamera`) for automatic photo/video indexing with `IS_PENDING` safety.
+- **Local Media Gallery:** 3-column thumbnail browser with native hardware thumbnail loading, full-screen image viewer, integrated video player with transport controls, metadata inspector, and delete confirmation dialogs.
+- **Camera Viewfinder UI:** Dark-first professional camera interface featuring top bar (flash, timer, EV, diagnostics shortcut), bottom capture controls (mode tabs, shutter button with recording pulse, gallery thumbnail, camera switcher), animated tap-to-focus ring, zoom chips, and vertical EV slider.
+- **Hardware Diagnostic Correction:**
+  - Audited device classification to separate reported models, firmware identities, hardware platform families, and physical confidence (`CONFIRMED`, `PROBABLE`, `UNCONFIRMED`, `CONFLICTING`).
+  - Corrected `LENS_FACING` constants to accurately map `CameraMetadata.LENS_FACING_FRONT == 0` and `CameraMetadata.LENS_FACING_BACK == 1`, resolving the inverted "1 BACK, 3 FRONT" camera layout.
+  - Discovered true HAL mapping: Camera ID 0 is Back (Logical multi-camera), Camera ID 1 is Front (Physical), Camera ID 2 is Back (Physical), Camera ID 3 is Back (Physical).
+- **Unit Testing:** 19 unit tests passing covering device classification, camera facing, exposure formatting, session state transitions, zoom bounds, and MediaStore naming.
+- **Physical Device Verification:** Installed and verified on physical `OnePlus Ace 5 / CPH2691IN` (`3B15B800NRT00000`) running Android 17 (API 37).
+
+---
+
+## [0.1.0] - Phase 0 Foundation - 2026-11-04
+
+### Added
+- **Project Foundation:** Initialized Gradle Kotlin DSL project targeting Android API 35 with minSdk 29 (Android 10).
+- **Architecture Skeleton:** Established clean modular architecture structure conforming to Part 4 specifications (`core`, `camera`, `intelligence`, `photography`, `video`, `lut`, `graphics`, `gallery`, `data`, `ui`).
+- **Device Identification:** Added `DeviceInfo` model with detection logic specifically tailored for the primary test target, **OnePlus Ace 5 (China)** (`PKG110`/`PJR110`), separating it from the global OnePlus 13R (`CPH2645`).
+- **Hardware Capability Models:**
+  - `CapabilityStatus` enum (`SUPPORTED`, `UNSUPPORTED`, `UNAVAILABLE`, `NOT_VERIFIED`, `TEMPORARILY_UNAVAILABLE`).
+  - `CameraHardwareLevel` enum mapping Camera2 hardware levels (`LIMITED`, `FULL`, `LEVEL_3`, `LEGACY`, `EXTERNAL`).
+  - `CameraCapabilityProfile` capturing sensor resolution, FPS ranges, focal lengths, manual focus, manual sensor exposure (ISO & shutter), RAW, HDR, and stabilization.
+  - `DeviceCapabilityReport` with formatted text and JSON export capabilities.
+- **Hardware Intelligence Engine Prototype:** Implemented `CameraCapabilityScanner` utilizing Android Camera2 `CameraManager` and `CameraCharacteristics`.
+- **UI Diagnostics Screen:** Interactive Jetpack Compose diagnostics interface featuring:
+  - Device and firmware identification cards with primary target highlighting.
+  - Camera hardware summary and discovered sensors inventory.
+  - Diagnostics warnings and notices.
+  - Action buttons to copy report as JSON or formatted text, or share via Android system share sheet.
+- **Testing:** Unit test suite covering device identification, resolution calculations, exposure formatting, capability status usability, and report serialization.
+- **Build Verification:** Verified clean build producing `app/build/outputs/apk/debug/app-debug.apk` (SHA256: `837865C30AD7510BF52C2A7E90679A4BD15F8A1CA945908C1BF83C53114BCAF7`).
+- **Documentation:** Created `README.md`, `ARCHITECTURE.md`, `ROADMAP.md`, `TASKS.md`, `CHANGELOG.md`, `TEST_REPORT.md`, `DEVICE_COMPATIBILITY.md`, `KNOWN_ISSUES.md`, `LICENSES.md`, and `reports/phase-00-foundation.md`.

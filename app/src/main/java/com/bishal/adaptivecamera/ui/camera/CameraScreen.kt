@@ -78,7 +78,7 @@ import com.bishal.adaptivecamera.ui.theme.TextSecondary
 fun CameraScreen(
     viewModel: CameraViewModel,
     onOpenGallery: () -> Unit,
-    onOpenDiagnostics: () -> Unit
+    onOpenSettings: () -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -128,7 +128,7 @@ fun CameraScreen(
                 onToggleFlash = { viewModel.toggleFlash() },
                 onToggleTimer = { viewModel.toggleTimer() },
                 onToggleExposure = { viewModel.toggleExposureSlider() },
-                onOpenDiagnostics = onOpenDiagnostics
+                onOpenSettings = onOpenSettings
             )
         },
         bottomBar = {
@@ -309,8 +309,11 @@ fun CameraScreen(
                         minIndex = uiState.configuration.minExposureIndex,
                         maxIndex = uiState.configuration.maxExposureIndex,
                         stepEv = uiState.configuration.exposureStepEv,
+                        isSupported = uiState.configuration.isExposureCompensationSupported,
+                        isReady = uiState.configuration.isExposureStateReady,
                         onIndexChanged = { viewModel.setExposureIndex(it) },
                         onReset = { viewModel.resetExposure() },
+                        onClose = { viewModel.closeExposureSlider() },
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
                             .padding(end = 12.dp)

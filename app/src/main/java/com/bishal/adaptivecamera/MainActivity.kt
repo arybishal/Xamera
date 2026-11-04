@@ -7,10 +7,15 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.bishal.adaptivecamera.core.storage.MediaItem
 import com.bishal.adaptivecamera.gallery.ui.GalleryScreen
 import com.bishal.adaptivecamera.gallery.ui.GalleryViewModel
@@ -19,12 +24,14 @@ import com.bishal.adaptivecamera.ui.camera.CameraScreen
 import com.bishal.adaptivecamera.ui.camera.CameraViewModel
 import com.bishal.adaptivecamera.ui.diagnostics.DiagnosticsScreen
 import com.bishal.adaptivecamera.ui.diagnostics.DiagnosticsViewModel
+import com.bishal.adaptivecamera.ui.settings.SettingsScreen
 import com.bishal.adaptivecamera.ui.theme.AdaptiveCameraTheme
 
 enum class AppDestination {
     CAMERA,
     GALLERY,
     MEDIA_VIEWER,
+    SETTINGS,
     DIAGNOSTICS
 }
 
@@ -41,6 +48,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             AdaptiveCameraTheme {
                 MainAppNavHost(
+                    activity = this,
                     cameraViewModel = cameraViewModel,
                     galleryViewModel = galleryViewModel,
                     diagnosticsViewModel = diagnosticsViewModel
@@ -48,10 +56,25 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        // If returning to activity, insets controller is re-synchronized via Compose destination
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Ensure system status bar is restored when app moves to background
+        window?.let {
+            val insetsController = WindowCompat.getInsetsController(it, it.decorView)
+            insetsController.show(WindowInsetsCompat.Type.statusBars())
+        }
+    }
 }
 
 @Composable
 fun MainAppNavHost(
+    activity: ComponentActivity,
     cameraViewModel: CameraViewModel,
     galleryViewModel: GalleryViewModel,
     diagnosticsViewModel: DiagnosticsViewModel
@@ -59,13 +82,25 @@ fun MainAppNavHost(
     var currentDestination by remember { mutableStateOf(AppDestination.CAMERA) }
     var viewingItem by remember { mutableStateOf<MediaItem?>(null) }
 
+    // Synchronize Immersive Status Bar with current destination
+    LaunchedEffect(currentDestination) {
+        val window = activity.window ?: return@LaunchedEffect
+        val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+        if (currentDestination == AppDestination.CAMERA) {
+            insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            insetsController.hide(WindowInsetsCompat.Type.statusBars())
+        } else {
+            insetsController.show(WindowInsetsCompat.Type.statusBars())
+        }
+    }
+
     BackHandler(enabled = currentDestination != AppDestination.CAMERA) {
         when (currentDestination) {
             AppDestination.MEDIA_VIEWER -> {
                 viewingItem = null
                 currentDestination = AppDestination.GALLERY
             }
-            AppDestination.GALLERY, AppDestination.DIAGNOSTICS -> {
+            AppDestination.GALLERY, AppDestination.SETTINGS, AppDestination.DIAGNOSTICS -> {
                 currentDestination = AppDestination.CAMERA
                 cameraViewModel.refreshLatestThumbnail()
             }
@@ -81,8 +116,8 @@ fun MainAppNavHost(
                     galleryViewModel.loadMedia()
                     currentDestination = AppDestination.GALLERY
                 },
-                onOpenDiagnostics = {
-                    currentDestination = AppDestination.DIAGNOSTICS
+                onOpenSettings = {
+                    currentDestination = AppDestination.SETTINGS
                 }
             )
         }
@@ -117,6 +152,15 @@ fun MainAppNavHost(
             } ?: run {
                 currentDestination = AppDestination.GALLERY
             }
+        }
+        AppDestination.SETTINGS -> {
+            SettingsScreen(
+                diagnosticsViewModel = diagnosticsViewModel,
+                onNavigateBack = {
+                    currentDestination = AppDestination.CAMERA
+                    cameraViewModel.refreshLatestThumbnail()
+                }
+            )
         }
         AppDestination.DIAGNOSTICS -> {
             DiagnosticsScreen(

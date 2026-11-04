@@ -58,17 +58,22 @@ data class CameraConfiguration(
     val minZoomRatio: Float = 1.0f,
     val maxZoomRatio: Float = 10.0f,
     val exposureCompensationIndex: Int = 0,
-    val minExposureIndex: Int = -4,
-    val maxExposureIndex: Int = 4,
+    val minExposureIndex: Int = 0,
+    val maxExposureIndex: Int = 0,
     val exposureStepEv: Float = 0.5f,
+    val isExposureCompensationSupported: Boolean = false,
+    val isExposureStateReady: Boolean = false,
     val isTorchActive: Boolean = false,
     val isAudioEnabled: Boolean = true
 ) {
+    val isExposureControlAvailable: Boolean
+        get() = isExposureStateReady && isExposureCompensationSupported && minExposureIndex < maxExposureIndex
+
     val exposureEvDisplay: String
         get() {
             val ev = exposureCompensationIndex * exposureStepEv
-            return if (ev > 0f) String.format("+%.1f EV", ev)
-            else if (ev < 0f) String.format("%.1f EV", ev)
+            return if (ev > 0.001f) String.format(java.util.Locale.US, "+%.1f EV", ev)
+            else if (ev < -0.001f) String.format(java.util.Locale.US, "%.1f EV", ev)
             else "0.0 EV"
         }
 }

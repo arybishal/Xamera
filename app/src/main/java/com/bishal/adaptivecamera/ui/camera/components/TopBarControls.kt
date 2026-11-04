@@ -15,7 +15,7 @@ import androidx.compose.material.icons.filled.FlashAuto
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Highlight
-import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Timer10
 import androidx.compose.material.icons.filled.Timer3
@@ -45,7 +45,7 @@ fun TopBarControls(
     onToggleFlash: () -> Unit,
     onToggleTimer: () -> Unit,
     onToggleExposure: () -> Unit,
-    onOpenDiagnostics: () -> Unit,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -85,6 +85,7 @@ fun TopBarControls(
         }
 
         // Exposure indicator / toggle
+        val isExposureAvailable = config.isExposureControlAvailable
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(16.dp))
@@ -96,29 +97,33 @@ fun TopBarControls(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = Icons.Default.Tune,
-                    contentDescription = "Exposure",
-                    tint = if (config.exposureCompensationIndex != 0) PrimaryCyan else TextSecondary,
+                    contentDescription = "Exposure Compensation",
+                    tint = if (!isExposureAvailable) TextSecondary.copy(alpha = 0.4f)
+                    else if (config.exposureCompensationIndex != 0) PrimaryCyan
+                    else TextSecondary,
                     modifier = Modifier.padding(end = 4.dp)
                 )
                 Text(
-                    text = config.exposureEvDisplay,
-                    color = if (config.exposureCompensationIndex != 0) PrimaryCyan else TextPrimary,
+                    text = if (!isExposureAvailable) "EV" else config.exposureEvDisplay,
+                    color = if (!isExposureAvailable) TextSecondary.copy(alpha = 0.4f)
+                    else if (config.exposureCompensationIndex != 0) PrimaryCyan
+                    else TextPrimary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
         }
 
-        // Diagnostics Screen Button (Preserving Phase 0)
+        // Settings Screen Button
         IconButton(
-            onClick = onOpenDiagnostics,
+            onClick = onOpenSettings,
             modifier = Modifier
                 .clip(CircleShape)
                 .background(Color.Black.copy(alpha = 0.45f))
         ) {
             Icon(
-                imageVector = Icons.Default.Memory,
-                contentDescription = "Hardware Diagnostics",
+                imageVector = Icons.Default.Settings,
+                contentDescription = "Camera Settings",
                 tint = PrimaryCyan
             )
         }

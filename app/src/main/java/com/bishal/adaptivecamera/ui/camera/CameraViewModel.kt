@@ -377,7 +377,20 @@ class CameraViewModel @JvmOverloads constructor(
     }
 
     fun toggleExposureSlider() {
+        val config = _uiState.value.configuration
+        if (!config.isExposureStateReady) {
+            _uiState.update { it.copy(toastMessage = "Camera is initializing...") }
+            return
+        }
+        if (!config.isExposureCompensationSupported) {
+            _uiState.update { it.copy(toastMessage = "Exposure compensation not supported on this camera") }
+            return
+        }
         _uiState.update { it.copy(isExposureSliderVisible = !it.isExposureSliderVisible) }
+    }
+
+    fun closeExposureSlider() {
+        _uiState.update { it.copy(isExposureSliderVisible = false) }
     }
 
     fun resetExposure() {

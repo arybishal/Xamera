@@ -190,6 +190,12 @@ class CameraXEngine(
             val zoomState = newCamera.cameraInfo.zoomState.value
             val exposureState = newCamera.cameraInfo.exposureState
 
+            val isExposureSupported = exposureState.isExposureCompensationSupported
+            val range = exposureState.exposureCompensationRange
+            val minExp = range.lower
+            val maxExp = range.upper
+            val currentExpIndex = exposureState.exposureCompensationIndex
+
             val stepDenom = exposureState.exposureCompensationStep.denominator
             val stepNum = exposureState.exposureCompensationStep.numerator
             val stepEv = if (stepDenom != 0) {
@@ -198,18 +204,17 @@ class CameraXEngine(
                 0.5f
             }
 
-            val minExp = exposureState.exposureCompensationRange.lower
-            val maxExp = exposureState.exposureCompensationRange.upper
-
             _configuration.update { current ->
                 current.copy(
                     zoomRatio = zoomState?.zoomRatio ?: 1.0f,
                     minZoomRatio = zoomState?.minZoomRatio ?: 1.0f,
                     maxZoomRatio = zoomState?.maxZoomRatio ?: 10.0f,
-                    exposureCompensationIndex = exposureState.exposureCompensationIndex,
+                    exposureCompensationIndex = currentExpIndex,
                     minExposureIndex = minExp,
                     maxExposureIndex = maxExp,
-                    exposureStepEv = stepEv
+                    exposureStepEv = stepEv,
+                    isExposureCompensationSupported = isExposureSupported,
+                    isExposureStateReady = true
                 )
             }
 
@@ -238,6 +243,7 @@ class CameraXEngine(
         preview = null
         imageCapture = null
         videoCapture = null
+        _configuration.update { it.copy(isExposureStateReady = false) }
         _sessionState.value = CameraSessionState.CLOSED
     }
 
@@ -305,12 +311,31 @@ class CameraXEngine(
 
     override fun setExposureCompensation(index: Int) {
         val cam = camera ?: return
+        if (!_configuration.value.isExposureControlAvailable) {
+            Log.w(TAG, "Exposure compensation is not supported or ready on active camera")
+            return
+        }
+
         val clamped = index.coerceIn(
             _configuration.value.minExposureIndex,
             _configuration.value.maxExposureIndex
         )
-        cam.cameraControl.setExposureCompensationIndex(clamped)
-        _configuration.update { it.copy(exposureCompensationIndex = clamped) }
+
+        val future = cam.cameraControl.setExposureCompensationIndex(clamped)
+        future.addListener({
+            try {
+                val applied = future.get()
+                _configuration.update { it.copy(exposureCompensationIndex = applied) }
+            } catch (e: Exception) {
+                val cause = e.cause
+                if (cause !is androidx.camera.core.CameraControl.OperationCanceledException) {
+                    Log.w(TAG, "Failed to apply exposure compensation: ${e.message}")
+                    // Re-sync with actual current camera exposure index
+                    val currentActual = cam.cameraInfo.exposureState.exposureCompensationIndex
+                    _configuration.update { it.copy(exposureCompensationIndex = currentActual) }
+                }
+            }
+        }, ContextCompat.getMainExecutor(context))
     }
 
     override fun resetExposureCompensation() {
