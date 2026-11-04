@@ -72,3 +72,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Concurrent CameraX ImageAnalysis:** Configured `ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST` use case on dedicated background executor bound to lifecycle without preview stutter.
 - **Unit Testing Suite:** Added 12 new unit tests in `SmartAutoPhase3Test` bringing total test count to 39 passing tests across debug and release builds.
 - **Physical Device Validation:** Verified live execution on physical OnePlus Ace 5 / 13R (`3B15B800NRT00000`) with smooth concurrent preview and frame analysis.
+
+---
+
+## [0.5.0] - Phase 4 Pro Photography & RAW DNG - 2026-11-05
+
+### Added
+- **Camera2 Manual Photography Engine (`Camera2ManualEngine`):** Dedicated Camera2 architecture implementing full manual sensor overrides when in `PRO` mode while preserving CameraX in `PHOTO` and `VIDEO` modes without conflict.
+- **Manual Sensor Controls:**
+  - **ISO Sensitivity:** Hardware-bounded manual slider with real-time sensor clamping and Auto restore option.
+  - **Shutter Speed:** Exposure time slider with photographic fractions (1/8000s up to 74s on Snapdragon 8 Gen 3) and Auto restore option.
+  - **Manual Lens Focus:** Diopter slider (0.0 D / infinity to 10.0 D / 10cm) with physical distance calculations and continuous autofocus restore.
+  - **White Balance Presets:** Camera2 AWB modes (`DAYLIGHT`, `CLOUDY`, `SHADE`, `FLUORESCENT`, `INCANDESCENT`, `TWILIGHT`, `AUTO`).
+- **Real-Time Live Histogram (`HistogramAnalyzer` & `HistogramView`):**
+  - Subsampled (4-pixel stride) preview analysis generating 4 separate 64-bin channels: Luminance, Red, Green, and Blue.
+  - Shadow and highlight clipping ratio detection.
+  - Dimmable translucent overlay with compact and expanded waveform display modes.
+- **Spatial Focus Peaking (`FocusPeakingAnalyzer` & `FocusPeakingOverlay`):**
+  - Real-time 2D spatial gradient detector on preview Y plane detecting in-focus sharp subject edges.
+  - Adjustable sensitivity slider (0.1x to 1.0x).
+  - High-visibility neon-green peaking point overlay without modifying captured frames.
+- **RAW Capture Engine (`DngCaptureManager`):**
+  - Pre-flight `RAW_SENSOR` capability and dimensions verification.
+  - Concurrent still capture saving uncompressed 12.6 MP Bayer RAW data alongside processed JPEG.
+  - Native `DngCreator` pipeline populating valid sensor characteristics and capture metadata.
+  - MediaStore integration with `image/x-adobe-dng` MIME type and Scoped Storage safety.
+  - Built-in TIFF magic header (`0x49492A00` / `0x4D4D002A`) and file integrity validator.
+- **Pro Control Interface (`ProControlBar` & `ProAppliedTelemetryBadge`):**
+  - Docked pro control bar with tabs for ISO, SHUTTER, FOCUS, WB, RAW, HIST, and PEAK.
+  - Viewfinder telemetry badge showing live applied sensor values from Camera2 TotalCaptureResult.
+  - Dedicated "PRO" mode selector tab alongside "PHOTO" and "VIDEO".
+- **Smart Auto Compatibility:** Smart Auto recommendations remain purely advisory during Pro mode, never silently overwriting manually locked sensor settings.
+- **Unit Testing Suite:** Added 13 new unit tests in `ProPhotographyPhase4Test` covering ISO clamping, shutter conversion, diopter formatting, white balance mapping, histogram analysis, focus peaking, DNG header validation, and manual override safety, bringing total project test count to 53 passing tests.
+

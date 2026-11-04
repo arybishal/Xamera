@@ -9,6 +9,7 @@ import android.os.Build
 import android.provider.MediaStore
 import androidx.camera.core.ImageCapture
 import androidx.camera.video.MediaStoreOutputOptions
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -237,5 +238,72 @@ class MediaStoreManager(private val context: Context) {
         } catch (e: Exception) {
             false
         }
+    }
+
+    fun savePhoto(file: File, displayName: String): MediaItem {
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
+            put(MediaStore.MediaColumns.MIME_TYPE, PHOTO_MIME_TYPE)
+            put(MediaStore.MediaColumns.RELATIVE_PATH, ALBUM_DIRECTORY)
+            put(MediaStore.Images.Media.DATE_TAKEN, System.currentTimeMillis())
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaStore.Images.Media.IS_PENDING, 1)
+            }
+        }
+
+        val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+            ?: throw IllegalStateException("Failed to insert MediaStore record for $displayName")
+
+        contentResolver.openOutputStream(uri)?.use { out ->
+            file.inputStream().use { input ->
+                input.copyTo(out)
+            }
+        } ?: throw IllegalStateException("Failed to open output stream for $uri")
+
+        markPhotoPendingComplete(uri)
+
+        val id = try { ContentUris.parseId(uri) } catch (_: Exception) { System.currentTimeMillis() }
+        return MediaItem(
+            id = id,
+            uri = uri,
+            displayName = displayName,
+            mimeType = PHOTO_MIME_TYPE,
+            sizeBytes = file.length(),
+            dateTakenMs = System.currentTimeMillis(),
+            mediaType = MediaType.PHOTO
+        )
+    }
+
+    fun saveImageBytes(bytes: ByteArray, displayName: String, mimeType: String = PHOTO_MIME_TYPE): MediaItem {
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
+            put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+            put(MediaStore.MediaColumns.RELATIVE_PATH, ALBUM_DIRECTORY)
+            put(MediaStore.Images.Media.DATE_TAKEN, System.currentTimeMillis())
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaStore.Images.Media.IS_PENDING, 1)
+            }
+        }
+
+        val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+            ?: throw IllegalStateException("Failed to insert MediaStore record for $displayName")
+
+        contentResolver.openOutputStream(uri)?.use { out ->
+            out.write(bytes)
+            out.flush()
+        } ?: throw IllegalStateException("Failed to open output stream for $uri")
+
+        markPhotoPendingComplete(uri)
+
+        val id = try { ContentUris.parseId(uri) } catch (_: Exception) { System.currentTimeMillis() }
+        return MediaItem(
+            id = id,
+            uri = uri,
+            displayName = displayName,
+            mimeType = mimeType,
+            sizeBytes = bytes.size.toLong(),
+            dateTakenMs = System.currentTimeMillis(),
+            mediaType = MediaType.PHOTO
+        )
     }
 }

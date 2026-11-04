@@ -95,7 +95,7 @@ fun BottomCaptureControls(
             }
             Spacer(modifier = Modifier.height(10.dp))
         } else {
-            // Mode Selector: PHOTO | VIDEO
+            // Mode Selector: PHOTO | PRO | VIDEO
             Row(
                 horizontalArrangement = Arrangement.spacedBy(28.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -104,6 +104,11 @@ fun BottomCaptureControls(
                     label = "PHOTO",
                     isSelected = mode == CameraMode.PHOTO,
                     onClick = { onModeChanged(CameraMode.PHOTO) }
+                )
+                ModeItem(
+                    label = "PRO",
+                    isSelected = mode == CameraMode.PRO,
+                    onClick = { onModeChanged(CameraMode.PRO) }
                 )
                 ModeItem(
                     label = "VIDEO",

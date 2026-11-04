@@ -30,6 +30,15 @@
      - **Camera ID 3:** `LENS_FACING_BACK` (1) - Physical rear auxiliary sensor (Macro).
      - **Camera ID 4 / 5:** Internal auxiliary vendor HAL streams.
 
+3. **Phase 4 Pro Photography & RAW Sensor Support:**
+   - **Hardware Level:** Rear cameras report `LEVEL_3` and front camera reports `FULL`.
+   - **RAW Capabilities:** Camera ID 0 (Logical Back) and Camera ID 2 (Physical Main) expose `REQUEST_AVAILABLE_CAPABILITIES_RAW` and output format `ImageFormat.RAW_SENSOR` at `4096x3072` (12.6 MP binned).
+   - **Manual ISO Sensitivity:** Supported range: `100` to `6400`.
+   - **Manual Shutter Speed / Exposure Time:** Supported range: `78,120 ns` (~1/12800s) to `74,355,370,092 ns` (~74.35s).
+   - **Manual Lens Focus Distance:** Minimum focus distance `10.0` diopters (~10cm macro boundary) on Camera ID 0; Front camera (Camera ID 1) is fixed focus (`0.0` diopters).
+   - **Auto White Balance Modes:** Supported presets include `AUTO`, `DAYLIGHT`, `CLOUDY_DAYLIGHT`, `SHADE`, `FLUORESCENT`, `INCANDESCENT`, and `TWILIGHT`.
+   - **Real-Time Viewfinder Analysis:** Preview analysis offloaded via YUV_420_888 downsampled stream providing 4x 64-bin live RGB/Luma histograms and 2D spatial gradient focus peaking without preview latency.
+
 ---
 
 ## 2. Secondary Devices Matrix

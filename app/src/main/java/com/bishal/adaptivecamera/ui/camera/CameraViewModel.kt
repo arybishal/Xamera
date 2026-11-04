@@ -2,10 +2,12 @@ package com.bishal.adaptivecamera.ui.camera
 
 import android.app.Application
 import android.content.Context
+import android.view.Surface
 import androidx.camera.view.PreviewView
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewModelScope
+import com.bishal.adaptivecamera.camera.capability.CameraCapabilityProfile
 import com.bishal.adaptivecamera.camera.capability.CameraCapabilityRepository
 import com.bishal.adaptivecamera.camera.capability.CameraCapabilityRepositoryImpl
 import com.bishal.adaptivecamera.camera.config.CameraConfiguration
@@ -20,6 +22,12 @@ import com.bishal.adaptivecamera.core.storage.MediaItem
 import com.bishal.adaptivecamera.core.storage.MediaStoreManager
 import com.bishal.adaptivecamera.photography.auto.SmartAutoOrchestrator
 import com.bishal.adaptivecamera.photography.auto.SmartAutoState
+import com.bishal.adaptivecamera.photography.pro.Camera2ManualEngine
+import com.bishal.adaptivecamera.photography.pro.FocusPeakingMap
+import com.bishal.adaptivecamera.photography.pro.HistogramData
+import com.bishal.adaptivecamera.photography.pro.ProAppliedState
+import com.bishal.adaptivecamera.photography.pro.ProConfiguration
+import com.bishal.adaptivecamera.photography.pro.ProWhiteBalance
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,12 +47,18 @@ data class CameraUiState(
     val captureFlashAnimation: Boolean = false,
     val smartAutoState: SmartAutoState = SmartAutoState(),
     val isSuggestionDismissed: Boolean = false,
-    val toastMessage: String? = null
+    val toastMessage: String? = null,
+    val proConfig: ProConfiguration = ProConfiguration(),
+    val proAppliedState: ProAppliedState = ProAppliedState(),
+    val histogramData: HistogramData = HistogramData(),
+    val focusPeakingMap: FocusPeakingMap = FocusPeakingMap(),
+    val activeProfile: CameraCapabilityProfile? = null
 )
 
 class CameraViewModel @JvmOverloads constructor(
     application: Application,
     private val cameraEngine: CameraEngine = CameraXEngine(application.applicationContext),
+    private val camera2ProEngine: Camera2ManualEngine = Camera2ManualEngine(application.applicationContext),
     private val mediaStoreManager: MediaStoreManager = MediaStoreManager(application.applicationContext),
     private val capabilityRepository: CameraCapabilityRepository = CameraCapabilityRepositoryImpl(application.applicationContext),
     val smartAutoOrchestrator: SmartAutoOrchestrator = SmartAutoOrchestrator()
@@ -55,6 +69,8 @@ class CameraViewModel @JvmOverloads constructor(
 
     private var countdownJob: Job? = null
     private var focusTimeoutJob: Job? = null
+    private var lastLifecycleOwner: LifecycleOwner? = null
+    private var lastPreviewView: PreviewView? = null
 
     init {
         // Connect frame analyzer to camera engine
@@ -62,13 +78,44 @@ class CameraViewModel @JvmOverloads constructor(
 
         viewModelScope.launch {
             cameraEngine.sessionState.collect { state ->
-                _uiState.update { it.copy(sessionState = state) }
+                if (_uiState.value.configuration.mode != CameraMode.PRO) {
+                    _uiState.update { it.copy(sessionState = state) }
+                }
+            }
+        }
+        viewModelScope.launch {
+            camera2ProEngine.sessionState.collect { state ->
+                if (_uiState.value.configuration.mode == CameraMode.PRO) {
+                    _uiState.update { it.copy(sessionState = state) }
+                }
             }
         }
         viewModelScope.launch {
             cameraEngine.configuration.collect { config ->
-                _uiState.update { it.copy(configuration = config) }
-                smartAutoOrchestrator.updateCameraControls(zoomRatio = config.zoomRatio)
+                if (_uiState.value.configuration.mode != CameraMode.PRO) {
+                    _uiState.update { it.copy(configuration = config) }
+                    smartAutoOrchestrator.updateCameraControls(zoomRatio = config.zoomRatio)
+                }
+            }
+        }
+        viewModelScope.launch {
+            camera2ProEngine.proConfig.collect { proConfig ->
+                _uiState.update { it.copy(proConfig = proConfig) }
+            }
+        }
+        viewModelScope.launch {
+            camera2ProEngine.appliedState.collect { applied ->
+                _uiState.update { it.copy(proAppliedState = applied) }
+            }
+        }
+        viewModelScope.launch {
+            camera2ProEngine.histogramData.collect { hist ->
+                _uiState.update { it.copy(histogramData = hist) }
+            }
+        }
+        viewModelScope.launch {
+            camera2ProEngine.focusPeakingMap.collect { peaking ->
+                _uiState.update { it.copy(focusPeakingMap = peaking) }
             }
         }
         viewModelScope.launch {
@@ -85,6 +132,7 @@ class CameraViewModel @JvmOverloads constructor(
             try {
                 val report = capabilityRepository.getDeviceReport()
                 val activeProfile = report.cameraProfiles.firstOrNull { it.isFacingBack }
+                _uiState.update { it.copy(activeProfile = activeProfile) }
                 smartAutoOrchestrator.updateProfiles(activeProfile, report.cameraProfiles)
             } catch (_: Exception) {}
         }
@@ -92,11 +140,27 @@ class CameraViewModel @JvmOverloads constructor(
     }
 
     fun bindCamera(lifecycleOwner: LifecycleOwner, previewView: PreviewView) {
-        cameraEngine.bindCamera(lifecycleOwner, previewView)
+        lastLifecycleOwner = lifecycleOwner
+        lastPreviewView = previewView
+        if (_uiState.value.configuration.mode != CameraMode.PRO) {
+            cameraEngine.bindCamera(lifecycleOwner, previewView)
+        }
     }
 
     fun unbindCamera() {
-        cameraEngine.unbindCamera()
+        if (_uiState.value.configuration.mode == CameraMode.PRO) {
+            camera2ProEngine.unbindCamera()
+        } else {
+            cameraEngine.unbindCamera()
+        }
+    }
+
+    fun bindProSurface(surface: Surface) {
+        camera2ProEngine.bindSurface(surface)
+    }
+
+    fun unbindProSurface() {
+        camera2ProEngine.unbindCamera()
     }
 
     fun refreshLatestThumbnail() {
@@ -130,6 +194,26 @@ class CameraViewModel @JvmOverloads constructor(
                     }
                 )
             }
+            return
+        }
+
+        if (state.configuration.mode == CameraMode.PRO) {
+            triggerFlashAnimation()
+            camera2ProEngine.capturePhoto(
+                onSuccess = { item ->
+                    val isRaw = _uiState.value.proConfig.isRawCaptureEnabled
+                    val msg = if (isRaw) "RAW DNG + JPEG saved!" else "Pro Photo saved!"
+                    _uiState.update {
+                        it.copy(
+                            latestMedia = item,
+                            toastMessage = msg
+                        )
+                    }
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(toastMessage = "Capture failed: ${error.message}") }
+                }
+            )
             return
         }
 
@@ -194,11 +278,84 @@ class CameraViewModel @JvmOverloads constructor(
     }
 
     fun switchCamera() {
-        cameraEngine.switchFacing()
+        if (_uiState.value.configuration.mode == CameraMode.PRO) {
+            camera2ProEngine.switchFacing()
+            _uiState.update { it.copy(configuration = it.configuration.copy(facing = it.configuration.facing.toggle())) }
+        } else {
+            cameraEngine.switchFacing()
+        }
     }
 
     fun setCameraMode(mode: CameraMode) {
-        cameraEngine.setMode(mode)
+        if (_uiState.value.configuration.mode == mode) return
+        val previousMode = _uiState.value.configuration.mode
+        if (mode == CameraMode.PRO) {
+            cameraEngine.unbindCamera()
+            _uiState.update {
+                it.copy(
+                    configuration = it.configuration.copy(mode = CameraMode.PRO),
+                    sessionState = camera2ProEngine.sessionState.value
+                )
+            }
+        } else {
+            if (previousMode == CameraMode.PRO) {
+                camera2ProEngine.unbindCamera()
+            }
+            cameraEngine.setMode(mode)
+            _uiState.update {
+                it.copy(
+                    configuration = it.configuration.copy(mode = mode),
+                    sessionState = cameraEngine.sessionState.value
+                )
+            }
+            val owner = lastLifecycleOwner
+            val preview = lastPreviewView
+            if (owner != null && preview != null) {
+                cameraEngine.bindCamera(owner, preview)
+            }
+        }
+    }
+
+    fun setManualIso(enabled: Boolean, iso: Int) {
+        camera2ProEngine.setManualIso(enabled, iso)
+    }
+
+    fun setManualShutterSpeed(enabled: Boolean, shutterNs: Long) {
+        camera2ProEngine.setManualShutterSpeed(enabled, shutterNs)
+    }
+
+    fun setManualFocus(enabled: Boolean, distanceDiopters: Float) {
+        camera2ProEngine.setManualFocus(enabled, distanceDiopters)
+    }
+
+    fun setWhiteBalance(wb: ProWhiteBalance) {
+        camera2ProEngine.setWhiteBalance(wb)
+    }
+
+    fun toggleRawCapture(enabled: Boolean) {
+        camera2ProEngine.setRawCaptureEnabled(enabled)
+    }
+
+    fun toggleHistogram() {
+        val current = _uiState.value.proConfig.isHistogramVisible
+        camera2ProEngine.setHistogramVisible(!current)
+    }
+
+    fun toggleHistogramExpanded() {
+        val current = _uiState.value.proConfig.isHistogramExpanded
+        camera2ProEngine.setHistogramExpanded(!current)
+    }
+
+    fun toggleFocusPeaking(enabled: Boolean) {
+        camera2ProEngine.setFocusPeakingEnabled(enabled)
+    }
+
+    fun setFocusPeakingSensitivity(sensitivity: Float) {
+        camera2ProEngine.setFocusPeakingSensitivity(sensitivity)
+    }
+
+    fun resetProToAuto() {
+        camera2ProEngine.resetAllManualToAuto()
     }
 
     fun toggleFlash() {

@@ -57,14 +57,14 @@
 ---
 
 ## Phase 4: Pro Photography
-- [ ] Camera2 manual sensor session builder.
-- [ ] Manual ISO controller with hardware range clamping.
-- [ ] Manual shutter speed controller with nanosecond-to-fraction display.
-- [ ] Manual focus distance controller (diopters).
-- [ ] Custom Auto White Balance (AWB) lock and manual Kelvin presets.
-- [ ] Real-time RGB and luminance histogram.
-- [ ] RAW capture (RAW_SENSOR) and DNG creation via `DngCreator`.
-- [ ] Phase 4 acceptance tests and report.
+- [x] Camera2 manual sensor session builder.
+- [x] Manual ISO controller with hardware range clamping.
+- [x] Manual shutter speed controller with nanosecond-to-fraction display.
+- [x] Manual focus distance controller (diopters).
+- [x] Custom Auto White Balance (AWB) lock and manual Kelvin presets.
+- [x] Real-time RGB and luminance histogram.
+- [x] RAW capture (RAW_SENSOR) and DNG creation via `DngCreator`.
+- [x] Phase 4 acceptance tests and report.
 
 ---
 

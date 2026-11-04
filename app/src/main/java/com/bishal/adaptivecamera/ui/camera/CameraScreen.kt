@@ -2,6 +2,9 @@ package com.bishal.adaptivecamera.ui.camera
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.SurfaceTexture
+import android.view.Surface
+import android.view.TextureView
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -52,6 +55,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.bishal.adaptivecamera.camera.config.CameraMode
 import com.bishal.adaptivecamera.ui.camera.components.BottomCaptureControls
 import com.bishal.adaptivecamera.ui.camera.components.CountdownOverlay
 import com.bishal.adaptivecamera.ui.camera.components.ExposureSlider
@@ -59,6 +63,10 @@ import com.bishal.adaptivecamera.ui.camera.components.FocusRingOverlay
 import com.bishal.adaptivecamera.ui.camera.components.SceneSuggestionChip
 import com.bishal.adaptivecamera.ui.camera.components.TopBarControls
 import com.bishal.adaptivecamera.ui.camera.components.ZoomControlBar
+import com.bishal.adaptivecamera.ui.camera.pro.FocusPeakingOverlay
+import com.bishal.adaptivecamera.ui.camera.pro.HistogramView
+import com.bishal.adaptivecamera.ui.camera.pro.ProAppliedTelemetryBadge
+import com.bishal.adaptivecamera.ui.camera.pro.ProControlBar
 import com.bishal.adaptivecamera.ui.theme.AccentAmber
 import com.bishal.adaptivecamera.ui.theme.DarkBackground
 import com.bishal.adaptivecamera.ui.theme.DarkSurface
@@ -124,16 +132,32 @@ fun CameraScreen(
             )
         },
         bottomBar = {
-            BottomCaptureControls(
-                mode = uiState.configuration.mode,
-                sessionState = uiState.sessionState,
-                latestMedia = uiState.latestMedia,
-                recordingDurationSec = uiState.recordingDurationSec,
-                onModeChanged = { viewModel.setCameraMode(it) },
-                onShutterPressed = { viewModel.onShutterPressed() },
-                onSwitchCamera = { viewModel.switchCamera() },
-                onOpenGallery = onOpenGallery
-            )
+            Column {
+                if (uiState.configuration.mode == CameraMode.PRO) {
+                    ProControlBar(
+                        proConfig = uiState.proConfig,
+                        activeProfile = uiState.activeProfile,
+                        onSetManualIso = { enabled, iso -> viewModel.setManualIso(enabled, iso) },
+                        onSetManualShutter = { enabled, shutter -> viewModel.setManualShutterSpeed(enabled, shutter) },
+                        onSetManualFocus = { enabled, dist -> viewModel.setManualFocus(enabled, dist) },
+                        onSetWhiteBalance = { wb -> viewModel.setWhiteBalance(wb) },
+                        onToggleRaw = { enabled -> viewModel.toggleRawCapture(enabled) },
+                        onToggleHistogram = { viewModel.toggleHistogram() },
+                        onTogglePeaking = { enabled -> viewModel.toggleFocusPeaking(enabled) },
+                        onSetPeakingSensitivity = { sens -> viewModel.setFocusPeakingSensitivity(sens) }
+                    )
+                }
+                BottomCaptureControls(
+                    mode = uiState.configuration.mode,
+                    sessionState = uiState.sessionState,
+                    latestMedia = uiState.latestMedia,
+                    recordingDurationSec = uiState.recordingDurationSec,
+                    onModeChanged = { viewModel.setCameraMode(it) },
+                    onShutterPressed = { viewModel.onShutterPressed() },
+                    onSwitchCamera = { viewModel.switchCamera() },
+                    onOpenGallery = onOpenGallery
+                )
+            }
         }
     ) { innerPadding ->
         Box(
@@ -143,40 +167,77 @@ fun CameraScreen(
                 .background(Color.Black)
         ) {
             if (hasCameraPermission) {
-                // Viewfinder PreviewView
-                AndroidView(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .onSizeChanged { size ->
-                            previewWidthPx = size.width.toFloat()
-                            previewHeightPx = size.height.toFloat()
-                        }
-                        .pointerInput(Unit) {
-                            detectTapGestures { offset ->
-                                if (previewWidthPx > 0f && previewHeightPx > 0f) {
-                                    val xNorm = offset.x / previewWidthPx
-                                    val yNorm = offset.y / previewHeightPx
-                                    viewModel.onFocusTap(xNorm, yNorm)
+                if (uiState.configuration.mode == CameraMode.PRO) {
+                    AndroidView(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .onSizeChanged { size ->
+                                previewWidthPx = size.width.toFloat()
+                                previewHeightPx = size.height.toFloat()
+                            },
+                        factory = { ctx ->
+                            TextureView(ctx).apply {
+                                layoutParams = ViewGroup.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ViewGroup.LayoutParams.MATCH_PARENT
+                                )
+                                surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+                                    override fun onSurfaceTextureAvailable(st: SurfaceTexture, width: Int, height: Int) {
+                                        viewModel.bindProSurface(Surface(st))
+                                    }
+                                    override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, width: Int, height: Int) {}
+                                    override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
+                                        viewModel.unbindProSurface()
+                                        return true
+                                    }
+                                    override fun onSurfaceTextureUpdated(st: SurfaceTexture) {}
                                 }
                             }
-                        },
-                    factory = { ctx ->
-                        PreviewView(ctx).apply {
-                            layoutParams = ViewGroup.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                                ViewGroup.LayoutParams.MATCH_PARENT
-                            )
-                            scaleType = PreviewView.ScaleType.FILL_CENTER
-                            implementationMode = PreviewView.ImplementationMode.PERFORMANCE
-                            viewModel.bindCamera(lifecycleOwner, this)
                         }
-                    }
-                )
+                    )
+                } else {
+                    AndroidView(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .onSizeChanged { size ->
+                                previewWidthPx = size.width.toFloat()
+                                previewHeightPx = size.height.toFloat()
+                            }
+                            .pointerInput(Unit) {
+                                detectTapGestures { offset ->
+                                    if (previewWidthPx > 0f && previewHeightPx > 0f) {
+                                        val xNorm = offset.x / previewWidthPx
+                                        val yNorm = offset.y / previewHeightPx
+                                        viewModel.onFocusTap(xNorm, yNorm)
+                                    }
+                                }
+                            },
+                        factory = { ctx ->
+                            PreviewView(ctx).apply {
+                                layoutParams = ViewGroup.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ViewGroup.LayoutParams.MATCH_PARENT
+                                )
+                                scaleType = PreviewView.ScaleType.FILL_CENTER
+                                implementationMode = PreviewView.ImplementationMode.PERFORMANCE
+                                viewModel.bindCamera(lifecycleOwner, this)
+                            }
+                        }
+                    )
+                }
 
                 DisposableEffect(lifecycleOwner) {
                     onDispose {
                         viewModel.unbindCamera()
                     }
+                }
+
+                // Focus Peaking Overlay (Pro Mode)
+                if (uiState.configuration.mode == CameraMode.PRO && uiState.proConfig.isFocusPeakingEnabled) {
+                    FocusPeakingOverlay(
+                        peakingMap = uiState.focusPeakingMap,
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
 
                 // Focus Ring Overlay
@@ -188,16 +249,39 @@ fun CameraScreen(
                     )
                 }
 
-                // Smart Scene Suggestion Overlay
-                SceneSuggestionChip(
-                    autoState = uiState.smartAutoState,
-                    isDismissed = uiState.isSuggestionDismissed,
-                    onApplySuggestion = { viewModel.applySmartAutoSuggestion() },
-                    onDismiss = { viewModel.dismissSmartAutoSuggestion() },
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 12.dp)
-                )
+                // Pro Applied Telemetry Badge (Pro Mode)
+                if (uiState.configuration.mode == CameraMode.PRO) {
+                    ProAppliedTelemetryBadge(
+                        appliedState = uiState.proAppliedState,
+                        proConfig = uiState.proConfig,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 10.dp)
+                    )
+                } else {
+                    // Smart Scene Suggestion Overlay (Photo Mode)
+                    SceneSuggestionChip(
+                        autoState = uiState.smartAutoState,
+                        isDismissed = uiState.isSuggestionDismissed,
+                        onApplySuggestion = { viewModel.applySmartAutoSuggestion() },
+                        onDismiss = { viewModel.dismissSmartAutoSuggestion() },
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 12.dp)
+                    )
+                }
+
+                // Live Histogram View (Pro Mode)
+                if (uiState.configuration.mode == CameraMode.PRO && uiState.proConfig.isHistogramVisible) {
+                    HistogramView(
+                        data = uiState.histogramData,
+                        isExpanded = uiState.proConfig.isHistogramExpanded,
+                        onToggleExpanded = { viewModel.toggleHistogramExpanded() },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = 44.dp, end = 12.dp)
+                    )
+                }
 
                 // Countdown Timer Overlay
                 CountdownOverlay(
@@ -205,19 +289,21 @@ fun CameraScreen(
                     modifier = Modifier.align(Alignment.Center)
                 )
 
-                // Zoom Level Bar
-                ZoomControlBar(
-                    currentZoom = uiState.configuration.zoomRatio,
-                    minZoom = uiState.configuration.minZoomRatio,
-                    maxZoom = uiState.configuration.maxZoomRatio,
-                    onZoomSelected = { viewModel.setZoomRatio(it) },
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 12.dp)
-                )
+                // Zoom Level Bar (Photo & Video mode)
+                if (uiState.configuration.mode != CameraMode.PRO) {
+                    ZoomControlBar(
+                        currentZoom = uiState.configuration.zoomRatio,
+                        minZoom = uiState.configuration.minZoomRatio,
+                        maxZoom = uiState.configuration.maxZoomRatio,
+                        onZoomSelected = { viewModel.setZoomRatio(it) },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 12.dp)
+                    )
+                }
 
                 // Exposure Slider Overlay (Side)
-                if (uiState.isExposureSliderVisible) {
+                if (uiState.isExposureSliderVisible && uiState.configuration.mode != CameraMode.PRO) {
                     ExposureSlider(
                         currentIndex = uiState.configuration.exposureCompensationIndex,
                         minIndex = uiState.configuration.minExposureIndex,
