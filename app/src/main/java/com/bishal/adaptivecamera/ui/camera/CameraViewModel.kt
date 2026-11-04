@@ -36,7 +36,7 @@ data class CameraUiState(
     val toastMessage: String? = null
 )
 
-class CameraViewModel(
+class CameraViewModel @JvmOverloads constructor(
     application: Application,
     private val cameraEngine: CameraEngine = CameraXEngine(application.applicationContext),
     private val mediaStoreManager: MediaStoreManager = MediaStoreManager(application.applicationContext)

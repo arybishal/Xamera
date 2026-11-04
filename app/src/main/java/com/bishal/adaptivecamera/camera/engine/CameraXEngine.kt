@@ -163,9 +163,20 @@ class CameraXEngine(
             imageCapture = newImageCapture
             videoCapture = newVideoCapture
 
-            // Initialize Exposure and Zoom ranges
+            // Initialize Exposure and Zoom ranges safely
             val zoomState = newCamera.cameraInfo.zoomState.value
             val exposureState = newCamera.cameraInfo.exposureState
+
+            val stepDenom = exposureState.exposureCompensationStep.denominator
+            val stepNum = exposureState.exposureCompensationStep.numerator
+            val stepEv = if (stepDenom != 0) {
+                stepNum.toFloat() / stepDenom.toFloat()
+            } else {
+                0.5f
+            }
+
+            val minExp = exposureState.exposureCompensationRange.lower
+            val maxExp = exposureState.exposureCompensationRange.upper
 
             _configuration.update { current ->
                 current.copy(
@@ -173,10 +184,9 @@ class CameraXEngine(
                     minZoomRatio = zoomState?.minZoomRatio ?: 1.0f,
                     maxZoomRatio = zoomState?.maxZoomRatio ?: 10.0f,
                     exposureCompensationIndex = exposureState.exposureCompensationIndex,
-                    minExposureIndex = exposureState.exposureCompensationRange.lower,
-                    maxExposureIndex = exposureState.exposureCompensationRange.upper,
-                    exposureStepEv = exposureState.exposureCompensationStep.numerator.toFloat() /
-                            exposureState.exposureCompensationStep.denominator.toFloat()
+                    minExposureIndex = minExp,
+                    maxExposureIndex = maxExp,
+                    exposureStepEv = stepEv
                 )
             }
 

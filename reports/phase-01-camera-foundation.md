@@ -10,7 +10,23 @@
 
 ## 1. Summary & Root Cause Analysis
 
-### 1.1 Device Classification Audit
+### 1.1 Startup Crash Investigation & Resolution
+- **Defect Symptom:** On application launch, the app crashed instantly and closed automatically.
+- **Captured Stack Trace:**
+  ```text
+  FATAL EXCEPTION: main
+  Process: com.bishal.adaptivecamera.debug, PID: 2045
+  java.lang.RuntimeException: Cannot create an instance of class com.bishal.adaptivecamera.ui.camera.CameraViewModel
+  Caused by: java.lang.NoSuchMethodException: com.bishal.adaptivecamera.ui.camera.CameraViewModel.<init> [class android.app.Application]
+  	at java.lang.Class.getConstructor0(Class.java:3387)
+  	at java.lang.Class.getConstructor(Class.java:2479)
+  	at androidx.lifecycle.ViewModelProvider$AndroidViewModelFactory.create(ViewModelProvider.android.kt:307)
+  ```
+- **Root Cause:** `CameraViewModel` was defined with default arguments (`cameraEngine: CameraEngine = ...`, `mediaStoreManager: MediaStoreManager = ...`) without the `@JvmOverloads` annotation. Consequently, the compiled JVM bytecode lacked the single-parameter constructor `<init>(Application)`, which `AndroidViewModelFactory` expected when `MainActivity` instantiated the ViewModel via `by viewModels()`.
+- **Fix:** Added `@JvmOverloads constructor(...)` to `CameraViewModel`, generating all constructor overloads including `<init>(Application)`. Additionally, guarded rational denominator divisions in `CameraXEngine` exposure compensation initialization.
+- **Physical Device Stability Test:** APK installed and launched on device `3B15B800NRT00000`. Process PID `5750` verified running continuously with `mCurrentFocus=Window{... MainActivity}` and zero crashes.
+
+### 1.2 Device Classification Audit
 - **Root Cause:** In the initial detection rules, the presence of model identifier `CPH2691` and board `OP5D3BL1` was hardcoded to claim `isPrimaryTargetAce5 = true`. However, `CPH2691` corresponds to the Indian OnePlus 13R regional firmware identity. Although the developer's physical test unit is a Chinese OnePlus Ace 5, it runs cross-flashed/converted Indian firmware. Because Android operating system properties (`ro.product.*`, `ro.build.*`) reflect the running ROM rather than internal hardware PCB provenance, equating firmware identity with confirmed physical hardware identity was misleading.
 - **Resolution:** Removed the boolean assumption. Refactored `DeviceInfo` to expose separate, honest fields:
   - `reportedModel`: `CPH2691`
