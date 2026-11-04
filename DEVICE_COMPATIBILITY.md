@@ -1,49 +1,61 @@
 # Device Compatibility Matrix | Adaptive Camera
 
-## 1. Primary Device: OnePlus Ace 5 (China)
+## 1. Primary Device: OnePlus Ace 5 (China) / Converted Firmware Reference
 
-* **Priority:** 1 (Primary Development & Reference Device)
-* **Market Region:** Mainland China
-* **Typical Model Identifiers:** `PKG110`, `PJR110`
-* **SoC:** Qualcomm Snapdragon 8 Gen 3
-* **Primary Sensor Hardware:** Sony IMX906 (50MP, 1/1.56", OIS)
-* **Secondary Sensors:** Ultra-wide (8MP) + Macro (2MP)
-* **Front Camera:** 16MP
+* **Market Hardware:** OnePlus Ace 5 (China)
+* **Reported Firmware Model:** `CPH2691` (OnePlus 13R India regional build)
+* **Reported Device / Board:** `OP5D3BL1`
+* **Reported Product:** `CPH2691IN`
+* **SoC:** Qualcomm Snapdragon 8 Gen 3 (`SM8650` / `qcom`)
+* **Android OS:** Android 17 (API level 37)
+* **Build Fingerprint:** `OnePlus/CPH2691IN/OP5D3BL1:17/UKQ1.231108.001/V.R4T3.2d570f8-6d2927-6d2926:user/release-keys`
+* **Display ID:** `CPH2691_17.0.0.105(EX01)`
 
-### Critical Hardware & Firmware Differentiation
-The OnePlus Ace 5 is closely related to the globally marketed OnePlus 13R (`CPH2645` / `CPH2647`), but their physical camera configurations and vendor HAL tunings are **not identical**:
-1. **Third-Party Camera2 Access:** In converted or flashed firmware environments, certain auxiliary sensors (ultra-wide/telephoto) or high-frame-rate modes may be masked or restricted to system packages.
-2. **Dynamic Discovery Required:** Adaptive Camera never assumes factory stock values. Sensor IDs, focal lengths, active array sizes, and manual ranges are retrieved dynamically from the running firmware via `CameraManager`.
-3. **Firmware Conversions:** If the Ace 5 has custom or cross-flashed firmware, `CameraCharacteristics` reported by the HAL may differ from retail factory behavior. The app logs firmware build fingerprints in its diagnostic reports to trace discrepancies.
+### Critical Hardware & Firmware Differentiation Audit
+1. **Firmware Identity vs. Physical Identity:**
+   - The device reports model `CPH2691` and product `CPH2691IN`. This represents Indian regional firmware for the OnePlus 13R.
+   - However, the developer's physical test device is a Chinese OnePlus Ace 5 with a history of converted/flashed firmware.
+   - Software-level properties (`ro.product.*`, `ro.build.*`) reflect the flashed operating system and cannot confirm internal PCB component revisions without physical disassembly.
+   - **Adaptive Camera Rule:** The application explicitly labels firmware identity as `OnePlus 13R (India / Regional CPH2691IN)` and classifies physical hardware identity as `Unconfirmed (Ace 5 China / 13R Global-IN Platform)` with confidence `UNCONFIRMED`.
+
+2. **Camera Sensor HAL Enumeration & Facing Discovery:**
+   - In the Android Camera2 API specification (`android.hardware.camera2.CameraMetadata`):
+     - `LENS_FACING_FRONT = 0`
+     - `LENS_FACING_BACK = 1`
+     - `LENS_FACING_EXTERNAL = 2`
+   - Verified HAL layout from device dumpsys:
+     - **Camera ID 0:** `LENS_FACING_BACK` (1) - Logical multi-camera composing physical sensors `2` and `3`. Level: `LEVEL_3`.
+     - **Camera ID 1:** `LENS_FACING_FRONT` (0) - Front-facing selfie camera. Level: `FULL`.
+     - **Camera ID 2:** `LENS_FACING_BACK` (1) - Physical rear auxiliary sensor (Ultra-wide).
+     - **Camera ID 3:** `LENS_FACING_BACK` (1) - Physical rear auxiliary sensor (Macro).
+     - **Camera ID 4 / 5:** Internal auxiliary vendor HAL streams.
 
 ---
 
 ## 2. Secondary Devices Matrix
 
-| Priority | Device Model | Region | Chipset | Camera Architecture Notes | Target Status |
-|:---:|---|---|---|---|:---:|
-| **1** | **OnePlus Ace 5** | China | Snapdragon 8 Gen 3 | IMX906 primary + OIS, multi-camera logical HAL | **Reference Device** |
-| **2** | **OnePlus 13R** | Global | Snapdragon 8 Gen 3 | Global variant, differing auxiliary lenses | Supported |
-| **3** | **OnePlus 12R** | Global / India | Snapdragon 8 Gen 2 | IMX890 primary + OIS | Supported |
-| **4** | **Google Pixel 7 / 8 / 9** | Global | Tensor | Native Camera2 LEVEL_3, full RAW/HDR | Supported |
-| **5** | **Generic Android 10+** | Global | Various | CameraX fallback with capability inspection | Supported |
+| Priority | Device Model | Region | Chipset | Hardware Identity Confidence | Status |
+|:---:|---|---|---|:---:|:---:|
+| **1** | **OnePlus Ace 5 (China)** | China | Snapdragon 8 Gen 3 | `PROBABLE` if native `PKG110`; `UNCONFIRMED` if flashed `CPH2691` | Reference Device |
+| **2** | **OnePlus 13R** | Global / India | Snapdragon 8 Gen 3 | `PROBABLE` if native `CPH2645` / `CPH2691` retail | Supported |
+| **3** | **OnePlus 12R** | Global / India | Snapdragon 8 Gen 2 | `PROBABLE` on native retail build | Supported |
+| **4** | **Google Pixel 7 / 8 / 9** | Global | Tensor G2/G3/G4 | `CONFIRMED` via canonical Google build strings | Supported |
+| **5** | **Generic Android 10+** | Global | Various | `UNCONFIRMED` fallback | Supported |
 
 ---
 
-## 3. Recommended ADB Diagnostics Commands
-
-To collect comprehensive hardware logs from the physical test device when attached:
+## 3. Verified ADB Telemetry Commands
 
 ```bash
 # Check connected device identity
 adb devices -l
 adb shell getprop ro.product.model
 adb shell getprop ro.product.device
-adb shell getprop ro.product.manufacturer
+adb shell getprop ro.product.name
 adb shell getprop ro.build.version.release
 adb shell getprop ro.build.version.sdk
 adb shell getprop ro.build.fingerprint
 
-# Dump low-level camera HAL capabilities
-adb shell dumpsys media.camera
+# Inspect camera service device mapping and facing
+adb shell "dumpsys media.camera | grep -E 'Camera HAL device|Facing|Device [0-9] maps'"
 ```

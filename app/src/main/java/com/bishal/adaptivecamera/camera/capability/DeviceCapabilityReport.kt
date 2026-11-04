@@ -14,28 +14,40 @@ data class DeviceCapabilityReport(
         sb.appendLine("       ADAPTIVE CAMERA HARDWARE CAPABILITY REPORT")
         sb.appendLine("==================================================")
         sb.appendLine("Generated At: $scannedTimestamp")
-        sb.appendLine("Manufacturer: ${deviceInfo.manufacturer}")
-        sb.appendLine("Model: ${deviceInfo.model}")
-        sb.appendLine("Device: ${deviceInfo.device}")
-        sb.appendLine("Brand: ${deviceInfo.brand}")
-        sb.appendLine("Hardware: ${deviceInfo.hardware}")
-        sb.appendLine("Android Version: ${deviceInfo.androidVersion} (API ${deviceInfo.apiLevel})")
+        sb.appendLine("Reported Model: ${deviceInfo.reportedModel}")
+        sb.appendLine("Reported Device / Board: ${deviceInfo.reportedDevice}")
+        sb.appendLine("Reported Product: ${deviceInfo.reportedProduct}")
+        sb.appendLine("Reported Manufacturer: ${deviceInfo.reportedManufacturer} (${deviceInfo.reportedBrand})")
+        sb.appendLine("Reported Hardware: ${deviceInfo.reportedHardware}")
+        sb.appendLine("Android OS Version: ${deviceInfo.androidVersion} (API ${deviceInfo.apiLevel})")
         sb.appendLine("Build ID: ${deviceInfo.displayBuildId}")
         sb.appendLine("Fingerprint: ${deviceInfo.buildFingerprint}")
-        sb.appendLine("OnePlus Ace 5 Variant Detected: ${if (deviceInfo.isPrimaryTargetAce5) "YES (Primary Target)" else "NO (Generic/Secondary Target)"}")
         sb.appendLine()
-        sb.appendLine("--- CAMERA SUMMARY ---")
-        sb.appendLine("Total Accessible Cameras: ${cameraProfiles.size}")
-        val backCount = cameraProfiles.count { it.facing == 0 }
-        val frontCount = cameraProfiles.count { it.facing == 1 }
-        sb.appendLine("Rear Cameras: $backCount | Front Cameras: $frontCount")
+        sb.appendLine("--- HARDWARE CLASSIFICATION AUDIT ---")
+        sb.appendLine("Firmware Identity: ${deviceInfo.firmwareIdentity}")
+        sb.appendLine("Hardware Family: ${deviceInfo.probableHardwareFamily}")
+        sb.appendLine("Physical Hardware: ${deviceInfo.physicalHardwareIdentity}")
+        sb.appendLine("Physical Identity Confidence: ${deviceInfo.physicalIdentityConfidence}")
+        if (deviceInfo.identityEvidence.isNotEmpty()) {
+            sb.appendLine("Identity Evidence Factors:")
+            deviceInfo.identityEvidence.forEach { e ->
+                sb.appendLine("  * [${e.factor}] ${e.observation} -> ${e.implication}")
+            }
+        }
+        sb.appendLine()
+        sb.appendLine("--- CAMERA SENSOR INVENTORY ---")
+        sb.appendLine("Total Accessible Camera Devices: ${cameraProfiles.size}")
+        val backCount = cameraProfiles.count { it.isFacingBack }
+        val frontCount = cameraProfiles.count { it.isFacingFront }
+        sb.appendLine("Back-Facing Cameras: $backCount | Front-Facing Cameras: $frontCount")
+        val logicalCount = cameraProfiles.count { it.isLogicalCamera }
         val rawCount = cameraProfiles.count { it.supportsRaw }
         val manualCount = cameraProfiles.count { it.supportsManualSensor }
-        sb.appendLine("RAW Capable: $rawCount | Manual Sensor Controls: $manualCount")
+        sb.appendLine("Logical Multi-Cameras: $logicalCount | RAW Capable: $rawCount | Manual Sensor: $manualCount")
         sb.appendLine()
 
         if (diagnosticWarnings.isNotEmpty()) {
-            sb.appendLine("--- DIAGNOSTIC WARNINGS ---")
+            sb.appendLine("--- DIAGNOSTIC WARNINGS & NOTICES ---")
             diagnosticWarnings.forEach { warning ->
                 sb.appendLine("! $warning")
             }
@@ -44,27 +56,26 @@ data class DeviceCapabilityReport(
 
         cameraProfiles.forEachIndexed { index, cam ->
             sb.appendLine("--------------------------------------------------")
-            sb.appendLine("CAMERA #${index + 1} [ID: ${cam.cameraId} | ${cam.facingLabel}]")
+            sb.appendLine("CAMERA #${index + 1} [ID: ${cam.cameraId} | ${cam.facingLabel} (raw: ${cam.rawFacing})]")
             sb.appendLine("--------------------------------------------------")
-            sb.appendLine("Hardware Level: ${cam.hardwareLevel.displayName}")
-            sb.appendLine("Is Logical Camera: ${cam.isLogicalCamera}")
+            sb.appendLine("Hardware Level: ${cam.hardwareLevel.displayName} (raw: ${cam.rawHardwareLevel})")
+            sb.appendLine("Logical Multi-Camera: ${cam.isLogicalCamera}")
             if (cam.physicalCameraIds.isNotEmpty()) {
                 sb.appendLine("Physical Camera IDs: ${cam.physicalCameraIds.joinToString(", ")}")
             }
             sb.appendLine("Sensor Orientation: ${cam.sensorOrientation}°")
-            if (cam.sensorActiveArraySize.isNotEmpty()) {
-                sb.appendLine("Active Array: ${cam.sensorActiveArraySize}")
-            }
+            sb.appendLine("Active Array Size: ${cam.sensorActiveArraySize}")
             if (cam.focalLengths.isNotEmpty()) {
                 sb.appendLine("Focal Lengths: ${cam.focalLengths.joinToString(", ") { "${it}mm" }}")
             }
-            sb.appendLine("Zoom Range: ${cam.minZoomRatio}x - ${cam.maxZoomRatio}x")
-            sb.appendLine("Autofocus Supported: ${cam.supportsAutoFocus}")
-            sb.appendLine("Manual Focus Supported: ${cam.supportsManualFocus}")
+            sb.appendLine("Zoom Range: ${cam.minZoomRatio}x - ${cam.maxZoomRatio}x (Status: ${cam.zoomStatus})")
+
+            sb.appendLine("Autofocus: ${cam.autoFocusStatus}")
+            sb.appendLine("Manual Focus: ${cam.manualFocusStatus}")
             if (cam.minimumFocusDistance != null) {
                 sb.appendLine("Min Focus Distance: ${cam.minimumFocusDistance} diopters")
             }
-            sb.appendLine("Manual Sensor (ISO/Shutter): ${cam.supportsManualSensor}")
+            sb.appendLine("Manual Sensor: ${cam.manualSensorStatus}")
             if (cam.isoRange != null) {
                 sb.appendLine("ISO Range: ${cam.isoRange.lower} - ${cam.isoRange.upper}")
             }
@@ -76,23 +87,33 @@ data class DeviceCapabilityReport(
                 val maxEv = cam.exposureCompensationRange.upper * cam.exposureCompensationStep
                 sb.appendLine("Exposure Comp: [${minEv}EV, ${maxEv}EV] step ${cam.exposureCompensationStep}EV")
             }
-            sb.appendLine("Flash Supported: ${cam.supportsFlash}")
-            sb.appendLine("RAW (DNG) Supported: ${cam.supportsRaw}")
-            sb.appendLine("HDR Output Profile Support: ${cam.supportsHdr}")
+            sb.appendLine("Flash Unit: ${cam.flashStatus}")
+            sb.appendLine("RAW Stream Support: ${cam.rawStatus}")
+            if (cam.rawFormats.isNotEmpty()) {
+                sb.appendLine("RAW Formats: ${cam.rawFormats.joinToString()}")
+            }
+            sb.appendLine("HDR Output Profile Support: ${cam.hdrStatus}")
             if (cam.dynamicRangeProfilesSupported.isNotEmpty()) {
                 sb.appendLine("Dynamic Range Profiles: ${cam.dynamicRangeProfilesSupported.joinToString(", ")}")
             }
 
             sb.appendLine("Max Photo Size: ${cam.maxPhotoResolution ?: "None"}")
             val topPhotoSizes = cam.supportedPhotoSizes.take(5).joinToString(", ") { it.toString() }
-            sb.appendLine("Sample Photo Sizes: $topPhotoSizes")
+            sb.appendLine("Top Photo Sizes: $topPhotoSizes")
 
             sb.appendLine("Max Video Size: ${cam.maxVideoResolution ?: "None"}")
             val topVideoSizes = cam.supportedVideoSizes.take(5).joinToString(", ") { it.toString() }
-            sb.appendLine("Sample Video Sizes: $topVideoSizes")
+            sb.appendLine("Top Video Sizes: $topVideoSizes")
 
             val fpsRangesStr = cam.supportedFpsRanges.joinToString(", ") { it.toString() }
-            sb.appendLine("FPS Ranges: $fpsRangesStr")
+            sb.appendLine("Supported FPS Ranges: $fpsRangesStr")
+
+            if (cam.diagnosticNotes.isNotEmpty()) {
+                sb.appendLine("Diagnostic Notes:")
+                cam.diagnosticNotes.forEach { note ->
+                    sb.appendLine("  - $note")
+                }
+            }
             sb.appendLine()
         }
         sb.appendLine("==================================================")
@@ -113,15 +134,19 @@ data class DeviceCapabilityReport(
         sb.append("{\n")
         sb.append("  \"timestamp\": $scannedTimestamp,\n")
         sb.append("  \"deviceInfo\": {\n")
-        sb.append("    \"manufacturer\": \"${escape(deviceInfo.manufacturer)}\",\n")
-        sb.append("    \"model\": \"${escape(deviceInfo.model)}\",\n")
-        sb.append("    \"device\": \"${escape(deviceInfo.device)}\",\n")
-        sb.append("    \"brand\": \"${escape(deviceInfo.brand)}\",\n")
-        sb.append("    \"hardware\": \"${escape(deviceInfo.hardware)}\",\n")
+        sb.append("    \"reportedModel\": \"${escape(deviceInfo.reportedModel)}\",\n")
+        sb.append("    \"reportedDevice\": \"${escape(deviceInfo.reportedDevice)}\",\n")
+        sb.append("    \"reportedProduct\": \"${escape(deviceInfo.reportedProduct)}\",\n")
+        sb.append("    \"reportedManufacturer\": \"${escape(deviceInfo.reportedManufacturer)}\",\n")
+        sb.append("    \"reportedBrand\": \"${escape(deviceInfo.reportedBrand)}\",\n")
+        sb.append("    \"reportedHardware\": \"${escape(deviceInfo.reportedHardware)}\",\n")
         sb.append("    \"androidVersion\": \"${escape(deviceInfo.androidVersion)}\",\n")
         sb.append("    \"apiLevel\": ${deviceInfo.apiLevel},\n")
         sb.append("    \"buildFingerprint\": \"${escape(deviceInfo.buildFingerprint)}\",\n")
-        sb.append("    \"isPrimaryTargetAce5\": ${deviceInfo.isPrimaryTargetAce5}\n")
+        sb.append("    \"firmwareIdentity\": \"${escape(deviceInfo.firmwareIdentity)}\",\n")
+        sb.append("    \"probableHardwareFamily\": \"${escape(deviceInfo.probableHardwareFamily)}\",\n")
+        sb.append("    \"physicalHardwareIdentity\": \"${escape(deviceInfo.physicalHardwareIdentity)}\",\n")
+        sb.append("    \"physicalIdentityConfidence\": \"${deviceInfo.physicalIdentityConfidence}\"\n")
         sb.append("  },\n")
         sb.append("  \"diagnosticWarnings\": [")
         sb.append(diagnosticWarnings.joinToString(",") { "\"${escape(it)}\"" })
@@ -130,19 +155,21 @@ data class DeviceCapabilityReport(
         cameraProfiles.forEachIndexed { i, c ->
             sb.append("    {\n")
             sb.append("      \"cameraId\": \"${escape(c.cameraId)}\",\n")
-            sb.append("      \"facing\": ${c.facing},\n")
+            sb.append("      \"rawFacing\": ${c.rawFacing},\n")
             sb.append("      \"facingLabel\": \"${c.facingLabel}\",\n")
             sb.append("      \"hardwareLevel\": \"${c.hardwareLevel.displayName}\",\n")
+            sb.append("      \"rawHardwareLevel\": ${c.rawHardwareLevel},\n")
             sb.append("      \"isLogicalCamera\": ${c.isLogicalCamera},\n")
             sb.append("      \"physicalCameraIds\": [${c.physicalCameraIds.joinToString(",") { "\"${escape(it)}\"" }}],\n")
             sb.append("      \"sensorOrientation\": ${c.sensorOrientation},\n")
+            sb.append("      \"sensorActiveArraySize\": \"${escape(c.sensorActiveArraySize)}\",\n")
             sb.append("      \"focalLengths\": [${c.focalLengths.joinToString(",")}],\n")
-            sb.append("      \"supportsAutoFocus\": ${c.supportsAutoFocus},\n")
-            sb.append("      \"supportsManualFocus\": ${c.supportsManualFocus},\n")
-            sb.append("      \"supportsManualSensor\": ${c.supportsManualSensor},\n")
-            sb.append("      \"supportsRaw\": ${c.supportsRaw},\n")
-            sb.append("      \"supportsFlash\": ${c.supportsFlash},\n")
-            sb.append("      \"supportsHdr\": ${c.supportsHdr},\n")
+            sb.append("      \"autoFocusStatus\": \"${c.autoFocusStatus}\",\n")
+            sb.append("      \"manualFocusStatus\": \"${c.manualFocusStatus}\",\n")
+            sb.append("      \"manualSensorStatus\": \"${c.manualSensorStatus}\",\n")
+            sb.append("      \"rawStatus\": \"${c.rawStatus}\",\n")
+            sb.append("      \"flashStatus\": \"${c.flashStatus}\",\n")
+            sb.append("      \"hdrStatus\": \"${c.hdrStatus}\",\n")
             sb.append("      \"minZoom\": ${c.minZoomRatio},\n")
             sb.append("      \"maxZoom\": ${c.maxZoomRatio},\n")
             if (c.isoRange != null) {
@@ -151,8 +178,8 @@ data class DeviceCapabilityReport(
             if (c.exposureTimeRangeNs != null) {
                 sb.append("      \"exposureTimeNs\": {\"min\": ${c.exposureTimeRangeNs.lower}, \"max\": ${c.exposureTimeRangeNs.upper}},\n")
             }
-            sb.append("      \"photoSizes\": [${c.supportedPhotoSizes.joinToString(",") { "{\"w\": ${it.width}, \"h\": ${it.height}}" }}],\n")
-            sb.append("      \"videoSizes\": [${c.supportedVideoSizes.joinToString(",") { "{\"w\": ${it.width}, \"h\": ${it.height}}" }}],\n")
+            sb.append("      \"photoSizes\": [${c.supportedPhotoSizes.take(5).joinToString(",") { "{\"w\": ${it.width}, \"h\": ${it.height}}" }}],\n")
+            sb.append("      \"videoSizes\": [${c.supportedVideoSizes.take(5).joinToString(",") { "{\"w\": ${it.width}, \"h\": ${it.height}}" }}],\n")
             sb.append("      \"fpsRanges\": [${c.supportedFpsRanges.joinToString(",") { "{\"lower\": ${it.lower}, \"upper\": ${it.upper}}" }}]\n")
             sb.append("    }${if (i < cameraProfiles.size - 1) "," else ""}\n")
         }

@@ -18,18 +18,19 @@
 ---
 
 ## Phase 1: Camera Foundation
-- [ ] Runtime permission manager for Camera, Audio, and Storage.
-- [ ] CameraX Preview use case with Viewfinder integration.
-- [ ] Photo capture pipeline via ImageCapture.
-- [ ] Video recording pipeline via VideoCapture and Recorder.
-- [ ] Camera lens switcher (Front / Rear).
-- [ ] Pinch-to-zoom and zoom ratio controls.
-- [ ] Tap-to-focus and metering point calculation.
-- [ ] Exposure compensation slider.
-- [ ] Flash mode controls (Auto, On, Off, Torch).
-- [ ] MediaStore saving with scoped storage compliance.
-- [ ] Camera lifecycle management and recovery.
-- [ ] Phase 1 acceptance tests and report.
+- [x] Runtime permission manager for Camera, Audio, and Storage.
+- [x] CameraX Preview use case with Viewfinder integration.
+- [x] Photo capture pipeline via ImageCapture.
+- [x] Video recording pipeline via VideoCapture and Recorder.
+- [x] Camera lens switcher (Front / Rear).
+- [x] Pinch-to-zoom and zoom ratio controls.
+- [x] Tap-to-focus and metering point calculation.
+- [x] Exposure compensation slider.
+- [x] Flash mode controls (Auto, On, Off, Torch).
+- [x] MediaStore saving with scoped storage compliance.
+- [x] Camera lifecycle management and recovery.
+- [x] Hardware diagnostic correction (device classification audit & camera facing fix).
+- [x] Phase 1 acceptance tests and report.
 
 ---
 

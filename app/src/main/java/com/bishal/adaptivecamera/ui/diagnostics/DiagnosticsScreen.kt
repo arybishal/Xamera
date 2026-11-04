@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -56,7 +57,10 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.bishal.adaptivecamera.camera.capability.CameraCapabilityProfile
 import com.bishal.adaptivecamera.camera.capability.CameraHardwareLevel
+import com.bishal.adaptivecamera.camera.capability.CapabilityStatus
+import com.bishal.adaptivecamera.camera.capability.DeviceCapabilityReport
 import com.bishal.adaptivecamera.core.diagnostics.DeviceInfo
+import com.bishal.adaptivecamera.core.diagnostics.PhysicalIdentityConfidence
 import com.bishal.adaptivecamera.ui.theme.AccentAmber
 import com.bishal.adaptivecamera.ui.theme.DarkBackground
 import com.bishal.adaptivecamera.ui.theme.DarkSurface
@@ -108,11 +112,11 @@ fun DiagnosticsScreen(
                             text = "ADAPTIVE CAMERA",
                             color = TextPrimary,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
+                            fontSize = 17.sp,
                             letterSpacing = 1.sp
                         )
                         Text(
-                            text = "Hardware Intelligence & Capability Scanner",
+                            text = "Hardware Intelligence & Capability Audit",
                             color = PrimaryCyan,
                             fontSize = 11.sp
                         )
@@ -156,7 +160,7 @@ fun DiagnosticsScreen(
                     CircularProgressIndicator(color = PrimaryCyan)
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Scanning Camera Hardware & Capabilities...",
+                        text = "Auditing Camera Hardware & HAL Capabilities...",
                         color = TextSecondary,
                         fontSize = 14.sp
                     )
@@ -180,7 +184,7 @@ fun DiagnosticsScreen(
 
                     uiState.report?.let { report ->
                         item {
-                            DeviceInfoCard(report.deviceInfo)
+                            DeviceClassificationCard(report.deviceInfo)
                         }
 
                         if (report.diagnosticWarnings.isNotEmpty()) {
@@ -207,7 +211,7 @@ fun DiagnosticsScreen(
                                     letterSpacing = 0.5.sp
                                 )
                                 Text(
-                                    text = "Zero Hardcoded Assumptions",
+                                    text = "Raw HAL vs Interpreted",
                                     color = TextMuted,
                                     fontSize = 11.sp
                                 )
@@ -229,60 +233,7 @@ fun DiagnosticsScreen(
 }
 
 @Composable
-private fun PermissionBanner(
-    onRequestPermission: () -> Unit
-) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF2E2210)),
-        shape = RoundedCornerShape(12.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, AccentAmber.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(14.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Security,
-                    contentDescription = null,
-                    tint = AccentAmber
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = "Camera Permission Required",
-                        color = AccentAmber,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp
-                    )
-                    Text(
-                        text = "Grant camera permission to unlock full hardware scanning.",
-                        color = TextSecondary,
-                        fontSize = 11.sp
-                    )
-                }
-            }
-            Button(
-                onClick = onRequestPermission,
-                colors = ButtonDefaults.buttonColors(containerColor = AccentAmber),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text("Grant", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-            }
-        }
-    }
-}
-
-@Composable
-private fun DeviceInfoCard(deviceInfo: DeviceInfo) {
+private fun DeviceClassificationCard(deviceInfo: DeviceInfo) {
     Card(
         colors = CardDefaults.cardColors(containerColor = DarkSurface),
         shape = RoundedCornerShape(12.dp),
@@ -297,68 +248,54 @@ private fun DeviceInfoCard(deviceInfo: DeviceInfo) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "DEVICE IDENTIFICATION",
+                    text = "HARDWARE CLASSIFICATION AUDIT",
                     color = PrimaryCyan,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.8.sp
                 )
-                if (deviceInfo.isPrimaryTargetAce5) {
-                    TargetBadge(text = "OnePlus Ace 5 (Primary Target)", color = SuccessGreen)
-                } else {
-                    TargetBadge(text = "Generic / Global Device", color = AccentAmber)
-                }
+                ConfidenceBadge(deviceInfo.physicalIdentityConfidence)
             }
             Spacer(modifier = Modifier.height(10.dp))
-            InfoRow("Manufacturer", deviceInfo.manufacturer)
-            InfoRow("Model Identifier", deviceInfo.model)
-            InfoRow("Product / Device", "${deviceInfo.product} / ${deviceInfo.device}")
-            InfoRow("Brand & Hardware", "${deviceInfo.brand} (${deviceInfo.hardware})")
+
+            InfoRow("Firmware Identity", deviceInfo.firmwareIdentity)
+            InfoRow("Hardware Family", deviceInfo.probableHardwareFamily)
+            InfoRow("Physical Hardware", deviceInfo.physicalHardwareIdentity)
+            InfoRow("Reported Model", deviceInfo.reportedModel)
+            InfoRow("Board / Device", "${deviceInfo.reportedDevice} (${deviceInfo.reportedProduct})")
+            InfoRow("Manufacturer / Brand", "${deviceInfo.reportedManufacturer} (${deviceInfo.reportedBrand})")
             InfoRow("Android Version", "${deviceInfo.androidVersion} (API ${deviceInfo.apiLevel})")
             InfoRow("Build Fingerprint", deviceInfo.buildFingerprint, isMonospace = true)
-        }
-    }
-}
 
-@Composable
-private fun WarningsCard(warnings: List<String>) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF2A1515)),
-        shape = RoundedCornerShape(12.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, ErrorRed.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.Warning,
-                    contentDescription = null,
-                    tint = ErrorRed,
-                    modifier = Modifier.padding(end = 8.dp)
-                )
+            if (deviceInfo.identityEvidence.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "HARDWARE & FIRMWARE NOTICES",
-                    color = ErrorRed,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-            warnings.forEach { w ->
-                Text(
-                    text = "• $w",
-                    color = TextPrimary,
+                    text = "Identity Evidence Factors:",
+                    color = TextSecondary,
                     fontSize = 11.sp,
-                    modifier = Modifier.padding(vertical = 2.dp)
+                    fontWeight = FontWeight.SemiBold
                 )
+                deviceInfo.identityEvidence.forEach { e ->
+                    Column(modifier = Modifier.padding(vertical = 3.dp)) {
+                        Text(
+                            text = "• [${e.factor}] ${e.observation}",
+                            color = TextPrimary,
+                            fontSize = 10.sp
+                        )
+                        Text(
+                            text = "  ↳ ${e.implication}",
+                            color = PrimaryCyan.copy(alpha = 0.85f),
+                            fontSize = 10.sp
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun SummaryCard(report: com.bishal.adaptivecamera.camera.capability.DeviceCapabilityReport) {
+private fun SummaryCard(report: DeviceCapabilityReport) {
     Card(
         colors = CardDefaults.cardColors(containerColor = DarkSurface),
         shape = RoundedCornerShape(12.dp),
@@ -368,7 +305,7 @@ private fun SummaryCard(report: com.bishal.adaptivecamera.camera.capability.Devi
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Text(
-                text = "CAPABILITY OVERVIEW",
+                text = "CAPABILITY SUMMARY",
                 color = PrimaryCyan,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
@@ -379,29 +316,13 @@ private fun SummaryCard(report: com.bishal.adaptivecamera.camera.capability.Devi
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                StatItem(label = "Accessible Cameras", value = report.cameraProfiles.size.toString())
-                StatItem(label = "Rear Sensors", value = report.cameraProfiles.count { it.facing == 0 }.toString())
-                StatItem(label = "Front Sensors", value = report.cameraProfiles.count { it.facing == 1 }.toString())
+                StatItem(label = "Total Sensors", value = report.cameraProfiles.size.toString())
+                StatItem(label = "Back Sensors", value = report.cameraProfiles.count { it.isFacingBack }.toString())
+                StatItem(label = "Front Sensors", value = report.cameraProfiles.count { it.isFacingFront }.toString())
+                StatItem(label = "Logical Units", value = report.cameraProfiles.count { it.isLogicalCamera }.toString())
                 StatItem(label = "RAW Capable", value = report.cameraProfiles.count { it.supportsRaw }.toString())
             }
         }
-    }
-}
-
-@Composable
-private fun StatItem(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = value,
-            color = PrimaryCyan,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = label,
-            color = TextSecondary,
-            fontSize = 10.sp
-        )
     }
 }
 
@@ -428,9 +349,9 @@ private fun CameraProfileCard(index: Int, profile: CameraCapabilityProfile) {
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Camera ${profile.cameraId} (${profile.facingLabel})",
+                        text = "Camera #${index + 1} [ID: ${profile.cameraId} | ${profile.facingLabel}]",
                         color = TextPrimary,
-                        fontSize = 15.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -438,25 +359,25 @@ private fun CameraProfileCard(index: Int, profile: CameraCapabilityProfile) {
             }
             Spacer(modifier = Modifier.height(10.dp))
 
-            InfoRow("Logical Camera", if (profile.isLogicalCamera) "Yes (Multi-Camera)" else "Single Physical")
+            InfoRow("Raw LENS_FACING", "${profile.rawFacing} (${profile.facingLabel})")
+            InfoRow("Logical Camera", if (profile.isLogicalCamera) "YES (Multi-Camera)" else "NO (Single Physical)")
             if (profile.physicalCameraIds.isNotEmpty()) {
-                InfoRow("Physical IDs", profile.physicalCameraIds.joinToString(", "))
+                InfoRow("Physical Camera IDs", profile.physicalCameraIds.joinToString(", "))
             }
-            if (profile.sensorActiveArraySize.isNotEmpty()) {
-                InfoRow("Sensor Active Array", profile.sensorActiveArraySize)
-            }
+            InfoRow("Sensor Active Array", profile.sensorActiveArraySize)
             InfoRow("Sensor Orientation", "${profile.sensorOrientation}°")
             if (profile.focalLengths.isNotEmpty()) {
                 InfoRow("Focal Lengths", profile.focalLengths.joinToString(", ") { "${it}mm" })
             }
-            InfoRow("Zoom Ratio Range", "${profile.minZoomRatio}x - ${profile.maxZoomRatio}x")
+            InfoRow("Zoom Ratio Range", "${profile.minZoomRatio}x - ${profile.maxZoomRatio}x (Status: ${profile.zoomStatus})")
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                CapabilityTag("RAW: ${if (profile.supportsRaw) "YES" else "NO"}", profile.supportsRaw)
-                CapabilityTag("MF: ${if (profile.supportsManualFocus) "YES" else "NO"}", profile.supportsManualFocus)
-                CapabilityTag("Manual ISO/Exp: ${if (profile.supportsManualSensor) "YES" else "NO"}", profile.supportsManualSensor)
-                CapabilityTag("HDR: ${if (profile.supportsHdr) "YES" else "NO"}", profile.supportsHdr)
+                StatusTag("RAW", profile.rawStatus)
+                StatusTag("AF", profile.autoFocusStatus)
+                StatusTag("MF", profile.manualFocusStatus)
+                StatusTag("MANUAL", profile.manualSensorStatus)
+                StatusTag("HDR", profile.hdrStatus)
             }
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -470,18 +391,146 @@ private fun CameraProfileCard(index: Int, profile: CameraCapabilityProfile) {
                 InfoRow("Min Focus Distance", "${profile.minimumFocusDistance} diopters")
             }
             profile.maxPhotoResolution?.let {
-                InfoRow("Max Photo Size", it.toString())
+                InfoRow("Max Photo Resolution", it.toString())
             }
             profile.maxVideoResolution?.let {
-                InfoRow("Max Video Size", it.toString())
+                InfoRow("Max Video Resolution", it.toString())
             }
             if (profile.supportedFpsRanges.isNotEmpty()) {
-                InfoRow("FPS Ranges", profile.supportedFpsRanges.joinToString(", ") { "${it.lower}-${it.upper}" })
+                InfoRow("Supported FPS Ranges", profile.supportedFpsRanges.joinToString(", ") { "${it.lower}-${it.upper}" })
             }
             if (profile.dynamicRangeProfilesSupported.isNotEmpty()) {
                 InfoRow("Dynamic Range Profiles", profile.dynamicRangeProfilesSupported.joinToString(", "))
             }
+
+            if (profile.diagnosticNotes.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                profile.diagnosticNotes.forEach { note ->
+                    Text(
+                        text = "• $note",
+                        color = TextMuted,
+                        fontSize = 10.sp,
+                        modifier = Modifier.padding(vertical = 1.dp)
+                    )
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun StatusTag(label: String, status: CapabilityStatus) {
+    val (color, text) = when (status) {
+        CapabilityStatus.SUPPORTED -> SuccessGreen to "$label: YES"
+        CapabilityStatus.UNSUPPORTED -> TextMuted to "$label: NO"
+        CapabilityStatus.UNAVAILABLE -> ErrorRed to "$label: UNAVAIL"
+        CapabilityStatus.NOT_VERIFIED -> AccentAmber to "$label: UNVERIFIED"
+        CapabilityStatus.TEMPORARILY_UNAVAILABLE -> AccentAmber to "$label: TEMP_UNAVAIL"
+    }
+
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(color.copy(alpha = 0.15f))
+            .border(1.dp, color.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+            .padding(horizontal = 6.dp, vertical = 3.dp)
+    ) {
+        Text(
+            text = text,
+            color = color,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+private fun ConfidenceBadge(confidence: PhysicalIdentityConfidence) {
+    val (color, text) = when (confidence) {
+        PhysicalIdentityConfidence.CONFIRMED -> SuccessGreen to "CONFIRMED"
+        PhysicalIdentityConfidence.PROBABLE -> PrimaryCyan to "PROBABLE"
+        PhysicalIdentityConfidence.UNCONFIRMED -> AccentAmber to "UNCONFIRMED"
+        PhysicalIdentityConfidence.CONFLICTING -> ErrorRed to "CONFLICTING"
+    }
+
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(color.copy(alpha = 0.15f))
+            .border(1.dp, color, RoundedCornerShape(6.dp))
+            .padding(horizontal = 8.dp, vertical = 2.dp)
+    ) {
+        Text(
+            text = text,
+            color = color,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+private fun PermissionBanner(onRequestPermission: () -> Unit) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF2E2210)),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, AccentAmber.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(14.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Security, contentDescription = null, tint = AccentAmber)
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text("Camera Permission Required", color = AccentAmber, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text("Grant permission to audit full hardware and stream configurations.", color = TextSecondary, fontSize = 11.sp)
+                }
+            }
+            Button(
+                onClick = onRequestPermission,
+                colors = ButtonDefaults.buttonColors(containerColor = AccentAmber),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("Grant", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun WarningsCard(warnings: List<String>) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF2A1515)),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, ErrorRed.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Warning, contentDescription = null, tint = ErrorRed, modifier = Modifier.padding(end = 8.dp))
+                Text("HARDWARE & FIRMWARE NOTICES", color = ErrorRed, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            warnings.forEach { w ->
+                Text("• $w", color = TextPrimary, fontSize = 11.sp, modifier = Modifier.padding(vertical = 2.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatItem(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, color = PrimaryCyan, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        Text(label, color = TextSecondary, fontSize = 9.sp)
     }
 }
 
@@ -493,11 +542,7 @@ private fun InfoRow(label: String, value: String, isMonospace: Boolean = false) 
             .padding(vertical = 2.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(
-            text = label,
-            color = TextSecondary,
-            fontSize = 11.sp
-        )
+        Text(label, color = TextSecondary, fontSize = 11.sp)
         Text(
             text = value,
             color = TextPrimary,
@@ -505,28 +550,6 @@ private fun InfoRow(label: String, value: String, isMonospace: Boolean = false) 
             fontWeight = FontWeight.Medium,
             fontFamily = if (isMonospace) FontFamily.Monospace else FontFamily.Default,
             modifier = Modifier.padding(start = 12.dp)
-        )
-    }
-}
-
-@Composable
-private fun CapabilityTag(label: String, supported: Boolean) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(if (supported) SuccessGreen.copy(alpha = 0.15f) else DarkSurfaceVariant)
-            .border(
-                1.dp,
-                if (supported) SuccessGreen.copy(alpha = 0.6f) else TextMuted.copy(alpha = 0.3f),
-                RoundedCornerShape(4.dp)
-            )
-            .padding(horizontal = 6.dp, vertical = 3.dp)
-    ) {
-        Text(
-            text = label,
-            color = if (supported) SuccessGreen else TextMuted,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold
         )
     }
 }
@@ -549,30 +572,7 @@ private fun HwLevelBadge(level: CameraHardwareLevel) {
             .border(1.dp, color, RoundedCornerShape(6.dp))
             .padding(horizontal = 8.dp, vertical = 2.dp)
     ) {
-        Text(
-            text = label,
-            color = color,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-@Composable
-private fun TargetBadge(text: String, color: Color) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(color.copy(alpha = 0.15f))
-            .border(1.dp, color, RoundedCornerShape(6.dp))
-            .padding(horizontal = 8.dp, vertical = 2.dp)
-    ) {
-        Text(
-            text = text,
-            color = color,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold
-        )
+        Text(label, color = color, fontSize = 10.sp, fontWeight = FontWeight.Bold)
     }
 }
 
