@@ -6,6 +6,8 @@ import androidx.camera.view.PreviewView
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewModelScope
+import com.bishal.adaptivecamera.camera.capability.CameraCapabilityRepository
+import com.bishal.adaptivecamera.camera.capability.CameraCapabilityRepositoryImpl
 import com.bishal.adaptivecamera.camera.config.CameraConfiguration
 import com.bishal.adaptivecamera.camera.config.CameraFacing
 import com.bishal.adaptivecamera.camera.config.CameraMode
@@ -16,6 +18,8 @@ import com.bishal.adaptivecamera.camera.engine.CameraXEngine
 import com.bishal.adaptivecamera.camera.session.CameraSessionState
 import com.bishal.adaptivecamera.core.storage.MediaItem
 import com.bishal.adaptivecamera.core.storage.MediaStoreManager
+import com.bishal.adaptivecamera.photography.auto.SmartAutoOrchestrator
+import com.bishal.adaptivecamera.photography.auto.SmartAutoState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,13 +37,17 @@ data class CameraUiState(
     val isExposureSliderVisible: Boolean = false,
     val recordingDurationSec: Long = 0L,
     val captureFlashAnimation: Boolean = false,
+    val smartAutoState: SmartAutoState = SmartAutoState(),
+    val isSuggestionDismissed: Boolean = false,
     val toastMessage: String? = null
 )
 
 class CameraViewModel @JvmOverloads constructor(
     application: Application,
     private val cameraEngine: CameraEngine = CameraXEngine(application.applicationContext),
-    private val mediaStoreManager: MediaStoreManager = MediaStoreManager(application.applicationContext)
+    private val mediaStoreManager: MediaStoreManager = MediaStoreManager(application.applicationContext),
+    private val capabilityRepository: CameraCapabilityRepository = CameraCapabilityRepositoryImpl(application.applicationContext),
+    val smartAutoOrchestrator: SmartAutoOrchestrator = SmartAutoOrchestrator()
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(CameraUiState())
@@ -49,6 +57,9 @@ class CameraViewModel @JvmOverloads constructor(
     private var focusTimeoutJob: Job? = null
 
     init {
+        // Connect frame analyzer to camera engine
+        cameraEngine.setImageAnalyzer(smartAutoOrchestrator.frameAnalyzer)
+
         viewModelScope.launch {
             cameraEngine.sessionState.collect { state ->
                 _uiState.update { it.copy(sessionState = state) }
@@ -57,12 +68,25 @@ class CameraViewModel @JvmOverloads constructor(
         viewModelScope.launch {
             cameraEngine.configuration.collect { config ->
                 _uiState.update { it.copy(configuration = config) }
+                smartAutoOrchestrator.updateCameraControls(zoomRatio = config.zoomRatio)
             }
         }
         viewModelScope.launch {
             cameraEngine.recordingDurationSec.collect { sec ->
                 _uiState.update { it.copy(recordingDurationSec = sec) }
             }
+        }
+        viewModelScope.launch {
+            smartAutoOrchestrator.autoState.collect { autoState ->
+                _uiState.update { it.copy(smartAutoState = autoState) }
+            }
+        }
+        viewModelScope.launch {
+            try {
+                val report = capabilityRepository.getDeviceReport()
+                val activeProfile = report.cameraProfiles.firstOrNull { it.isFacingBack }
+                smartAutoOrchestrator.updateProfiles(activeProfile, report.cameraProfiles)
+            } catch (_: Exception) {}
         }
         refreshLatestThumbnail()
     }
@@ -201,6 +225,25 @@ class CameraViewModel @JvmOverloads constructor(
 
     fun resetExposure() {
         cameraEngine.resetExposureCompensation()
+    }
+
+    fun applySmartAutoSuggestion() {
+        val suggestion = _uiState.value.smartAutoState.configSuggestion ?: return
+        cameraEngine.setExposureCompensation(suggestion.recommendedEvIndex)
+        _uiState.update {
+            it.copy(
+                isSuggestionDismissed = true,
+                toastMessage = "Applied: ${suggestion.actionLabel}"
+            )
+        }
+    }
+
+    fun dismissSmartAutoSuggestion() {
+        _uiState.update { it.copy(isSuggestionDismissed = true) }
+    }
+
+    fun resetSuggestionDismissal() {
+        _uiState.update { it.copy(isSuggestionDismissed = false) }
     }
 
     fun clearToastMessage() {

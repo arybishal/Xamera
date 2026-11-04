@@ -56,6 +56,7 @@ import com.bishal.adaptivecamera.ui.camera.components.BottomCaptureControls
 import com.bishal.adaptivecamera.ui.camera.components.CountdownOverlay
 import com.bishal.adaptivecamera.ui.camera.components.ExposureSlider
 import com.bishal.adaptivecamera.ui.camera.components.FocusRingOverlay
+import com.bishal.adaptivecamera.ui.camera.components.SceneSuggestionChip
 import com.bishal.adaptivecamera.ui.camera.components.TopBarControls
 import com.bishal.adaptivecamera.ui.camera.components.ZoomControlBar
 import com.bishal.adaptivecamera.ui.theme.AccentAmber
@@ -186,6 +187,17 @@ fun CameraScreen(
                         containerHeightPx = previewHeightPx
                     )
                 }
+
+                // Smart Scene Suggestion Overlay
+                SceneSuggestionChip(
+                    autoState = uiState.smartAutoState,
+                    isDismissed = uiState.isSuggestionDismissed,
+                    onApplySuggestion = { viewModel.applySmartAutoSuggestion() },
+                    onDismiss = { viewModel.dismissSmartAutoSuggestion() },
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 12.dp)
+                )
 
                 // Countdown Timer Overlay
                 CountdownOverlay(

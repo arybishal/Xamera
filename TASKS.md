@@ -47,12 +47,12 @@
 ---
 
 ## Phase 3: Smart Auto Photography
-- [ ] Frame luminance and scene contrast analyzer.
-- [ ] Rule-based scene categorization (Portrait, Landscape, Night, Macro, Backlit, Movement).
-- [ ] Smart configuration generator (ISO bias, shutter recommendation, HDR prompt).
-- [ ] Lens recommendation policy.
-- [ ] Explainable scene suggestion UI.
-- [ ] Phase 3 acceptance tests and report.
+- [x] Frame luminance and scene contrast analyzer.
+- [x] Rule-based scene categorization (Portrait, Landscape, Night, Macro, Backlit, Movement).
+- [x] Smart configuration generator (ISO bias, shutter recommendation, HDR prompt).
+- [x] Lens recommendation policy.
+- [x] Explainable scene suggestion UI.
+- [x] Phase 3 acceptance tests and report.
 
 ---
 

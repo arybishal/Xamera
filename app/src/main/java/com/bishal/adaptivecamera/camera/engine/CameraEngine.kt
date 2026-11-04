@@ -33,6 +33,8 @@ interface CameraEngine {
 
     fun focusAndMeter(xNorm: Float, yNorm: Float)
 
+    fun setImageAnalyzer(analyzer: androidx.camera.core.ImageAnalysis.Analyzer?)
+
     fun capturePhoto(
         onSuccess: (MediaItem) -> Unit,
         onError: (Throwable) -> Unit

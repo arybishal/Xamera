@@ -1,8 +1,8 @@
 # Test Report | Adaptive Camera
 
 **Test Date:** 2026-11-04  
-**Version:** 0.3.0  
-**Phase:** Phase 2 (Hardware Intelligence & Deep Capability Discovery)  
+**Version:** 0.4.0  
+**Phase:** Phase 3 (Smart Auto Photography & Real-Time Scene Intelligence)  
 
 ---
 
@@ -10,13 +10,31 @@
 
 | Test Category | Total | Passed | Failed | Skipped / Not Run | Result |
 |---|:---:|:---:|:---:|:---:|:---:|
-| **Unit Tests** | 27 | 27 | 0 | 0 | **PASS** |
+| **Unit Tests** | 39 | 39 | 0 | 0 | **PASS** |
 | **Physical Device Verification** | 1 | 1 | 0 | 0 | **PASS** (Physical device attached: `3B15B800NRT00000`) |
 | **Build Verification** | 1 | 1 | 0 | 0 | **PASS** |
 
 ---
 
-## 2. Phase 2 Unit Test Results
+## 2. Phase 3 Smart Auto Unit Test Results
+
+### `com.bishal.adaptivecamera.photography.auto.SmartAutoPhase3Test`
+- `testFrameMetricsAnalyzerOnLowLightFrame`: **PASS** (Low ambient luminance, high shadow ratio detection)
+- `testFrameMetricsAnalyzerOnBacklitHighContrastFrame`: **PASS** (High RMS contrast, dynamic range span)
+- `testFrameMetricsAnalyzerTemporalMotionDelta`: **PASS** (Inter-frame variance & motion delta calculation)
+- `testSceneClassifierNightDetection`: **PASS** (Night scene classification and confidence scoring)
+- `testSceneClassifierBacklitDetection`: **PASS** (Backlit HDR scene classification and shadow rationale)
+- `testSceneClassifierMacroDetection`: **PASS** (Close focus diopter mapping to cm distance)
+- `testSceneClassifierActionMovementDetection`: **PASS** (High frame-rate motion detection)
+- `testSceneClassifierFrontFacingPortraitDetection`: **PASS** (Selfie camera orientation and portrait framing)
+- `testSceneClassifierLandscapeDetection`: **PASS** (Expansive landscape composition and steady framing)
+- `testSmartConfigurationGeneratorSuggestions`: **PASS** (ISO, high shutter speed, EV compensation, and HDR suggestions)
+- `testLensRecommendationPolicy`: **PASS** (Ultra-wide 1.68mm vs Main 5.59mm f/1.88 lens switching advice)
+- `testSmartAutoOrchestratorPipeline`: **PASS** (End-to-end processing pipeline from frame metrics to auto state)
+
+---
+
+## 3. Phase 2 Hardware Intelligence Unit Test Results
 
 ### `com.bishal.adaptivecamera.camera.capability.HardwareIntelligencePhase2Test`
 - `testCameraRelationshipInfoProperties`: **PASS** (Logical multi-camera vs physical reference mapping)

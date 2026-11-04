@@ -10,9 +10,11 @@ import androidx.camera.core.CameraControl
 import androidx.camera.core.CameraInfo
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.FocusMeteringAction
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
+import androidx.camera.core.UseCase
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.Quality
 import androidx.camera.video.QualitySelector
@@ -41,6 +43,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 class CameraXEngine(
@@ -68,6 +71,9 @@ class CameraXEngine(
     private var preview: Preview? = null
     private var imageCapture: ImageCapture? = null
     private var videoCapture: VideoCapture<Recorder>? = null
+    private var imageAnalysis: ImageAnalysis? = null
+    private var imageAnalyzer: ImageAnalysis.Analyzer? = null
+    private val analysisExecutor = Executors.newSingleThreadExecutor()
     private var activeRecording: Recording? = null
     private var recordingTimerJob: Job? = null
 
@@ -139,7 +145,17 @@ class CameraXEngine(
                 .setFlashMode(_configuration.value.flashMode.imageCaptureFlashMode)
                 .build()
 
-            // 4. VideoCapture
+            // 4. ImageAnalysis
+            val newImageAnalysis = ImageAnalysis.Builder()
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
+                .build()
+
+            imageAnalyzer?.let { analyzer ->
+                newImageAnalysis.setAnalyzer(analysisExecutor, analyzer)
+            }
+
+            // 5. VideoCapture
             val qualitySelector = QualitySelector.fromOrderedList(
                 listOf(Quality.FHD, Quality.HD, Quality.SD),
                 androidx.camera.video.FallbackStrategy.lowerQualityOrHigherThan(Quality.SD)
@@ -149,18 +165,25 @@ class CameraXEngine(
                 .build()
             val newVideoCapture = VideoCapture.withOutput(recorder)
 
-            // 5. Bind
+            // 6. Bind use cases according to active mode
+            val useCases = mutableListOf<UseCase>(newPreview)
+            if (_configuration.value.mode == CameraMode.VIDEO) {
+                useCases.add(newVideoCapture)
+            } else {
+                useCases.add(newImageCapture)
+                useCases.add(newImageAnalysis)
+            }
+
             val newCamera = provider.bindToLifecycle(
                 lifecycleOwner,
                 selector,
-                newPreview,
-                newImageCapture,
-                newVideoCapture
+                *useCases.toTypedArray()
             )
 
             camera = newCamera
             preview = newPreview
             imageCapture = newImageCapture
+            imageAnalysis = newImageAnalysis
             videoCapture = newVideoCapture
 
             // Initialize Exposure and Zoom ranges safely
@@ -310,6 +333,17 @@ class CameraXEngine(
         ).setAutoCancelDuration(3, TimeUnit.SECONDS).build()
 
         cam.cameraControl.startFocusAndMetering(action)
+    }
+
+    override fun setImageAnalyzer(analyzer: ImageAnalysis.Analyzer?) {
+        imageAnalyzer = analyzer
+        imageAnalysis?.let { analysis ->
+            if (analyzer != null) {
+                analysis.setAnalyzer(analysisExecutor, analyzer)
+            } else {
+                analysis.clearAnalyzer()
+            }
+        }
     }
 
     override fun capturePhoto(

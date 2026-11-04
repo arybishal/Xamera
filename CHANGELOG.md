@@ -58,3 +58,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Persistent Capability Cache:** `CameraCapabilityRepository` with JSON persistence in app files directory validated by `Build.FINGERPRINT` to avoid redundant 150ms+ HAL scans.
 - **Unit Testing Suite:** 27 unit tests passing across debug and release, validating relationship models, dynamic range details, stream sizes, video quality profiles, manual controls, and hardware validation metrics.
 - **Hardware Telemetry Verified:** Validated live on physical OnePlus Ace 5 / 13R device (`3B15B800NRT00000`), persisting 25.5 KB capability cache and confirming `LEVEL_3` capabilities across all 4 cameras.
+
+---
+
+## [0.4.0] - Phase 3 Smart Auto Photography - 2026-11-04
+
+### Added
+- **Frame Metrics Analyzer:** High-performance real-time frame analyzer utilizing 4x4 spatial striding over YUV_420_888 plane 0 to compute mean luminance, RMS contrast, shadow ratio, highlight ratio, dynamic range span, and temporal motion delta in < 3ms.
+- **Rule-Based Scene Classifier:** Deterministic photographic scene classifier supporting 7 categories (`PORTRAIT`, `LANDSCAPE`, `NIGHT`, `MACRO`, `BACKLIT`, `ACTION_MOVEMENT`, `STANDARD`) with confidence ratings and explainable rationale.
+- **Smart Configuration Generator:** Produces hardware-clamped ISO targets, high-speed shutter targets (up to 1/1000s for action), exposure compensation adjustments, and HDR / night stacking flags.
+- **Lens Recommendation Policy:** Recommends optimal physical lens switches based on scene composition (e.g. Ultra-wide 1.68mm for wide landscapes, Main 5.59mm f/1.88 for low-light scenes).
+- **Explainable Scene Suggestion UI:** Translucent viewfinder HUD chip displaying detected scene emoji, category name, confidence pill, one-tap "Apply" button, dismiss action, and expandable real-time telemetry drawer.
+- **Concurrent CameraX ImageAnalysis:** Configured `ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST` use case on dedicated background executor bound to lifecycle without preview stutter.
+- **Unit Testing Suite:** Added 12 new unit tests in `SmartAutoPhase3Test` bringing total test count to 39 passing tests across debug and release builds.
+- **Physical Device Validation:** Verified live execution on physical OnePlus Ace 5 / 13R (`3B15B800NRT00000`) with smooth concurrent preview and frame analysis.
