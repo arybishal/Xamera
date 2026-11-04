@@ -1,0 +1,583 @@
+﻿{
+  "timestamp": 1793820524385,
+  "isFromCache": false,
+  "deviceInfo": {
+    "reportedModel": "CPH2691",
+    "reportedDevice": "OP5D3BL1",
+    "reportedProduct": "CPH2691IN",
+    "reportedManufacturer": "OnePlus",
+    "reportedBrand": "OnePlus",
+    "reportedHardware": "qcom",
+    "androidVersion": "17",
+    "apiLevel": 37,
+    "buildFingerprint": "OnePlus/CPH2691IN/OP5D3BL1:17/UKQ1.231108.001/V.R4T3.2d570f8-6d2927-6d2926:user/release-keys",
+    "firmwareIdentity": "OnePlus 13R (India / Regional CPH2691IN)",
+    "probableHardwareFamily": "OnePlus Ace 5 / 13R Platform (Board: OP5D3BL1)",
+    "physicalHardwareIdentity": "Unconfirmed (Ace 5 China / 13R Global-IN Platform)",
+    "physicalIdentityConfidence": "UNCONFIRMED"
+  },
+  "diagnosticWarnings": ["Physical Hardware Identity is UNCONFIRMED: Firmware identity 'OnePlus 13R (India / Regional CPH2691IN)' indicates regional build, while hardware platform 'OnePlus Ace 5 / 13R Platform (Board: OP5D3BL1)' is shared between OnePlus Ace 5 and 13R."],
+  "cameraProfiles": [
+    {
+      "cameraId": "0",
+      "rawFacing": 1,
+      "facingLabel": "BACK",
+      "hardwareLevel": "LEVEL_3",
+      "rawHardwareLevel": 3,
+      "relationship": {
+        "type": "LOGICAL",
+        "description": "Logical multi-camera composing physical sensors [2, 3]",
+        "physicalSubCameraIds": ["2","3"],
+        "logicalParentIds": []
+      },
+      "sensorInfo": {
+        "activeArraySize": "4096x3072 (0,0)",
+        "pixelArraySize": "4096x3072",
+        "physicalSizeMm": "8.19 x 6.14 mm",
+        "sensorOrientation": 90,
+        "timestampSource": "REALTIME (CLOCK_BOOTTIME)",
+        "whiteLevel": 1023,
+        "blackLevelPattern": "[64, 64, 64, 64]",
+        "colorFilterArrangement": "RGGB"
+      },
+      "lensInfo": {
+        "focalLengths": [5.59],
+        "availableApertures": [1.88],
+        "minimumFocusDistance": 10.0,
+        "hyperfocalDistance": 0.12032731,
+        "opticalStabilizationSupported": false
+      },
+      "manualControlInfo": {
+        "manualSensorStatus": "SUPPORTED",
+        "manualFocusStatus": "SUPPORTED",
+        "aeLockStatus": "SUPPORTED",
+        "awbLockStatus": "SUPPORTED",
+        "mwbStatus": "SUPPORTED",
+        "isoRange": {"min": 100, "max": 6400},
+        "exposureTimeNs": {"min": 78120, "max": 74355370092},
+        "supportsManualSensor": true
+      },
+      "zoomCapabilityInfo": {
+        "minZoomRatio": 0.6,
+        "maxZoomRatio": 10.0,
+        "maxDigitalZoom": 10.0,
+        "zoomRatioRangeSupported": true
+      },
+      "rawCapabilityInfo": {
+        "status": "SUPPORTED",
+        "supportsRawSensor": true,
+        "maxRawResolution": {"w": 4096, "h": 3072}
+      },
+      "dynamicRangeInfo": {
+        "status": "SUPPORTED",
+        "recommendedHdrProfile": "HLG10",
+        "profiles": [{"name": "SDR (Standard)", "bitDepth": 8, "isHdr": false},{"name": "HLG10", "bitDepth": 10, "isHdr": true},{"name": "HDR10", "bitDepth": 10, "isHdr": true},{"name": "HDR10+", "bitDepth": 10, "isHdr": true}]
+      },
+      "videoCapabilityInfo": {
+        "supportsVideoStabilization": true,
+        "supportsPreviewStabilization": true,
+        "maxVideoResolution": {"w": 4096, "h": 3072},
+        "supportedQualities": [{"quality": "4K UHD", "w": 3840, "h": 2160},{"quality": "1080p FHD", "w": 1920, "h": 1080},{"quality": "720p HD", "w": 1280, "h": 720},{"quality": "480p SD", "w": 720, "h": 480}]
+      },
+      "streamConfigurations": [
+        {
+          "format": 256,
+          "formatName": "JPEG",
+          "isRaw": false,
+          "sizes": [{"w": 4096, "h": 3072, "minDurationNs": 33333333, "stallNs": 81788928},{"w": 4000, "h": 3000, "minDurationNs": 33333333, "stallNs": 78000000},{"w": 3840, "h": 2160, "minDurationNs": 16666666, "stallNs": 53913600},{"w": 3280, "h": 2464, "minDurationNs": 16666666, "stallNs": 52532480},{"w": 3264, "h": 2448, "minDurationNs": 16666666, "stallNs": 51936768}]
+        },
+        {
+          "format": 34,
+          "formatName": "PRIVATE",
+          "isRaw": false,
+          "sizes": [{"w": 4096, "h": 3072, "minDurationNs": 33333333, "stallNs": 0},{"w": 4000, "h": 3000, "minDurationNs": 33333333, "stallNs": 0},{"w": 3840, "h": 2160, "minDurationNs": 16666666, "stallNs": 0},{"w": 3280, "h": 2464, "minDurationNs": 16666666, "stallNs": 0},{"w": 3264, "h": 2448, "minDurationNs": 16666666, "stallNs": 0}]
+        },
+        {
+          "format": 35,
+          "formatName": "YUV_420_888",
+          "isRaw": false,
+          "sizes": [{"w": 4096, "h": 3072, "minDurationNs": 33333333, "stallNs": 0},{"w": 4000, "h": 3000, "minDurationNs": 33333333, "stallNs": 0},{"w": 3840, "h": 2160, "minDurationNs": 16666666, "stallNs": 0},{"w": 3280, "h": 2464, "minDurationNs": 16666666, "stallNs": 0},{"w": 3264, "h": 2448, "minDurationNs": 16666666, "stallNs": 0}]
+        },
+        {
+          "format": 32,
+          "formatName": "RAW_SENSOR",
+          "isRaw": true,
+          "sizes": [{"w": 4096, "h": 3072, "minDurationNs": 33333333, "stallNs": 0}]
+        },
+        {
+          "format": 37,
+          "formatName": "RAW10",
+          "isRaw": true,
+          "sizes": [{"w": 4096, "h": 3072, "minDurationNs": 33333333, "stallNs": 0},{"w": 3264, "h": 2448, "minDurationNs": 33255736, "stallNs": 0}]
+        },
+        {
+          "format": 36,
+          "formatName": "RAW_PRIVATE",
+          "isRaw": true,
+          "sizes": [{"w": 4096, "h": 3072, "minDurationNs": 33333333, "stallNs": 0}]
+        },
+        {
+          "format": 54,
+          "formatName": "FORMAT_54",
+          "isRaw": false,
+          "sizes": [{"w": 4096, "h": 3072, "minDurationNs": 33333333, "stallNs": 0},{"w": 4000, "h": 3000, "minDurationNs": 33333333, "stallNs": 0},{"w": 3840, "h": 2160, "minDurationNs": 16666666, "stallNs": 0},{"w": 3280, "h": 2464, "minDurationNs": 16666666, "stallNs": 0},{"w": 3264, "h": 2448, "minDurationNs": 16666666, "stallNs": 0}]
+        },
+        {
+          "format": 4101,
+          "formatName": "FORMAT_4101",
+          "isRaw": false,
+          "sizes": [{"w": 4096, "h": 3072, "minDurationNs": 33333333, "stallNs": 81788928},{"w": 4000, "h": 3000, "minDurationNs": 33333333, "stallNs": 78000000},{"w": 3840, "h": 2160, "minDurationNs": 16666666, "stallNs": 53913600},{"w": 3280, "h": 2464, "minDurationNs": 16666666, "stallNs": 52532480},{"w": 3264, "h": 2448, "minDurationNs": 16666666, "stallNs": 51936768}]
+        }
+      ],
+      "streamCombinations": [
+        {
+          "name": "Preview + Photo Capture",
+          "status": "CONFIGURATION_VALIDATED",
+          "guaranteed": true
+        },
+        {
+          "name": "Preview + Video Recording",
+          "status": "CONFIGURATION_VALIDATED",
+          "guaranteed": true
+        },
+        {
+          "name": "Preview + Video + Snapshot",
+          "status": "CONFIGURATION_VALIDATED",
+          "guaranteed": true
+        },
+        {
+          "name": "Preview + Analysis Stream",
+          "status": "CONFIGURATION_VALIDATED",
+          "guaranteed": true
+        },
+        {
+          "name": "RAW Capture + Viewfinder",
+          "status": "CONFIGURATION_VALIDATED",
+          "guaranteed": true
+        },
+        {
+          "name": "Logical Multi-Camera Stream Synchronization",
+          "status": "CONFIGURATION_VALIDATED",
+          "guaranteed": true
+        }
+      ]
+    },
+    {
+      "cameraId": "1",
+      "rawFacing": 0,
+      "facingLabel": "FRONT",
+      "hardwareLevel": "LEVEL_3",
+      "rawHardwareLevel": 3,
+      "relationship": {
+        "type": "INDEPENDENT",
+        "description": "Independent physical camera unit (Standalone)",
+        "physicalSubCameraIds": [],
+        "logicalParentIds": []
+      },
+      "sensorInfo": {
+        "activeArraySize": "2304x1728 (0,0)",
+        "pixelArraySize": "4608x3456",
+        "physicalSizeMm": "4.61 x 3.46 mm",
+        "sensorOrientation": 270,
+        "timestampSource": "REALTIME (CLOCK_BOOTTIME)",
+        "whiteLevel": 1023,
+        "blackLevelPattern": "[64, 64, 64, 64]",
+        "colorFilterArrangement": "BGGR"
+      },
+      "lensInfo": {
+        "focalLengths": [3.23],
+        "availableApertures": [2.4],
+        "minimumFocusDistance": 0.0,
+        "hyperfocalDistance": 0.460083,
+        "opticalStabilizationSupported": false
+      },
+      "manualControlInfo": {
+        "manualSensorStatus": "SUPPORTED",
+        "manualFocusStatus": "UNSUPPORTED",
+        "aeLockStatus": "SUPPORTED",
+        "awbLockStatus": "SUPPORTED",
+        "mwbStatus": "SUPPORTED",
+        "isoRange": {"min": 100, "max": 1600},
+        "exposureTimeNs": {"min": 35432, "max": 23220281478},
+        "supportsManualSensor": true
+      },
+      "zoomCapabilityInfo": {
+        "minZoomRatio": 1.0,
+        "maxZoomRatio": 10.0,
+        "maxDigitalZoom": 10.0,
+        "zoomRatioRangeSupported": true
+      },
+      "rawCapabilityInfo": {
+        "status": "SUPPORTED",
+        "supportsRawSensor": true,
+        "maxRawResolution": {"w": 2304, "h": 1728}
+      },
+      "dynamicRangeInfo": {
+        "status": "SUPPORTED",
+        "recommendedHdrProfile": "HLG10",
+        "profiles": [{"name": "SDR (Standard)", "bitDepth": 8, "isHdr": false},{"name": "HLG10", "bitDepth": 10, "isHdr": true},{"name": "HDR10", "bitDepth": 10, "isHdr": true},{"name": "HDR10+", "bitDepth": 10, "isHdr": true}]
+      },
+      "videoCapabilityInfo": {
+        "supportsVideoStabilization": true,
+        "supportsPreviewStabilization": true,
+        "maxVideoResolution": {"w": 2304, "h": 1728},
+        "supportedQualities": [{"quality": "1080p FHD", "w": 1920, "h": 1080},{"quality": "720p HD", "w": 1280, "h": 720},{"quality": "480p SD", "w": 720, "h": 480}]
+      },
+      "streamConfigurations": [
+        {
+          "format": 256,
+          "formatName": "JPEG",
+          "isRaw": false,
+          "sizes": [{"w": 2304, "h": 1728, "minDurationNs": 16666666, "stallNs": 25878528},{"w": 2304, "h": 1296, "minDurationNs": 16666666, "stallNs": 19408896},{"w": 1920, "h": 1440, "minDurationNs": 16666666, "stallNs": 17971200},{"w": 2304, "h": 1048, "minDurationNs": 16666666, "stallNs": 15694848},{"w": 2304, "h": 1032, "minDurationNs": 16666666, "stallNs": 15455232}]
+        },
+        {
+          "format": 34,
+          "formatName": "PRIVATE",
+          "isRaw": false,
+          "sizes": [{"w": 2304, "h": 1728, "minDurationNs": 16666666, "stallNs": 0},{"w": 2304, "h": 1296, "minDurationNs": 16666666, "stallNs": 0},{"w": 1920, "h": 1440, "minDurationNs": 16666666, "stallNs": 0},{"w": 2304, "h": 1048, "minDurationNs": 16666666, "stallNs": 0},{"w": 2304, "h": 1032, "minDurationNs": 16666666, "stallNs": 0}]
+        },
+        {
+          "format": 35,
+          "formatName": "YUV_420_888",
+          "isRaw": false,
+          "sizes": [{"w": 2304, "h": 1728, "minDurationNs": 16666666, "stallNs": 0},{"w": 2304, "h": 1296, "minDurationNs": 16666666, "stallNs": 0},{"w": 1920, "h": 1440, "minDurationNs": 16666666, "stallNs": 0},{"w": 2304, "h": 1048, "minDurationNs": 16666666, "stallNs": 0},{"w": 2304, "h": 1032, "minDurationNs": 16666666, "stallNs": 0}]
+        },
+        {
+          "format": 32,
+          "formatName": "RAW_SENSOR",
+          "isRaw": true,
+          "sizes": [{"w": 2304, "h": 1728, "minDurationNs": 33333333, "stallNs": 0}]
+        },
+        {
+          "format": 37,
+          "formatName": "RAW10",
+          "isRaw": true,
+          "sizes": [{"w": 2304, "h": 1728, "minDurationNs": 33333333, "stallNs": 0}]
+        },
+        {
+          "format": 36,
+          "formatName": "RAW_PRIVATE",
+          "isRaw": true,
+          "sizes": [{"w": 2304, "h": 1728, "minDurationNs": 33333333, "stallNs": 0}]
+        },
+        {
+          "format": 54,
+          "formatName": "FORMAT_54",
+          "isRaw": false,
+          "sizes": [{"w": 2304, "h": 1728, "minDurationNs": 16666666, "stallNs": 0},{"w": 2304, "h": 1296, "minDurationNs": 16666666, "stallNs": 0},{"w": 1920, "h": 1440, "minDurationNs": 16666666, "stallNs": 0},{"w": 2304, "h": 1048, "minDurationNs": 16666666, "stallNs": 0},{"w": 2304, "h": 1032, "minDurationNs": 16666666, "stallNs": 0}]
+        },
+        {
+          "format": 4101,
+          "formatName": "FORMAT_4101",
+          "isRaw": false,
+          "sizes": [{"w": 2304, "h": 1728, "minDurationNs": 16666666, "stallNs": 25878528},{"w": 2304, "h": 1296, "minDurationNs": 16666666, "stallNs": 19408896},{"w": 1920, "h": 1440, "minDurationNs": 16666666, "stallNs": 17971200},{"w": 2304, "h": 1048, "minDurationNs": 16666666, "stallNs": 15694848},{"w": 2304, "h": 1032, "minDurationNs": 16666666, "stallNs": 15455232}]
+        }
+      ],
+      "streamCombinations": [
+        {
+          "name": "Preview + Photo Capture",
+          "status": "CONFIGURATION_VALIDATED",
+          "guaranteed": true
+        },
+        {
+          "name": "Preview + Video Recording",
+          "status": "CONFIGURATION_VALIDATED",
+          "guaranteed": true
+        },
+        {
+          "name": "Preview + Video + Snapshot",
+          "status": "CONFIGURATION_VALIDATED",
+          "guaranteed": true
+        },
+        {
+          "name": "Preview + Analysis Stream",
+          "status": "CONFIGURATION_VALIDATED",
+          "guaranteed": true
+        },
+        {
+          "name": "RAW Capture + Viewfinder",
+          "status": "CONFIGURATION_VALIDATED",
+          "guaranteed": true
+        }
+      ]
+    },
+    {
+      "cameraId": "2",
+      "rawFacing": 1,
+      "facingLabel": "BACK",
+      "hardwareLevel": "LEVEL_3",
+      "rawHardwareLevel": 3,
+      "relationship": {
+        "type": "PHYSICAL_REFERENCE",
+        "description": "Physical sub-sensor referenced by logical parent camera(s) [0]",
+        "physicalSubCameraIds": [],
+        "logicalParentIds": ["0"]
+      },
+      "sensorInfo": {
+        "activeArraySize": "4096x3072 (0,0)",
+        "pixelArraySize": "4096x3072",
+        "physicalSizeMm": "8.19 x 6.14 mm",
+        "sensorOrientation": 90,
+        "timestampSource": "REALTIME (CLOCK_BOOTTIME)",
+        "whiteLevel": 1023,
+        "blackLevelPattern": "[64, 64, 64, 64]",
+        "colorFilterArrangement": "RGGB"
+      },
+      "lensInfo": {
+        "focalLengths": [5.59],
+        "availableApertures": [1.88],
+        "minimumFocusDistance": 10.0,
+        "hyperfocalDistance": 0.12032731,
+        "opticalStabilizationSupported": false
+      },
+      "manualControlInfo": {
+        "manualSensorStatus": "SUPPORTED",
+        "manualFocusStatus": "SUPPORTED",
+        "aeLockStatus": "SUPPORTED",
+        "awbLockStatus": "SUPPORTED",
+        "mwbStatus": "SUPPORTED",
+        "isoRange": {"min": 100, "max": 6400},
+        "exposureTimeNs": {"min": 78120, "max": 74355370092},
+        "supportsManualSensor": true
+      },
+      "zoomCapabilityInfo": {
+        "minZoomRatio": 1.0,
+        "maxZoomRatio": 10.0,
+        "maxDigitalZoom": 10.0,
+        "zoomRatioRangeSupported": true
+      },
+      "rawCapabilityInfo": {
+        "status": "SUPPORTED",
+        "supportsRawSensor": true,
+        "maxRawResolution": {"w": 4096, "h": 3072}
+      },
+      "dynamicRangeInfo": {
+        "status": "SUPPORTED",
+        "recommendedHdrProfile": "HLG10",
+        "profiles": [{"name": "SDR (Standard)", "bitDepth": 8, "isHdr": false},{"name": "HLG10", "bitDepth": 10, "isHdr": true},{"name": "HDR10", "bitDepth": 10, "isHdr": true},{"name": "HDR10+", "bitDepth": 10, "isHdr": true}]
+      },
+      "videoCapabilityInfo": {
+        "supportsVideoStabilization": true,
+        "supportsPreviewStabilization": true,
+        "maxVideoResolution": {"w": 4096, "h": 3072},
+        "supportedQualities": [{"quality": "4K UHD", "w": 3840, "h": 2160},{"quality": "1080p FHD", "w": 1920, "h": 1080},{"quality": "720p HD", "w": 1280, "h": 720},{"quality": "480p SD", "w": 720, "h": 480}]
+      },
+      "streamConfigurations": [
+        {
+          "format": 256,
+          "formatName": "JPEG",
+          "isRaw": false,
+          "sizes": [{"w": 4096, "h": 3072, "minDurationNs": 33333333, "stallNs": 81788928},{"w": 4000, "h": 3000, "minDurationNs": 33333333, "stallNs": 78000000},{"w": 3840, "h": 2160, "minDurationNs": 16666666, "stallNs": 53913600},{"w": 3280, "h": 2464, "minDurationNs": 16666666, "stallNs": 52532480},{"w": 3264, "h": 2448, "minDurationNs": 16666666, "stallNs": 51936768}]
+        },
+        {
+          "format": 34,
+          "formatName": "PRIVATE",
+          "isRaw": false,
+          "sizes": [{"w": 4096, "h": 3072, "minDurationNs": 33333333, "stallNs": 0},{"w": 4000, "h": 3000, "minDurationNs": 33333333, "stallNs": 0},{"w": 3840, "h": 2160, "minDurationNs": 16666666, "stallNs": 0},{"w": 3280, "h": 2464, "minDurationNs": 16666666, "stallNs": 0},{"w": 3264, "h": 2448, "minDurationNs": 16666666, "stallNs": 0}]
+        },
+        {
+          "format": 35,
+          "formatName": "YUV_420_888",
+          "isRaw": false,
+          "sizes": [{"w": 4096, "h": 3072, "minDurationNs": 33333333, "stallNs": 0},{"w": 4000, "h": 3000, "minDurationNs": 33333333, "stallNs": 0},{"w": 3840, "h": 2160, "minDurationNs": 16666666, "stallNs": 0},{"w": 3280, "h": 2464, "minDurationNs": 16666666, "stallNs": 0},{"w": 3264, "h": 2448, "minDurationNs": 16666666, "stallNs": 0}]
+        },
+        {
+          "format": 32,
+          "formatName": "RAW_SENSOR",
+          "isRaw": true,
+          "sizes": [{"w": 4096, "h": 3072, "minDurationNs": 33333333, "stallNs": 0}]
+        },
+        {
+          "format": 37,
+          "formatName": "RAW10",
+          "isRaw": true,
+          "sizes": [{"w": 4096, "h": 3072, "minDurationNs": 33333333, "stallNs": 0}]
+        },
+        {
+          "format": 36,
+          "formatName": "RAW_PRIVATE",
+          "isRaw": true,
+          "sizes": [{"w": 4096, "h": 3072, "minDurationNs": 33333333, "stallNs": 0}]
+        },
+        {
+          "format": 54,
+          "formatName": "FORMAT_54",
+          "isRaw": false,
+          "sizes": [{"w": 4096, "h": 3072, "minDurationNs": 33333333, "stallNs": 0},{"w": 4000, "h": 3000, "minDurationNs": 33333333, "stallNs": 0},{"w": 3840, "h": 2160, "minDurationNs": 16666666, "stallNs": 0},{"w": 3280, "h": 2464, "minDurationNs": 16666666, "stallNs": 0},{"w": 3264, "h": 2448, "minDurationNs": 16666666, "stallNs": 0}]
+        },
+        {
+          "format": 4101,
+          "formatName": "FORMAT_4101",
+          "isRaw": false,
+          "sizes": [{"w": 4096, "h": 3072, "minDurationNs": 33333333, "stallNs": 81788928},{"w": 4000, "h": 3000, "minDurationNs": 33333333, "stallNs": 78000000},{"w": 3840, "h": 2160, "minDurationNs": 16666666, "stallNs": 53913600},{"w": 3280, "h": 2464, "minDurationNs": 16666666, "stallNs": 52532480},{"w": 3264, "h": 2448, "minDurationNs": 16666666, "stallNs": 51936768}]
+        }
+      ],
+      "streamCombinations": [
+        {
+          "name": "Preview + Photo Capture",
+          "status": "CONFIGURATION_VALIDATED",
+          "guaranteed": true
+        },
+        {
+          "name": "Preview + Video Recording",
+          "status": "CONFIGURATION_VALIDATED",
+          "guaranteed": true
+        },
+        {
+          "name": "Preview + Video + Snapshot",
+          "status": "CONFIGURATION_VALIDATED",
+          "guaranteed": true
+        },
+        {
+          "name": "Preview + Analysis Stream",
+          "status": "CONFIGURATION_VALIDATED",
+          "guaranteed": true
+        },
+        {
+          "name": "RAW Capture + Viewfinder",
+          "status": "CONFIGURATION_VALIDATED",
+          "guaranteed": true
+        }
+      ]
+    },
+    {
+      "cameraId": "3",
+      "rawFacing": 1,
+      "facingLabel": "BACK",
+      "hardwareLevel": "LEVEL_3",
+      "rawHardwareLevel": 3,
+      "relationship": {
+        "type": "PHYSICAL_REFERENCE",
+        "description": "Physical sub-sensor referenced by logical parent camera(s) [0]",
+        "physicalSubCameraIds": [],
+        "logicalParentIds": ["0"]
+      },
+      "sensorInfo": {
+        "activeArraySize": "3264x2448 (0,0)",
+        "pixelArraySize": "3264x2448",
+        "physicalSizeMm": "3.66 x 2.74 mm",
+        "sensorOrientation": 90,
+        "timestampSource": "REALTIME (CLOCK_BOOTTIME)",
+        "whiteLevel": 1023,
+        "blackLevelPattern": "[64, 64, 64, 64]",
+        "colorFilterArrangement": "RGGB"
+      },
+      "lensInfo": {
+        "focalLengths": [1.68],
+        "availableApertures": [2.2],
+        "minimumFocusDistance": 0.0,
+        "hyperfocalDistance": 1.7460319,
+        "opticalStabilizationSupported": false
+      },
+      "manualControlInfo": {
+        "manualSensorStatus": "SUPPORTED",
+        "manualFocusStatus": "UNSUPPORTED",
+        "aeLockStatus": "SUPPORTED",
+        "awbLockStatus": "SUPPORTED",
+        "mwbStatus": "SUPPORTED",
+        "isoRange": {"min": 100, "max": 1600},
+        "exposureTimeNs": {"min": 72716, "max": 76162087936},
+        "supportsManualSensor": true
+      },
+      "zoomCapabilityInfo": {
+        "minZoomRatio": 1.0,
+        "maxZoomRatio": 10.0,
+        "maxDigitalZoom": 10.0,
+        "zoomRatioRangeSupported": true
+      },
+      "rawCapabilityInfo": {
+        "status": "SUPPORTED",
+        "supportsRawSensor": true,
+        "maxRawResolution": {"w": 3264, "h": 2448}
+      },
+      "dynamicRangeInfo": {
+        "status": "SUPPORTED",
+        "recommendedHdrProfile": "HLG10",
+        "profiles": [{"name": "SDR (Standard)", "bitDepth": 8, "isHdr": false},{"name": "HLG10", "bitDepth": 10, "isHdr": true},{"name": "HDR10", "bitDepth": 10, "isHdr": true},{"name": "HDR10+", "bitDepth": 10, "isHdr": true}]
+      },
+      "videoCapabilityInfo": {
+        "supportsVideoStabilization": true,
+        "supportsPreviewStabilization": true,
+        "maxVideoResolution": {"w": 3264, "h": 2448},
+        "supportedQualities": [{"quality": "1080p FHD", "w": 1920, "h": 1080},{"quality": "720p HD", "w": 1280, "h": 720},{"quality": "480p SD", "w": 720, "h": 480}]
+      },
+      "streamConfigurations": [
+        {
+          "format": 256,
+          "formatName": "JPEG",
+          "isRaw": false,
+          "sizes": [{"w": 3264, "h": 2448, "minDurationNs": 33333333, "stallNs": 51936768},{"w": 3200, "h": 2400, "minDurationNs": 33333333, "stallNs": 49920000},{"w": 3136, "h": 2352, "minDurationNs": 33333333, "stallNs": 47943168},{"w": 3136, "h": 1760, "minDurationNs": 33333333, "stallNs": 35875840},{"w": 3216, "h": 1440, "minDurationNs": 33333333, "stallNs": 30101760}]
+        },
+        {
+          "format": 34,
+          "formatName": "PRIVATE",
+          "isRaw": false,
+          "sizes": [{"w": 3264, "h": 2448, "minDurationNs": 33333333, "stallNs": 0},{"w": 3200, "h": 2400, "minDurationNs": 33333333, "stallNs": 0},{"w": 3136, "h": 2352, "minDurationNs": 33333333, "stallNs": 0},{"w": 3136, "h": 1760, "minDurationNs": 33333333, "stallNs": 0},{"w": 3216, "h": 1440, "minDurationNs": 33333333, "stallNs": 0}]
+        },
+        {
+          "format": 35,
+          "formatName": "YUV_420_888",
+          "isRaw": false,
+          "sizes": [{"w": 3264, "h": 2448, "minDurationNs": 33333333, "stallNs": 0},{"w": 3200, "h": 2400, "minDurationNs": 33333333, "stallNs": 0},{"w": 3136, "h": 2352, "minDurationNs": 33333333, "stallNs": 0},{"w": 3136, "h": 1760, "minDurationNs": 33333333, "stallNs": 0},{"w": 3216, "h": 1440, "minDurationNs": 33333333, "stallNs": 0}]
+        },
+        {
+          "format": 32,
+          "formatName": "RAW_SENSOR",
+          "isRaw": true,
+          "sizes": [{"w": 3264, "h": 2448, "minDurationNs": 33255736, "stallNs": 0}]
+        },
+        {
+          "format": 37,
+          "formatName": "RAW10",
+          "isRaw": true,
+          "sizes": [{"w": 3264, "h": 2448, "minDurationNs": 33255736, "stallNs": 0}]
+        },
+        {
+          "format": 36,
+          "formatName": "RAW_PRIVATE",
+          "isRaw": true,
+          "sizes": [{"w": 3264, "h": 2448, "minDurationNs": 33255736, "stallNs": 0}]
+        },
+        {
+          "format": 54,
+          "formatName": "FORMAT_54",
+          "isRaw": false,
+          "sizes": [{"w": 3264, "h": 2448, "minDurationNs": 33333333, "stallNs": 0},{"w": 3200, "h": 2400, "minDurationNs": 33333333, "stallNs": 0},{"w": 3136, "h": 2352, "minDurationNs": 33333333, "stallNs": 0},{"w": 3136, "h": 1760, "minDurationNs": 33333333, "stallNs": 0},{"w": 3216, "h": 1440, "minDurationNs": 33333333, "stallNs": 0}]
+        },
+        {
+          "format": 4101,
+          "formatName": "FORMAT_4101",
+          "isRaw": false,
+          "sizes": [{"w": 3264, "h": 2448, "minDurationNs": 33333333, "stallNs": 51936768},{"w": 3200, "h": 2400, "minDurationNs": 33333333, "stallNs": 49920000},{"w": 3136, "h": 2352, "minDurationNs": 33333333, "stallNs": 47943168},{"w": 3136, "h": 1760, "minDurationNs": 33333333, "stallNs": 35875840},{"w": 3216, "h": 1440, "minDurationNs": 33333333, "stallNs": 30101760}]
+        }
+      ],
+      "streamCombinations": [
+        {
+          "name": "Preview + Photo Capture",
+          "status": "CONFIGURATION_VALIDATED",
+          "guaranteed": true
+        },
+        {
+          "name": "Preview + Video Recording",
+          "status": "CONFIGURATION_VALIDATED",
+          "guaranteed": true
+        },
+        {
+          "name": "Preview + Video + Snapshot",
+          "status": "CONFIGURATION_VALIDATED",
+          "guaranteed": true
+        },
+        {
+          "name": "Preview + Analysis Stream",
+          "status": "CONFIGURATION_VALIDATED",
+          "guaranteed": true
+        },
+        {
+          "name": "RAW Capture + Viewfinder",
+          "status": "CONFIGURATION_VALIDATED",
+          "guaranteed": true
+        }
+      ]
+    }
+  ]
+}

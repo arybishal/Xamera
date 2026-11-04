@@ -35,14 +35,14 @@
 ---
 
 ## Phase 2: Hardware Intelligence
-- [ ] Comprehensive Camera2 characteristics parser.
-- [ ] Logical-to-physical camera mapping.
-- [ ] Detailed stream configuration analysis (all formats and sizes).
-- [ ] Dynamic Range Profiles discovery (HLG10, HDR10, etc.).
-- [ ] Sensor optical stabilization (OIS) and electronic stabilization (EIS) inspection.
-- [ ] Capability persistence & caching via DataStore / Room.
-- [ ] Full device capability report export (JSON/Text).
-- [ ] Phase 2 acceptance tests and report.
+- [x] Comprehensive Camera2 characteristics parser.
+- [x] Logical-to-physical camera mapping.
+- [x] Detailed stream configuration analysis (all formats and sizes).
+- [x] Dynamic Range Profiles discovery (HLG10, HDR10, etc.).
+- [x] Sensor optical stabilization (OIS) and electronic stabilization (EIS) inspection.
+- [x] Capability persistence & caching via DataStore / Room.
+- [x] Full device capability report export (JSON/Text).
+- [x] Phase 2 acceptance tests and report.
 
 ---
 

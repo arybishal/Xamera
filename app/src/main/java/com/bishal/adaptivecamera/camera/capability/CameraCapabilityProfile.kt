@@ -44,7 +44,7 @@ data class CameraCapabilityProfile(
     val rawFacing: Int,
     val hardwareLevel: CameraHardwareLevel,
     val rawHardwareLevel: Int? = null,
-    val isLogicalCamera: Boolean,
+    val isLogicalCamera: Boolean = false,
     val physicalCameraIds: List<String> = emptyList(),
     val focalLengths: List<Float> = emptyList(),
     val sensorOrientation: Int = 90,
@@ -84,7 +84,65 @@ data class CameraCapabilityProfile(
     val verificationStatus: CapabilityStatus = CapabilityStatus.NOT_VERIFIED,
     val rawCapabilities: List<Int> = emptyList(),
     val diagnosticNotes: List<String> = emptyList(),
-    val scannedAtTimestamp: Long = System.currentTimeMillis()
+    val scannedAtTimestamp: Long = System.currentTimeMillis(),
+
+    // --- PHASE 2 HARDWARE INTELLIGENCE EXTENSIONS ---
+    val relationshipInfo: CameraRelationshipInfo = CameraRelationshipInfo(
+        relationship = if (isLogicalCamera) CameraRelationship.LOGICAL else CameraRelationship.INDEPENDENT,
+        physicalSubCameraIds = physicalCameraIds
+    ),
+    val sensorInfo: SensorInfo = SensorInfo(
+        activeArraySize = sensorActiveArraySize,
+        sensitivityRange = isoRange,
+        exposureTimeRangeNs = exposureTimeRangeNs,
+        sensorOrientation = sensorOrientation
+    ),
+    val lensInfo: LensInfo = LensInfo(
+        facing = rawFacing,
+        facingLabel = when (rawFacing) {
+            CameraMetadata.LENS_FACING_BACK -> "BACK"
+            CameraMetadata.LENS_FACING_FRONT -> "FRONT"
+            CameraMetadata.LENS_FACING_EXTERNAL -> "EXTERNAL"
+            else -> "UNKNOWN ($rawFacing)"
+        },
+        focalLengths = focalLengths,
+        minimumFocusDistance = minimumFocusDistance,
+        opticalStabilizationModes = opticalStabilizationModes,
+        opticalStabilizationSupported = opticalStabilizationModes.any { it != CameraMetadata.LENS_OPTICAL_STABILIZATION_MODE_OFF }
+    ),
+    val streamConfigurations: List<FormatStreamConfiguration> = emptyList(),
+    val streamCombinations: List<StreamCombinationCapability> = emptyList(),
+    val videoCapabilityInfo: VideoCapabilityInfo = VideoCapabilityInfo(
+        supportedFpsRanges = supportedFpsRanges,
+        videoStabilizationModes = videoStabilizationModes
+    ),
+    val dynamicRangeInfo: DynamicRangeInfo = DynamicRangeInfo(
+        status = hdrStatus
+    ),
+    val manualControlInfo: ManualControlInfo = ManualControlInfo(
+        supportsManualSensor = manualSensorStatus.isUsable,
+        manualSensorStatus = manualSensorStatus,
+        isoRange = isoRange,
+        exposureTimeRangeNs = exposureTimeRangeNs,
+        exposureCompensationRange = exposureCompensationRange,
+        exposureCompensationStep = exposureCompensationStep,
+        supportsManualFocus = manualFocusStatus.isUsable,
+        manualFocusStatus = manualFocusStatus,
+        minimumFocusDistance = minimumFocusDistance
+    ),
+    val zoomCapabilityInfo: ZoomCapabilityInfo = ZoomCapabilityInfo(
+        minZoomRatio = minZoomRatio,
+        maxZoomRatio = maxZoomRatio,
+        maxDigitalZoom = maxZoomRatio,
+        hasOpticalFocalLengths = focalLengths.size > 1,
+        opticalFocalLengths = focalLengths
+    ),
+    val rawCapabilityInfo: RawCapabilityInfo = RawCapabilityInfo(
+        status = rawStatus,
+        supportsRawSensor = rawStatus.isUsable,
+        supportedRawFormats = rawFormats
+    ),
+    val validationSummary: HardwareValidationSummary = HardwareValidationSummary()
 ) {
     // Correct Android CameraMetadata mapping
     // CameraMetadata.LENS_FACING_FRONT == 0

@@ -44,3 +44,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Discovered true HAL mapping: Camera ID 0 is Back (Logical multi-camera), Camera ID 1 is Front (Physical), Camera ID 2 is Back (Physical), Camera ID 3 is Back (Physical).
 - **Unit Testing:** 19 unit tests passing covering device classification, camera facing, exposure formatting, session state transitions, zoom bounds, and MediaStore naming.
 - **Physical Device Verification:** Installed and verified on physical `OnePlus Ace 5 / CPH2691IN` (`3B15B800NRT00000`) running Android 17 (API 37).
+
+---
+
+## [0.3.0] - Phase 2 Hardware Intelligence - 2026-11-04
+
+### Added
+- **Camera2 Characteristics Parser:** Deep introspection engine auditing sensor active arrays, pixel boundaries, physical sizes, CFA arrangements (`RGGB`/`BGGR`), timestamp sources, and black/white levels.
+- **Logical & Physical Sensor Mapping:** Automatic classification of logical multi-cameras (`CameraRelationship.LOGICAL`) and physical sub-cameras (`CameraRelationship.PHYSICAL_REFERENCE`), accurately identifying OnePlus Ace 5 / 13R constituent cameras (Main 5.59mm + Ultra-wide 1.68mm).
+- **Stream Configuration & Combination Analyzer:** Comprehensive mapping of output formats (`JPEG`, `PRIVATE`, `YUV_420_888`, `RAW_SENSOR`, `RAW10`, `RAW_PRIVATE`), resolutions, min durations, stall durations, max frame rates, and guaranteed Camera2 stream combinations.
+- **Dynamic Range Intelligence (API 33+):** Detection of 10-bit HDR dynamic range profiles (`HLG10`, `HDR10`, `HDR10+`).
+- **Stabilization & Zoom Intelligence:** Discovery of optical stabilization (OIS), electronic stabilization (EIS), preview stabilization, and continuous digital/optical zoom ranges.
+- **Persistent Capability Cache:** `CameraCapabilityRepository` with JSON persistence in app files directory validated by `Build.FINGERPRINT` to avoid redundant 150ms+ HAL scans.
+- **Unit Testing Suite:** 27 unit tests passing across debug and release, validating relationship models, dynamic range details, stream sizes, video quality profiles, manual controls, and hardware validation metrics.
+- **Hardware Telemetry Verified:** Validated live on physical OnePlus Ace 5 / 13R device (`3B15B800NRT00000`), persisting 25.5 KB capability cache and confirming `LEVEL_3` capabilities across all 4 cameras.

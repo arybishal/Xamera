@@ -422,10 +422,13 @@ private fun CameraProfileCard(index: Int, profile: CameraCapabilityProfile) {
 private fun StatusTag(label: String, status: CapabilityStatus) {
     val (color, text) = when (status) {
         CapabilityStatus.SUPPORTED -> SuccessGreen to "$label: YES"
+        CapabilityStatus.CONFIGURATION_VALIDATED -> SuccessGreen to "$label: CFG_OK"
+        CapabilityStatus.CAPTURE_VERIFIED -> SuccessGreen to "$label: VERIFIED"
         CapabilityStatus.UNSUPPORTED -> TextMuted to "$label: NO"
         CapabilityStatus.UNAVAILABLE -> ErrorRed to "$label: UNAVAIL"
         CapabilityStatus.NOT_VERIFIED -> AccentAmber to "$label: UNVERIFIED"
         CapabilityStatus.TEMPORARILY_UNAVAILABLE -> AccentAmber to "$label: TEMP_UNAVAIL"
+        CapabilityStatus.ERROR -> ErrorRed to "$label: ERROR"
     }
 
     Box(

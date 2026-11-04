@@ -1,49 +1,65 @@
 package com.bishal.adaptivecamera.ui.diagnostics
 
+import android.app.Application
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.bishal.adaptivecamera.camera.capability.CameraCapabilityScanner
+import com.bishal.adaptivecamera.camera.capability.CameraCapabilityRepository
+import com.bishal.adaptivecamera.camera.capability.CameraCapabilityRepositoryImpl
 import com.bishal.adaptivecamera.camera.capability.DeviceCapabilityReport
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 data class DiagnosticsUiState(
     val isLoading: Boolean = false,
     val report: DeviceCapabilityReport? = null,
     val hasCameraPermission: Boolean = false,
+    val isFromCache: Boolean = false,
     val toastMessage: String? = null
 )
 
-class DiagnosticsViewModel : ViewModel() {
+class DiagnosticsViewModel @JvmOverloads constructor(
+    application: Application,
+    private val repository: CameraCapabilityRepository = CameraCapabilityRepositoryImpl(application.applicationContext)
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(DiagnosticsUiState())
     val uiState: StateFlow<DiagnosticsUiState> = _uiState.asStateFlow()
 
-    fun updateCameraPermission(granted: Boolean, context: Context) {
+    fun updateCameraPermission(granted: Boolean, context: Context? = null) {
         _uiState.update { it.copy(hasCameraPermission = granted) }
-        refreshHardwareScan(context)
+        loadHardwareReport(forceRefresh = false)
     }
 
-    fun refreshHardwareScan(context: Context) {
+    fun refreshHardwareScan(context: Context? = null) {
+        loadHardwareReport(forceRefresh = true)
+    }
+
+    fun loadHardwareReport(forceRefresh: Boolean = false) {
         _uiState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
-            val report = withContext(Dispatchers.Default) {
-                CameraCapabilityScanner(context).scanDevice()
-            }
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    report = report
-                )
+            try {
+                val report = repository.getDeviceReport(forceRefresh = forceRefresh)
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        report = report,
+                        isFromCache = report.isFromCache
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        toastMessage = "Hardware scan error: ${e.message}"
+                    )
+                }
             }
         }
     }

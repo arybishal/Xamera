@@ -7,7 +7,6 @@ import android.hardware.camera2.CameraAccessException
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.hardware.camera2.CameraMetadata
-import android.hardware.camera2.params.DynamicRangeProfiles
 import android.media.MediaRecorder
 import android.os.Build
 import android.util.Log
@@ -31,15 +30,29 @@ class CameraCapabilityScanner(
         val warnings = mutableListOf<String>()
 
         try {
-            val cameraIds = cameraManager.cameraIdList
+            val cameraIds = cameraManager.cameraIdList.toList()
             if (cameraIds.isEmpty()) {
                 warnings.add("CameraManager reported 0 accessible camera IDs.")
+            }
+
+            // Relationship analysis across all cameras
+            val relationships = CameraRelationshipAnalyzer.analyze(cameraIds) { id ->
+                try {
+                    cameraManager.getCameraCharacteristics(id)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to load characteristics for relationship analysis of ID $id", e)
+                    null
+                }
             }
 
             for (id in cameraIds) {
                 try {
                     val characteristics = cameraManager.getCameraCharacteristics(id)
-                    val profile = scanCamera(id, characteristics)
+                    val relInfo = relationships[id] ?: CameraRelationshipInfo(
+                        relationship = CameraRelationship.INDEPENDENT,
+                        description = "Standalone camera unit"
+                    )
+                    val profile = scanCamera(id, characteristics, relInfo)
                     profiles.add(profile)
                 } catch (e: Exception) {
                     Log.w(TAG, "Failed to query characteristics for camera ID $id", e)
@@ -69,13 +82,14 @@ class CameraCapabilityScanner(
         )
     }
 
-    fun scanCamera(cameraId: String, characteristics: CameraCharacteristics): CameraCapabilityProfile {
+    fun scanCamera(
+        cameraId: String,
+        characteristics: CameraCharacteristics,
+        relationshipInfo: CameraRelationshipInfo = CameraRelationshipInfo(CameraRelationship.INDEPENDENT)
+    ): CameraCapabilityProfile {
         val notes = mutableListOf<String>()
 
-        // 1. LENS_FACING (Accurate Android CameraMetadata mapping)
-        // CameraMetadata.LENS_FACING_FRONT = 0
-        // CameraMetadata.LENS_FACING_BACK = 1
-        // CameraMetadata.LENS_FACING_EXTERNAL = 2
+        // 1. LENS_FACING
         val rawFacing = characteristics.get(CameraCharacteristics.LENS_FACING) ?: -1
         val facingLabel = when (rawFacing) {
             CameraMetadata.LENS_FACING_BACK -> "BACK"
@@ -83,25 +97,23 @@ class CameraCapabilityScanner(
             CameraMetadata.LENS_FACING_EXTERNAL -> "EXTERNAL"
             else -> "UNKNOWN ($rawFacing)"
         }
-        notes.add("Raw LENS_FACING integer: $rawFacing ($facingLabel)")
+        notes.add("Raw LENS_FACING: $rawFacing ($facingLabel)")
 
         // 2. Hardware Level
         val rawHwLevel = characteristics.get(CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL)
         val hardwareLevel = CameraHardwareLevel.fromInt(rawHwLevel)
-        notes.add("Raw INFO_SUPPORTED_HARDWARE_LEVEL: $rawHwLevel (${hardwareLevel.displayName})")
+        notes.add("Hardware Level: ${hardwareLevel.displayName} (raw: $rawHwLevel)")
 
         // 3. Capabilities Array
         val capabilities = characteristics.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)?.toList() ?: emptyList()
         val isLogical = capabilities.contains(CameraMetadata.REQUEST_AVAILABLE_CAPABILITIES_LOGICAL_MULTI_CAMERA)
-        val supportsManualSensorCap = capabilities.contains(CameraMetadata.REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR)
-        val supportsRawCap = capabilities.contains(CameraMetadata.REQUEST_AVAILABLE_CAPABILITIES_RAW)
 
-        // 4. Physical Camera Mapping (API 28+)
+        // 4. Physical Camera Mapping
         val physicalIds = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && isLogical) {
             try {
                 characteristics.physicalCameraIds.toList()
             } catch (e: Exception) {
-                notes.add("Failed to retrieve physical camera IDs: ${e.message}")
+                notes.add("Failed to query physical camera IDs: ${e.message}")
                 emptyList()
             }
         } else {
@@ -109,117 +121,86 @@ class CameraCapabilityScanner(
         }
 
         if (isLogical) {
-            notes.add("Logical multi-camera: References physical camera IDs [${physicalIds.joinToString(", ")}]")
-        } else {
-            notes.add("Single physical camera stream")
+            notes.add("Logical multi-camera: Composing sub-camera IDs [${physicalIds.joinToString(", ")}]")
+        } else if (relationshipInfo.logicalParentIds.isNotEmpty()) {
+            notes.add("Physical sub-sensor referenced by: [${relationshipInfo.logicalParentIds.joinToString(", ")}]")
         }
 
-        // 5. Optics & Sensor Geometry
-        val focalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)?.toList() ?: emptyList()
-        val sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 0
-        val activeArray = characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE)
-        val activeArrayStr = activeArray?.let { "${it.width()}x${it.height()}" } ?: "Unavailable"
+        // 5. Sensor and Lens Intelligence
+        val (sensorInfo, lensInfo) = SensorLensAnalyzer.analyze(characteristics)
 
-        // 6. Stream Configuration Map
-        val streamMap = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
-        val supportedFormats = streamMap?.outputFormats?.toList() ?: emptyList()
+        // 6. Stream Configuration Intelligence
+        val (streamConfigs, streamCombinations) = StreamConfigurationAnalyzer.analyze(
+            characteristics,
+            hardwareLevel,
+            isLogical
+        )
 
-        val photoSizes = mutableListOf<CameraResolution>()
-        if (streamMap != null) {
-            val jpegSizes = streamMap.getOutputSizes(ImageFormat.JPEG) ?: emptyArray()
-            photoSizes.addAll(jpegSizes.map { CameraResolution(it.width, it.height) })
-        }
-        photoSizes.sortByDescending { it.width * it.height }
+        val supportedFormats = streamConfigs.map { it.format }
+        val photoSizes = streamConfigs.firstOrNull { it.format == ImageFormat.JPEG }?.sizes?.map {
+            CameraResolution(it.width, it.height)
+        } ?: emptyList()
 
-        val videoSizes = mutableListOf<CameraResolution>()
-        if (streamMap != null) {
-            val recSizes = streamMap.getOutputSizes(MediaRecorder::class.java)
-                ?: streamMap.getOutputSizes(SurfaceTexture::class.java)
-                ?: emptyArray()
-            videoSizes.addAll(recSizes.map { CameraResolution(it.width, it.height) })
-        }
-        videoSizes.sortByDescending { it.width * it.height }
+        val videoSizes = streamConfigs.firstOrNull { it.format == ImageFormat.PRIVATE }?.sizes?.map {
+            CameraResolution(it.width, it.height)
+        } ?: emptyList()
 
-        val fpsRanges = characteristics.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES)
-            ?.map { FpsRange(it.lower, it.upper) } ?: emptyList()
+        // 7. Dynamic Range Intelligence
+        val dynamicRangeInfo = DynamicRangeAnalyzer.analyze(characteristics)
+        val dynamicRangeProfileNames = dynamicRangeInfo.supportedProfiles.map { it.profileName }
 
-        // 7. Focus Evaluation
-        val afModes = characteristics.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES) ?: intArrayOf()
-        val supportsAf = afModes.any { it != CameraMetadata.CONTROL_AF_MODE_OFF }
-        val afStatus = if (supportsAf) CapabilityStatus.SUPPORTED else CapabilityStatus.UNSUPPORTED
+        // 8. Video Capability Intelligence
+        val videoCapabilityInfo = VideoCapabilityAnalyzer.analyze(characteristics)
 
-        val minFocusDistance = characteristics.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE)
-        val hasManualFocusSupport = minFocusDistance != null && minFocusDistance > 0f &&
-                afModes.contains(CameraMetadata.CONTROL_AF_MODE_OFF)
-        val mfStatus = if (hasManualFocusSupport) CapabilityStatus.SUPPORTED else CapabilityStatus.UNSUPPORTED
+        // 9. Manual Control Intelligence
+        val manualControlInfo = ManualControlAnalyzer.analyze(characteristics)
 
-        // 8. Manual Sensor Evaluation (ISO & Shutter)
-        val isoRangeRaw = characteristics.get(CameraCharacteristics.SENSOR_INFO_SENSITIVITY_RANGE)
-        val isoRange = isoRangeRaw?.let { RangeVal(it.lower, it.upper) }
+        // 10. Zoom Capability Intelligence
+        val zoomCapabilityInfo = ZoomCapabilityAnalyzer.analyze(characteristics)
 
-        val expTimeRangeRaw = characteristics.get(CameraCharacteristics.SENSOR_INFO_EXPOSURE_TIME_RANGE)
-        val expTimeRange = expTimeRangeRaw?.let { RangeVal(it.lower, it.upper) }
+        // 11. RAW Capability Intelligence
+        val rawCapabilityInfo = RawCapabilityAnalyzer.analyze(characteristics)
 
-        val expCompRangeRaw = characteristics.get(CameraCharacteristics.CONTROL_AE_COMPENSATION_RANGE)
-        val expCompRange = expCompRangeRaw?.let { RangeVal(it.lower, it.upper) }
+        // 12. Stabilization Modes
+        val oisModes = lensInfo.opticalStabilizationModes
+        val eisModes = videoCapabilityInfo.videoStabilizationModes
+        val noiseReductionModes = characteristics.get(CameraCharacteristics.NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES)?.toList() ?: emptyList()
 
-        val expCompStepRaw = characteristics.get(CameraCharacteristics.CONTROL_AE_COMPENSATION_STEP)
-        val expCompStep = expCompStepRaw?.let { it.numerator.toFloat() / it.denominator.toFloat() }
-
-        val manualSensorStatus = if (supportsManualSensorCap && isoRange != null && expTimeRange != null) {
-            CapabilityStatus.SUPPORTED
-        } else {
-            CapabilityStatus.UNSUPPORTED
-        }
-
-        // 9. Flash Evaluation
+        // 13. Flash Evaluation
         val supportsFlash = characteristics.get(CameraCharacteristics.FLASH_INFO_AVAILABLE) ?: false
         val flashStatus = if (supportsFlash) CapabilityStatus.SUPPORTED else CapabilityStatus.UNSUPPORTED
 
-        // 10. RAW Evaluation
-        val rawFormats = supportedFormats.filter {
-            it == ImageFormat.RAW_SENSOR || it == ImageFormat.RAW10 || it == ImageFormat.RAW12
-        }
-        val rawStatus = if (supportsRawCap && rawFormats.isNotEmpty()) {
-            notes.add("RAW stream supported in formats: ${rawFormats.joinToString()}")
-            CapabilityStatus.SUPPORTED
-        } else {
-            CapabilityStatus.UNSUPPORTED
+        // 14. Hardware Validation Summary
+        val advertisedFeatures = mutableMapOf<String, CapabilityStatus>()
+        advertisedFeatures["Autofocus"] = if (manualControlInfo.afAvailableModes.any { it != CameraMetadata.CONTROL_AF_MODE_OFF }) CapabilityStatus.SUPPORTED else CapabilityStatus.UNSUPPORTED
+        advertisedFeatures["Manual Sensor (ISO/Shutter)"] = manualControlInfo.manualSensorStatus
+        advertisedFeatures["Manual Focus"] = manualControlInfo.manualFocusStatus
+        advertisedFeatures["Manual White Balance"] = manualControlInfo.mwbStatus
+        advertisedFeatures["AE Lock"] = manualControlInfo.aeLockStatus
+        advertisedFeatures["AWB Lock"] = manualControlInfo.awbLockStatus
+        advertisedFeatures["Flash Unit"] = flashStatus
+        advertisedFeatures["RAW Sensor Stream"] = rawCapabilityInfo.status
+        advertisedFeatures["10-bit HDR Dynamic Range"] = dynamicRangeInfo.status
+        advertisedFeatures["Optical Stabilization (OIS)"] = if (lensInfo.opticalStabilizationSupported) CapabilityStatus.SUPPORTED else CapabilityStatus.UNSUPPORTED
+        advertisedFeatures["Electronic Stabilization (EIS)"] = if (videoCapabilityInfo.supportsVideoStabilization) CapabilityStatus.SUPPORTED else CapabilityStatus.UNSUPPORTED
+        advertisedFeatures["Preview Stabilization"] = if (videoCapabilityInfo.supportsPreviewStabilization) CapabilityStatus.SUPPORTED else CapabilityStatus.UNSUPPORTED
+
+        val apiAccessibleFeatures = mutableMapOf<String, CapabilityStatus>()
+        apiAccessibleFeatures["CameraCharacteristics Query"] = CapabilityStatus.SUPPORTED
+        apiAccessibleFeatures["StreamConfigurationMap Query"] = if (streamConfigs.isNotEmpty()) CapabilityStatus.SUPPORTED else CapabilityStatus.UNSUPPORTED
+        apiAccessibleFeatures["Physical Camera Query"] = if (relationshipInfo.isPhysicalStreamQuerySupported) CapabilityStatus.SUPPORTED else CapabilityStatus.UNAVAILABLE
+
+        val validatedConfigs = mutableMapOf<String, CapabilityStatus>()
+        streamCombinations.forEach { combo ->
+            validatedConfigs[combo.name] = combo.status
         }
 
-        // 11. HDR & Dynamic Range Profiles
-        val dynamicRangeProfiles = mutableListOf<String>()
-        var hdrStatus = CapabilityStatus.UNSUPPORTED
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val drProfiles = characteristics.get(CameraCharacteristics.REQUEST_AVAILABLE_DYNAMIC_RANGE_PROFILES)
-            if (drProfiles != null) {
-                val supported = drProfiles.supportedProfiles
-                if (supported.contains(DynamicRangeProfiles.HLG10)) dynamicRangeProfiles.add("HLG10")
-                if (supported.contains(DynamicRangeProfiles.HDR10)) dynamicRangeProfiles.add("HDR10")
-                if (supported.contains(DynamicRangeProfiles.HDR10_PLUS)) dynamicRangeProfiles.add("HDR10_PLUS")
-                if (supported.contains(DynamicRangeProfiles.DOLBY_VISION_10B_HDR_OEM)) dynamicRangeProfiles.add("DOLBY_VISION_OEM")
-                if (dynamicRangeProfiles.isNotEmpty()) {
-                    hdrStatus = CapabilityStatus.SUPPORTED
-                }
-            }
-        }
-
-        // 12. Stabilization
-        val oisModes = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_OPTICAL_STABILIZATION)?.toList() ?: emptyList()
-        val eisModes = characteristics.get(CameraCharacteristics.CONTROL_AVAILABLE_VIDEO_STABILIZATION_MODES)?.toList() ?: emptyList()
-        val noiseReductionModes = characteristics.get(CameraCharacteristics.NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES)?.toList() ?: emptyList()
-
-        // 13. Zoom range
-        val minZoom: Float
-        val maxZoom: Float
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val zoomRange = characteristics.get(CameraCharacteristics.CONTROL_ZOOM_RATIO_RANGE)
-            minZoom = zoomRange?.lower ?: 1.0f
-            maxZoom = zoomRange?.upper ?: (characteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM) ?: 1.0f)
-        } else {
-            minZoom = 1.0f
-            maxZoom = characteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM) ?: 1.0f
-        }
+        val validationSummary = HardwareValidationSummary(
+            advertisedFeatures = advertisedFeatures,
+            apiAccessibleFeatures = apiAccessibleFeatures,
+            validatedConfigurations = validatedConfigs,
+            captureVerifiedFeatures = emptyMap()
+        )
 
         return CameraCapabilityProfile(
             cameraId = cameraId,
@@ -228,35 +209,47 @@ class CameraCapabilityScanner(
             rawHardwareLevel = rawHwLevel,
             isLogicalCamera = isLogical,
             physicalCameraIds = physicalIds,
-            focalLengths = focalLengths,
-            sensorOrientation = sensorOrientation,
-            sensorActiveArraySize = activeArrayStr,
+            focalLengths = lensInfo.focalLengths,
+            sensorOrientation = sensorInfo.sensorOrientation,
+            sensorActiveArraySize = sensorInfo.activeArraySize,
             supportedFormats = supportedFormats,
             supportedPhotoSizes = photoSizes,
             supportedVideoSizes = videoSizes,
-            supportedFpsRanges = fpsRanges,
-            autoFocusStatus = afStatus,
-            manualFocusStatus = mfStatus,
-            minimumFocusDistance = minFocusDistance,
-            manualSensorStatus = manualSensorStatus,
-            isoRange = isoRange,
-            exposureTimeRangeNs = expTimeRange,
-            exposureCompensationRange = expCompRange,
-            exposureCompensationStep = expCompStep,
-            rawStatus = rawStatus,
-            rawFormats = rawFormats,
+            supportedFpsRanges = videoCapabilityInfo.supportedFpsRanges,
+            autoFocusStatus = advertisedFeatures["Autofocus"] ?: CapabilityStatus.NOT_VERIFIED,
+            manualFocusStatus = manualControlInfo.manualFocusStatus,
+            minimumFocusDistance = manualControlInfo.minimumFocusDistance,
+            manualSensorStatus = manualControlInfo.manualSensorStatus,
+            isoRange = manualControlInfo.isoRange,
+            exposureTimeRangeNs = manualControlInfo.exposureTimeRangeNs,
+            exposureCompensationRange = manualControlInfo.exposureCompensationRange,
+            exposureCompensationStep = manualControlInfo.exposureCompensationStep,
+            rawStatus = rawCapabilityInfo.status,
+            rawFormats = rawCapabilityInfo.supportedRawFormats,
             flashStatus = flashStatus,
-            hdrStatus = hdrStatus,
-            dynamicRangeProfilesSupported = dynamicRangeProfiles,
+            hdrStatus = dynamicRangeInfo.status,
+            dynamicRangeProfilesSupported = dynamicRangeProfileNames,
             opticalStabilizationModes = oisModes,
             videoStabilizationModes = eisModes,
             noiseReductionModes = noiseReductionModes,
-            maxZoomRatio = maxZoom,
-            minZoomRatio = minZoom,
-            zoomStatus = CapabilityStatus.SUPPORTED,
+            maxZoomRatio = zoomCapabilityInfo.maxZoomRatio,
+            minZoomRatio = zoomCapabilityInfo.minZoomRatio,
+            zoomStatus = zoomCapabilityInfo.status,
             verificationStatus = CapabilityStatus.SUPPORTED,
             rawCapabilities = capabilities,
-            diagnosticNotes = notes
+            diagnosticNotes = notes,
+            scannedAtTimestamp = System.currentTimeMillis(),
+            relationshipInfo = relationshipInfo,
+            sensorInfo = sensorInfo,
+            lensInfo = lensInfo,
+            streamConfigurations = streamConfigs,
+            streamCombinations = streamCombinations,
+            videoCapabilityInfo = videoCapabilityInfo,
+            dynamicRangeInfo = dynamicRangeInfo,
+            manualControlInfo = manualControlInfo,
+            zoomCapabilityInfo = zoomCapabilityInfo,
+            rawCapabilityInfo = rawCapabilityInfo,
+            validationSummary = validationSummary
         )
     }
 }
