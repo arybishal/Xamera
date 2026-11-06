@@ -8,12 +8,23 @@ data class ProConfiguration(
     val isManualFocus: Boolean = false,
     val requestedFocusDistanceDiopters: Float = 0.0f, // 0.0 = infinity
     val whiteBalance: ProWhiteBalance = ProWhiteBalance.AUTO,
+    val isManualKelvin: Boolean = false,
+    val requestedKelvin: Int = KelvinConverter.DEFAULT_KELVIN,
+    val requestedTint: Int = KelvinConverter.DEFAULT_TINT,
+    val isAeLocked: Boolean = false,
+    val isAfLocked: Boolean = false,
+    val isAwbLocked: Boolean = false,
     val exposureCompensationIndex: Int = 0,
     val isRawCaptureEnabled: Boolean = false,
     val isHistogramVisible: Boolean = true,
     val isHistogramExpanded: Boolean = false,
     val isFocusPeakingEnabled: Boolean = false,
-    val focusPeakingSensitivity: Float = 0.5f
+    val focusPeakingSensitivity: Float = 0.5f,
+    val isZebraEnabled: Boolean = false,
+    val zebraThresholdIre: Int = 90,
+    val isFalseColorEnabled: Boolean = false,
+    val isFocusMagnifierEnabled: Boolean = false,
+    val focusMagnifierScale: Float = 2.0f
 )
 
 data class ProAppliedState(
@@ -25,7 +36,11 @@ data class ProAppliedState(
     val aperture: Float? = null,
     val focalLength: Float? = null,
     val isManualSensorActive: Boolean = false,
-    val isManualFocusActive: Boolean = false
+    val isManualFocusActive: Boolean = false,
+    val isAeLocked: Boolean = false,
+    val isAfLocked: Boolean = false,
+    val isAwbLocked: Boolean = false,
+    val appliedKelvin: Int? = null
 ) {
     val appliedShutterDisplay: String
         get() = appliedShutterSpeedNs?.let { ShutterSpeedHelper.formatNanoseconds(it) } ?: "Auto"
@@ -41,4 +56,8 @@ data class ProAppliedState(
                 "${distanceCm}cm (${String.format("%.1f", it)} D)"
             }
         } ?: "Auto Focus"
+
+    val appliedWbDisplay: String
+        get() = if (isAwbLocked) "AWB Lock"
+        else appliedKelvin?.let { "${it}K" } ?: "Auto AWB"
 }

@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -69,10 +70,13 @@ import com.bishal.adaptivecamera.ui.camera.components.ScreenFlashOverlay
 import com.bishal.adaptivecamera.ui.camera.components.TopBarControls
 import com.bishal.adaptivecamera.ui.camera.components.ViewfinderFramingMask
 import com.bishal.adaptivecamera.ui.camera.components.VirtualHorizonOverlay
+import com.bishal.adaptivecamera.ui.camera.pro.FalseColorOverlay
+import com.bishal.adaptivecamera.ui.camera.pro.FocusMagnifierOverlay
 import com.bishal.adaptivecamera.ui.camera.pro.FocusPeakingOverlay
 import com.bishal.adaptivecamera.ui.camera.pro.HistogramView
 import com.bishal.adaptivecamera.ui.camera.pro.ProAppliedTelemetryBadge
 import com.bishal.adaptivecamera.ui.camera.pro.ProControlBar
+import com.bishal.adaptivecamera.ui.camera.pro.ZebraStripingOverlay
 import com.bishal.adaptivecamera.ui.theme.AccentAmber
 import com.bishal.adaptivecamera.ui.theme.DarkBackground
 import com.bishal.adaptivecamera.ui.theme.DarkSurface
@@ -154,10 +158,19 @@ fun CameraScreen(
                         onSetManualShutter = { enabled, shutter -> viewModel.setManualShutterSpeed(enabled, shutter) },
                         onSetManualFocus = { enabled, dist -> viewModel.setManualFocus(enabled, dist) },
                         onSetWhiteBalance = { wb -> viewModel.setWhiteBalance(wb) },
+                        onSetManualKelvin = { enabled, k, t -> viewModel.setManualKelvin(enabled, k, t) },
+                        onToggleAeLock = { viewModel.toggleAeLock() },
+                        onToggleAfLock = { viewModel.toggleAfLock() },
+                        onToggleAwbLock = { viewModel.toggleAwbLock() },
                         onToggleRaw = { enabled -> viewModel.toggleRawCapture(enabled) },
                         onToggleHistogram = { viewModel.toggleHistogram() },
                         onTogglePeaking = { enabled -> viewModel.toggleFocusPeaking(enabled) },
-                        onSetPeakingSensitivity = { sens -> viewModel.setFocusPeakingSensitivity(sens) }
+                        onSetPeakingSensitivity = { sens -> viewModel.setFocusPeakingSensitivity(sens) },
+                        onToggleZebra = { viewModel.toggleZebraStriping(it) },
+                        onSetZebraThreshold = { viewModel.setZebraThreshold(it) },
+                        onToggleFalseColor = { viewModel.toggleFalseColor(it) },
+                        onToggleFocusMagnifier = { viewModel.toggleFocusMagnifier(it) },
+                        onSetFocusMagnifierScale = { viewModel.setFocusMagnifierScale(it) }
                     )
                 }
                 BottomCaptureControls(
@@ -278,6 +291,58 @@ fun CameraScreen(
                         peakingMap = uiState.focusPeakingMap,
                         modifier = Modifier.fillMaxSize()
                     )
+                }
+
+                // 4b. Live Zebra Striping Overlay (Pro Mode)
+                if (uiState.configuration.mode == CameraMode.PRO && uiState.proConfig.isZebraEnabled) {
+                    ZebraStripingOverlay(
+                        zebraMap = uiState.zebraMap,
+                        framingBounds = framingBounds,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                // 4c. Broadcast False Color Overlay (Pro Mode)
+                if (uiState.configuration.mode == CameraMode.PRO && uiState.proConfig.isFalseColorEnabled) {
+                    FalseColorOverlay(
+                        falseColorMap = uiState.falseColorMap,
+                        framingBounds = framingBounds,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                // 4d. Focus Magnifier Loupe Overlay (Pro Mode)
+                if (uiState.configuration.mode == CameraMode.PRO && uiState.proConfig.isFocusMagnifierEnabled) {
+                    FocusMagnifierOverlay(
+                        isEnabled = uiState.proConfig.isFocusMagnifierEnabled,
+                        scale = uiState.proConfig.focusMagnifierScale,
+                        framingBounds = framingBounds,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                // 4e. AE/AF Lock Visual Banner (Pro Mode)
+                if (uiState.configuration.mode == CameraMode.PRO && (uiState.proConfig.isAeLocked || uiState.proConfig.isAfLocked)) {
+                    val lockLabel = when {
+                        uiState.proConfig.isAeLocked && uiState.proConfig.isAfLocked -> "AE/AF LOCK"
+                        uiState.proConfig.isAeLocked -> "AE LOCK"
+                        else -> "AF LOCK"
+                    }
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 46.dp)
+                            .background(AccentAmber, RoundedCornerShape(4.dp))
+                            .padding(horizontal = 10.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = lockLabel,
+                            color = Color.Black,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
                 }
 
                 // 5. Focus Ring Overlay (Tap to focus)

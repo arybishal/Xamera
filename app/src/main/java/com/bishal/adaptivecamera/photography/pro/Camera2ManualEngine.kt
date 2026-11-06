@@ -84,6 +84,12 @@ class Camera2ManualEngine(
     private val _focusPeakingMap = MutableStateFlow(FocusPeakingMap())
     val focusPeakingMap: StateFlow<FocusPeakingMap> = _focusPeakingMap.asStateFlow()
 
+    private val _zebraMap = MutableStateFlow(ZebraStripingMap())
+    val zebraMap: StateFlow<ZebraStripingMap> = _zebraMap.asStateFlow()
+
+    private val _falseColorMap = MutableStateFlow(FalseColorMap())
+    val falseColorMap: StateFlow<FalseColorMap> = _falseColorMap.asStateFlow()
+
     private var cameraDevice: CameraDevice? = null
     private var captureSession: CameraCaptureSession? = null
     private var currentCharacteristics: CameraCharacteristics? = null
@@ -275,31 +281,44 @@ class Camera2ManualEngine(
         val uPlane = if (image.planes.size > 1) image.planes[1] else null
         val vPlane = if (image.planes.size > 2) image.planes[2] else null
 
-        // Calculate RGB & Luminance histogram
-        if (_proConfig.value.isHistogramVisible) {
-            val hist = HistogramAnalyzer.analyzeYuv(
-                yBuffer = yPlane.buffer,
-                uBuffer = uPlane?.buffer,
-                vBuffer = vPlane?.buffer,
-                width = image.width,
-                height = image.height,
-                yRowStride = yPlane.rowStride,
-                yPixelStride = yPlane.pixelStride,
-                uvRowStride = uPlane?.rowStride ?: 0,
-                uvPixelStride = uPlane?.pixelStride ?: 1
-            )
-            _histogramData.value = hist
+        val config = _proConfig.value
+
+        // Execute unified photometry analysis (Histogram, Zebra, False Color)
+        val photometryResult = PhotometryAnalyzer.analyzeYuv(
+            yBuffer = yPlane.buffer,
+            uBuffer = uPlane?.buffer,
+            vBuffer = vPlane?.buffer,
+            width = image.width,
+            height = image.height,
+            yRowStride = yPlane.rowStride,
+            yPixelStride = yPlane.pixelStride,
+            uvRowStride = uPlane?.rowStride ?: 0,
+            uvPixelStride = uPlane?.pixelStride ?: 1,
+            isHistogramEnabled = config.isHistogramVisible,
+            isZebraEnabled = config.isZebraEnabled,
+            zebraThresholdIre = config.zebraThresholdIre,
+            isFalseColorEnabled = config.isFalseColorEnabled
+        )
+
+        if (config.isHistogramVisible) {
+            _histogramData.value = photometryResult.histogram
+        }
+        if (config.isZebraEnabled) {
+            _zebraMap.value = photometryResult.zebraMap
+        }
+        if (config.isFalseColorEnabled) {
+            _falseColorMap.value = photometryResult.falseColorMap
         }
 
         // Calculate Focus Peaking edges
-        if (_proConfig.value.isFocusPeakingEnabled) {
+        if (config.isFocusPeakingEnabled) {
             val peaking = FocusPeakingAnalyzer.analyzeY(
                 yBuffer = yPlane.buffer,
                 width = image.width,
                 height = image.height,
                 rowStride = yPlane.rowStride,
                 pixelStride = yPlane.pixelStride,
-                sensitivity = _proConfig.value.focusPeakingSensitivity
+                sensitivity = config.focusPeakingSensitivity
             )
             _focusPeakingMap.value = peaking
         }
@@ -336,20 +355,31 @@ class Camera2ManualEngine(
             } else {
                 requestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON)
                 requestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, config.exposureCompensationIndex)
+                requestBuilder.set(CaptureRequest.CONTROL_AE_LOCK, config.isAeLocked)
             }
 
-            // 2. Focus Distance (Manual Focus)
+            // 2. Focus Distance (Manual Focus & AF Lock)
             val minFocus = chars.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE) ?: 0f
             if (config.isManualFocus && minFocus > 0f) {
                 requestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_OFF)
                 val clampedFocus = min(minFocus, max(0.0f, config.requestedFocusDistanceDiopters))
                 requestBuilder.set(CaptureRequest.LENS_FOCUS_DISTANCE, clampedFocus)
+            } else if (config.isAfLocked) {
+                requestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_AUTO)
             } else {
                 requestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
             }
 
-            // 3. White Balance
-            requestBuilder.set(CaptureRequest.CONTROL_AWB_MODE, config.whiteBalance.camera2Mode)
+            // 3. White Balance (Presets, Custom Kelvin, & AWB Lock)
+            if (config.isManualKelvin || config.whiteBalance == ProWhiteBalance.MANUAL_KELVIN) {
+                requestBuilder.set(CaptureRequest.CONTROL_AWB_MODE, CameraMetadata.CONTROL_AWB_MODE_OFF)
+                requestBuilder.set(CaptureRequest.COLOR_CORRECTION_MODE, CameraMetadata.COLOR_CORRECTION_MODE_TRANSFORM_MATRIX)
+                val gains = KelvinConverter.kelvinToRgbGains(config.requestedKelvin, config.requestedTint)
+                requestBuilder.set(CaptureRequest.COLOR_CORRECTION_GAINS, gains.toCamera2Gains())
+            } else {
+                requestBuilder.set(CaptureRequest.CONTROL_AWB_MODE, config.whiteBalance.camera2Mode)
+                requestBuilder.set(CaptureRequest.CONTROL_AWB_LOCK, config.isAwbLocked)
+            }
 
             previewRequestBuilder = requestBuilder
 
@@ -366,6 +396,12 @@ class Camera2ManualEngine(
                     val appliedEv = result.get(CaptureResult.CONTROL_AE_EXPOSURE_COMPENSATION)
                     val aperture = result.get(CaptureResult.LENS_APERTURE)
                     val focalLen = result.get(CaptureResult.LENS_FOCAL_LENGTH)
+                    val appliedGains = result.get(CaptureResult.COLOR_CORRECTION_GAINS)
+                    val appliedKelvin = if (config.isManualKelvin || config.whiteBalance == ProWhiteBalance.MANUAL_KELVIN) {
+                        config.requestedKelvin
+                    } else {
+                        appliedGains?.let { KelvinConverter.rgbGainsToKelvin(it.red, it.blue) } ?: config.whiteBalance.kelvinApprox
+                    }
 
                     _appliedState.update {
                         it.copy(
@@ -377,7 +413,11 @@ class Camera2ManualEngine(
                             aperture = aperture,
                             focalLength = focalLen,
                             isManualSensorActive = config.isManualIso || config.isManualShutter,
-                            isManualFocusActive = config.isManualFocus
+                            isManualFocusActive = config.isManualFocus,
+                            isAeLocked = config.isAeLocked,
+                            isAfLocked = config.isAfLocked,
+                            isAwbLocked = config.isAwbLocked,
+                            appliedKelvin = appliedKelvin
                         )
                     }
                 }
@@ -527,6 +567,56 @@ class Camera2ManualEngine(
         _proConfig.update { it.copy(focusPeakingSensitivity = sensitivity) }
     }
 
+    // Phase 6 Pro Exposure & Monitoring Setters
+    fun setAeLock(locked: Boolean) {
+        _proConfig.update { it.copy(isAeLocked = locked) }
+        applyRepeatingProRequest()
+    }
+
+    fun setAfLock(locked: Boolean) {
+        _proConfig.update { it.copy(isAfLocked = locked) }
+        applyRepeatingProRequest()
+    }
+
+    fun setAwbLock(locked: Boolean) {
+        _proConfig.update { it.copy(isAwbLocked = locked) }
+        applyRepeatingProRequest()
+    }
+
+    fun setManualKelvin(enabled: Boolean, kelvin: Int = KelvinConverter.DEFAULT_KELVIN, tint: Int = KelvinConverter.DEFAULT_TINT) {
+        _proConfig.update {
+            it.copy(
+                isManualKelvin = enabled,
+                requestedKelvin = kelvin.coerceIn(KelvinConverter.MIN_KELVIN, KelvinConverter.MAX_KELVIN),
+                requestedTint = tint.coerceIn(KelvinConverter.MIN_TINT, KelvinConverter.MAX_TINT),
+                whiteBalance = if (enabled) ProWhiteBalance.MANUAL_KELVIN else it.whiteBalance
+            )
+        }
+        applyRepeatingProRequest()
+    }
+
+    fun setZebraStriping(enabled: Boolean, thresholdIre: Int = 90) {
+        _proConfig.update {
+            it.copy(
+                isZebraEnabled = enabled,
+                zebraThresholdIre = thresholdIre.coerceIn(50, 100)
+            )
+        }
+    }
+
+    fun setFalseColor(enabled: Boolean) {
+        _proConfig.update { it.copy(isFalseColorEnabled = enabled) }
+    }
+
+    fun setFocusMagnifier(enabled: Boolean, scale: Float = 2.0f) {
+        _proConfig.update {
+            it.copy(
+                isFocusMagnifierEnabled = enabled,
+                focusMagnifierScale = scale.coerceIn(1.5f, 5.0f)
+            )
+        }
+    }
+
     fun resetAllManualToAuto() {
         _proConfig.update {
             it.copy(
@@ -534,7 +624,14 @@ class Camera2ManualEngine(
                 isManualShutter = false,
                 isManualFocus = false,
                 whiteBalance = ProWhiteBalance.AUTO,
-                exposureCompensationIndex = 0
+                isManualKelvin = false,
+                requestedKelvin = KelvinConverter.DEFAULT_KELVIN,
+                requestedTint = KelvinConverter.DEFAULT_TINT,
+                isAeLocked = false,
+                isAfLocked = false,
+                isAwbLocked = false,
+                exposureCompensationIndex = 0,
+                isFocusMagnifierEnabled = false
             )
         }
         applyRepeatingProRequest()

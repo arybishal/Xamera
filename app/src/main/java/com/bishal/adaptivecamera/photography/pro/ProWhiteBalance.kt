@@ -13,5 +13,6 @@ enum class ProWhiteBalance(
     SHADE("Shade", CameraMetadata.CONTROL_AWB_MODE_SHADE, 7500),
     FLUORESCENT("Fluorescent", CameraMetadata.CONTROL_AWB_MODE_FLUORESCENT, 4000),
     INCANDESCENT("Incandescent", CameraMetadata.CONTROL_AWB_MODE_INCANDESCENT, 2800),
-    TWILIGHT("Twilight", CameraMetadata.CONTROL_AWB_MODE_TWILIGHT, null)
+    TWILIGHT("Twilight", CameraMetadata.CONTROL_AWB_MODE_TWILIGHT, null),
+    MANUAL_KELVIN("Custom Kelvin", CameraMetadata.CONTROL_AWB_MODE_OFF, null)
 }

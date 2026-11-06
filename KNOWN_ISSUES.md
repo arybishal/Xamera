@@ -5,7 +5,7 @@
 **Workspace:** `D:\Webapp\xamera`  
 **Repository:** https://github.com/arybishal/Xamera  
 **Developer:** Bishal Aryal  
-**Version:** 0.6.0  
+**Version:** 0.7.0  
 **Date:** 2026-11-06  
 
 ---
@@ -41,6 +41,12 @@
 - **Symptom:** In Android 11+ runtime logs, `Vibrator` calls triggered `java.lang.SecurityException: vibrate: Neither user nor current process has android.permission.VIBRATE`.
 - **Root Cause:** Android requires explicit `VIBRATE` permission in `AndroidManifest.xml` for apps invoking `Vibrator` or `VibratorManager` APIs for tactile feedback.
 - **Fix:** Added `<uses-permission android:name="android.permission.VIBRATE" />` to `app/src/main/AndroidManifest.xml` and wrapped all `Vibrator` invocations inside safe exception handlers in `HapticEngineImpl` for graceful silent fallback if disabled by system policy. Verified on OnePlus Ace 5 / 13R.
+
+### Issue 12: Continuous Kelvin White Balance Requires Camera2 RggbChannelVector and CONTROL_AWB_MODE_OFF
+- **Status:** **RESOLVED** (Phase 6)
+- **Symptom:** Setting standard Camera2 `CONTROL_AWB_MODE` only permits coarse discrete presets (e.g. Daylight, Cloudy, Incandescent) and cannot achieve smooth continuous Kelvin color temperature (2000K–10000K) or green/magenta tint bias.
+- **Root Cause:** In Camera2 HAL architecture, fine continuous chromaticity control requires disabling auto white balance (`CONTROL_AWB_MODE_OFF`), enabling transform matrix color correction (`COLOR_CORRECTION_MODE_TRANSFORM_MATRIX`), and passing precise 4-channel chromatic gains via `CaptureRequest.COLOR_CORRECTION_GAINS`.
+- **Fix:** Implemented `KelvinConverter` modeling Planckian locus blackbody radiation to compute normalized `RggbChannelVector(r, gEven, gOdd, b)` with green/magenta tint offset. Conversely, real-time HAL telemetry extracts `CaptureResult.COLOR_CORRECTION_GAINS` and computes dynamic live CCT estimation (`rgbGainsToKelvin`) displayed directly in the pro telemetry badge. Verified on OnePlus Ace 5 / 13R.
 
 ---
 

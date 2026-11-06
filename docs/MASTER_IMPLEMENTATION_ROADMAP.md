@@ -41,7 +41,7 @@ Xamera expands from its solid Phase 0–4 baseline into a complete professional 
 ```mermaid
 flowchart TD
     P4["Phase 0-4 Baseline (Completed)"] --> P5["Phase 5: Viewfinder Ergonomics & Assistive Overlays (Completed)"]
-    P5 --> P6["Phase 6: Pro Exposure & Focus Monitoring Engines"]
+    P5 --> P6["Phase 6: Pro Exposure & Focus Monitoring Engines (Completed)"]
     P6 --> P7["Phase 7: Advanced Capture Pipelines (ZSL, AEB, EXIF)"]
     P7 --> P8["Phase 8: LUT Library & Color Science Engine"]
     P8 --> P9["Phase 9: GPU Color Pipeline & Creative Shaders"]
@@ -105,8 +105,9 @@ flowchart TD
 
 ---
 
-### Phase 6: Pro Exposure & Focus Monitoring Engines (Zebra, False Color & Focus Assist)
+### Phase 6: Pro Exposure & Focus Monitoring Engines (Zebra, False Color & Focus Assist) — COMPLETED
 
+- **Status:** **Completed & Verified (Release v0.7.0)**
 - **Exact Scope:**
   Expand preview analysis into a broadcast photometry engine supporting live zebra striping, full-spectrum false color heatmap, independent AE/AF lock, fine Kelvin white balance, and focus magnification loupe.
 - **Features Included:**
@@ -530,8 +531,8 @@ flowchart TD
 | **3** | Smart Auto Photography | Phase 2 | Scene classification & recommendation engine | 12 Tests (Done) |
 | **4** | Pro Photography & RAW | Phase 2, 3 | Camera2 manual controls, histogram, peaking, DNG | 13 Tests (Done) |
 | **4A**| Settings, Diagnostics & Exposure | Phase 4 | Centralized capability settings, EV reliability | 8 Tests (Done) |
-| **5** | Viewfinder Ergonomics & Assistive Overlays | Phase 4A | Grids, Virtual horizon, Aspect ratio, Zoom dial | ~12 Tests |
-| **6** | Pro Exposure & Focus Monitoring | Phase 5 | Zebra striping, False color, AE/AF lock, Kelvin | ~14 Tests |
+| **5** | Viewfinder Ergonomics & Assistive Overlays | Phase 4A | Grids, Virtual horizon, Aspect ratio, Zoom dial | 14 Tests (Done) |
+| **6** | Pro Exposure & Focus Monitoring | Phase 5 | Zebra striping, False color, AE/AF lock, Kelvin | 18 Tests (Done) |
 | **7** | Advanced Capture Pipelines | Phase 6 | ZSL, AEB bursts, RAW+HEIC, EXIF, RAW vault | ~15 Tests |
 | **8** | LUT Library & Color Science Engine | Phase 0 | .cube parser, Room database, Log curves | ~12 Tests |
 | **9** | GPU Color Pipeline & Creative Shaders | Phase 8 | OpenGL ES 3.0 preview/capture LUT, Grain, Halation | ~14 Tests |

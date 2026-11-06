@@ -72,11 +72,37 @@ fun ProAppliedTelemetryBadge(
 
             // Focus
             Text(
-                text = if (proConfig.isManualFocus) "MF: ${appliedState.appliedFocusDistanceDisplay}" else "AF",
-                color = if (proConfig.isManualFocus) AccentAmber else TextSecondary,
+                text = if (proConfig.isManualFocus) "MF: ${appliedState.appliedFocusDistanceDisplay}"
+                       else if (proConfig.isAfLocked) "AF-LOCKED"
+                       else "AF",
+                color = if (proConfig.isManualFocus || proConfig.isAfLocked) AccentAmber else TextSecondary,
                 fontSize = 10.sp,
-                fontWeight = if (proConfig.isManualFocus) FontWeight.Bold else FontWeight.Normal
+                fontWeight = if (proConfig.isManualFocus || proConfig.isAfLocked) FontWeight.Bold else FontWeight.Normal
             )
+
+            // White Balance / Kelvin
+            Text("·", color = TextMuted, fontSize = 10.sp)
+            Text(
+                text = appliedState.appliedWbDisplay,
+                color = if (proConfig.isManualKelvin || proConfig.isAwbLocked) PrimaryCyan else TextSecondary,
+                fontSize = 10.sp,
+                fontWeight = if (proConfig.isManualKelvin || proConfig.isAwbLocked) FontWeight.Bold else FontWeight.Normal,
+                fontFamily = FontFamily.Monospace
+            )
+
+            // AE Lock Badge
+            if (proConfig.isAeLocked) {
+                Text("·", color = TextMuted, fontSize = 10.sp)
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(AccentAmber.copy(alpha = 0.25f))
+                        .border(0.5.dp, AccentAmber, RoundedCornerShape(3.dp))
+                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                ) {
+                    Text("AE-LOCK", color = AccentAmber, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                }
+            }
 
             // RAW Badge
             if (proConfig.isRawCaptureEnabled) {

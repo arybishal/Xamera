@@ -5,7 +5,7 @@
 **Workspace:** `D:\Webapp\xamera`  
 **Repository:** https://github.com/arybishal/Xamera  
 **Developer:** Bishal Aryal  
-**Version:** 0.6.0  
+**Version:** 0.7.0  
 **Date:** 2026-11-06  
 
 ---
@@ -123,16 +123,15 @@
 ---
 
 ## Phase 6: Pro Exposure & Focus Monitoring Engines (Zebra, False Color & Focus Assist)
-- [ ] Implement independent Auto Exposure Lock (AE Lock) and Autofocus Lock (AF Lock) (`FEAT-EXP-03`, `FEAT-FOC-02`).
-- [ ] Build unified `PhotometryAnalyzer` consolidating preview frame analysis for all photometric monitors.
-- [ ] Implement live Zebra Striping overlay with configurable IRE threshold (70%–100%) (`FEAT-EXP-05`).
-- [ ] Implement full-spectrum 16-step False Color exposure heatmap overlay (Arri/IRE scale) (`FEAT-EXP-06`).
-- [ ] Build Focus Assist / Magnifier Loupe offering 2x and 4x digital preview center crop during manual focusing (`FEAT-FOC-05`).
-- [ ] Implement fine-grained Kelvin White Balance slider (2000K–10000K) with green/magenta tint offset (`FEAT-COL-02`).
-- [ ] Implement Auto White Balance Lock (AWB Lock) (`FEAT-COL-03`).
-- [ ] Write Phase 6 unit tests (`PhotometryLumaZebraTest`, `FalseColorZoneMappingTest`, `KelvinToRgbGainsTest`, `AeAfLockStateTransitionTest`).
-- [ ] Write Phase 6 instrumented tests (`ZebraOverlayRenderingTest`, `FocusMagnifierTransformTest`).
-- [ ] Phase 6 physical device validation on OnePlus Ace 5 / 13R and completion report.
+- [x] Implement independent Auto Exposure Lock (AE Lock) and Autofocus Lock (AF Lock) (`FEAT-EXP-03`, `FEAT-FOC-02`).
+- [x] Build unified `PhotometryAnalyzer` consolidating preview frame analysis for all photometric monitors.
+- [x] Implement live Zebra Striping overlay with configurable IRE threshold (70%–100%) (`FEAT-EXP-05`).
+- [x] Implement full-spectrum 9-zone False Color exposure heatmap overlay (Broadcast IRE scale with vertical legend) (`FEAT-EXP-06`).
+- [x] Build Focus Assist / Magnifier Loupe offering 2x and 4x digital preview center crop during manual focusing (`FEAT-FOC-05`).
+- [x] Implement fine-grained Kelvin White Balance slider (2000K–10000K) with green/magenta tint offset via `KelvinConverter` and `RggbChannelVector` (`FEAT-COL-02`).
+- [x] Implement Auto White Balance Lock (AWB Lock) (`FEAT-COL-03`).
+- [x] Write Phase 6 unit tests (`PhotometryLumaZebraTest`, `FalseColorZoneMappingTest`, `KelvinToRgbGainsTest`, `AeAfLockStateTransitionTest` - 18 new tests, 102 total).
+- [x] Phase 6 physical device validation on OnePlus Ace 5 / 13R and completion report.
 
 ---
 

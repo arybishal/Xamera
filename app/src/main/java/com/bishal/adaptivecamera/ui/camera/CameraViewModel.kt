@@ -34,11 +34,14 @@ import com.bishal.adaptivecamera.core.storage.MediaStoreManager
 import com.bishal.adaptivecamera.photography.auto.SmartAutoOrchestrator
 import com.bishal.adaptivecamera.photography.auto.SmartAutoState
 import com.bishal.adaptivecamera.photography.pro.Camera2ManualEngine
+import com.bishal.adaptivecamera.photography.pro.FalseColorMap
 import com.bishal.adaptivecamera.photography.pro.FocusPeakingMap
 import com.bishal.adaptivecamera.photography.pro.HistogramData
+import com.bishal.adaptivecamera.photography.pro.KelvinConverter
 import com.bishal.adaptivecamera.photography.pro.ProAppliedState
 import com.bishal.adaptivecamera.photography.pro.ProConfiguration
 import com.bishal.adaptivecamera.photography.pro.ProWhiteBalance
+import com.bishal.adaptivecamera.photography.pro.ZebraStripingMap
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -63,6 +66,8 @@ data class CameraUiState(
     val proAppliedState: ProAppliedState = ProAppliedState(),
     val histogramData: HistogramData = HistogramData(),
     val focusPeakingMap: FocusPeakingMap = FocusPeakingMap(),
+    val zebraMap: ZebraStripingMap = ZebraStripingMap(),
+    val falseColorMap: FalseColorMap = FalseColorMap(),
     val activeProfile: CameraCapabilityProfile? = null,
     val virtualHorizonState: VirtualHorizonState = VirtualHorizonState(),
     val isScreenFlashActive: Boolean = false
@@ -170,6 +175,16 @@ class CameraViewModel @JvmOverloads constructor(
         viewModelScope.launch {
             camera2ProEngine.focusPeakingMap.collect { peaking ->
                 _uiState.update { it.copy(focusPeakingMap = peaking) }
+            }
+        }
+        viewModelScope.launch {
+            camera2ProEngine.zebraMap.collect { zebra ->
+                _uiState.update { it.copy(zebraMap = zebra) }
+            }
+        }
+        viewModelScope.launch {
+            camera2ProEngine.falseColorMap.collect { falseColor ->
+                _uiState.update { it.copy(falseColorMap = falseColor) }
             }
         }
         viewModelScope.launch {
@@ -493,6 +508,52 @@ class CameraViewModel @JvmOverloads constructor(
 
     fun setFocusPeakingSensitivity(sensitivity: Float) {
         camera2ProEngine.setFocusPeakingSensitivity(sensitivity)
+    }
+
+    // Phase 6 Exposure & Focus Monitoring Controllers
+    fun toggleAeLock() {
+        hapticEngine.performClick()
+        val next = !_uiState.value.proConfig.isAeLocked
+        camera2ProEngine.setAeLock(next)
+    }
+
+    fun toggleAfLock() {
+        hapticEngine.performClick()
+        val next = !_uiState.value.proConfig.isAfLocked
+        camera2ProEngine.setAfLock(next)
+    }
+
+    fun toggleAwbLock() {
+        hapticEngine.performClick()
+        val next = !_uiState.value.proConfig.isAwbLocked
+        camera2ProEngine.setAwbLock(next)
+    }
+
+    fun setManualKelvin(enabled: Boolean, kelvin: Int, tint: Int = 0) {
+        camera2ProEngine.setManualKelvin(enabled, kelvin, tint)
+    }
+
+    fun toggleZebraStriping(enabled: Boolean) {
+        hapticEngine.performClick()
+        camera2ProEngine.setZebraStriping(enabled, _uiState.value.proConfig.zebraThresholdIre)
+    }
+
+    fun setZebraThreshold(thresholdIre: Int) {
+        camera2ProEngine.setZebraStriping(_uiState.value.proConfig.isZebraEnabled, thresholdIre)
+    }
+
+    fun toggleFalseColor(enabled: Boolean) {
+        hapticEngine.performClick()
+        camera2ProEngine.setFalseColor(enabled)
+    }
+
+    fun toggleFocusMagnifier(enabled: Boolean) {
+        hapticEngine.performClick()
+        camera2ProEngine.setFocusMagnifier(enabled, _uiState.value.proConfig.focusMagnifierScale)
+    }
+
+    fun setFocusMagnifierScale(scale: Float) {
+        camera2ProEngine.setFocusMagnifier(_uiState.value.proConfig.isFocusMagnifierEnabled, scale)
     }
 
     fun resetProToAuto() {
