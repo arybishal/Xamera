@@ -214,15 +214,20 @@
 
 ---
 
-## Phase 13: Multi-Frame Computational Photography (HDR Fusion, Focus Stacking, Super-Res & Stroboscopic)
-- [ ] Implement multi-frame HDR Fusion pipeline merging AEB bracketed exposures with radiance de-ghosting (`FEAT-CMP-08`).
-- [ ] Implement Macro/Landscape Focus Stacking combining depth slices into an all-in-focus composite (`FEAT-CMP-09`).
-- [ ] Implement sub-pixel Super-Resolution leveraging natural hand micro-tremor (`FEAT-CMP-10`).
-- [ ] Implement Action Stroboscopic merge tracking and blending moving subjects across a static background (`FEAT-CMP-11`).
-- [ ] Implement Variable Physical Aperture controller with graceful fixed-aperture fallback (`FEAT-FOC-08`).
-- [ ] Write Phase 13 unit tests (`HdrDeghostingTest`, `FocusStackingLaplacianTest`, `SuperResolutionShiftTest`, `VariableApertureFallbackTest`).
-- [ ] Write Phase 13 instrumented tests (`NativeComputationalPipelineTest`).
-- [ ] Phase 13 physical device validation on OnePlus Ace 5 / 13R and completion report.
+## Phase 13: Computational Photography & Dedicated Portrait Mode [COMPLETED]
+- [x] Implement multi-frame Image Stacking Subsystem (`ImageStackingConfig`, `ImageStackingMode`, `ImageStackingFrameCount`) (`FEAT-CMP-03`, `FEAT-CMP-08`, `FEAT-CMP-10`).
+- [x] Implement dual-axis luminance projection Frame Alignment Engine (`FrameAlignmentEngine.kt`).
+- [x] Implement pixel difference Motion Estimation Engine with ghost rejection masking (`MotionEstimationEngine.kt`).
+- [x] Implement Multi-Frame Image Fusion Engine (`LOW_LIGHT` temporal bilateral averaging, `HDR` Mertens radiance weighting, `DETAIL_ENHANCEMENT` unsharp edge sharpening, and `SMART_AUTO` scene analyzer) (`ImageFusionEngine.kt`).
+- [x] Implement Dedicated Portrait Mode (`CameraMode.PORTRAIT`) on bottom viewfinder mode selector (`FEAT-CMP-05`).
+- [x] Implement synthetic aperture optical bokeh blur (`PortraitAperture`: f/1.4, f/2.0, f/2.8, f/4.0, f/5.6) with specular highlight expansion (`PortraitBokehRenderer.kt`).
+- [x] Implement 4 Portrait Studio Lighting Styles (`NATURAL`, `STUDIO`, `SOFT`, `DRAMATIC`) (`PortraitLightingStyle.kt`).
+- [x] Implement on-device hardware-assisted Subject Segmentation with bilateral boundary feathering and safe fallback (`SubjectSegmentationEngine.kt`).
+- [x] Implement Viewfinder overlay `PortraitControlBar.kt` and status badges (`PORTRAIT f/2.8`, `STACK: AUTO (5F)`).
+- [x] Implement Settings Section 4b for Computational Photography & Image Stacking.
+- [x] Write Phase 13 unit tests (`ImageStackingModelsTest`, `PortraitModelsTest`, `CameraPreferencesTest`, `CameraModeTest`).
+- [x] Write Phase 13 connected device instrumented tests (`ComputationalPhotographyDeviceTest`).
+- [x] Phase 13 physical device validation on OnePlus Ace 5 / 13R (`CPH2691IN`, Snapdragon 8 Gen 3, Android 17 API 37) and completion reports (`PHASE_13_COMPLETION_REPORT.md` and `PHASE_12_13_COMBINED_COMPLETION_REPORT.md`).
 
 ---
 

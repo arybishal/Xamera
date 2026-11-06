@@ -10,7 +10,8 @@ class CameraModeTest {
     @Test
     fun testCameraModeEntries() {
         val modes = CameraMode.values()
-        assertEquals(6, modes.size)
+        assertEquals(7, modes.size)
+        assertEquals("PORTRAIT", CameraMode.PORTRAIT.displayName)
         assertEquals("PHOTO", CameraMode.PHOTO.displayName)
         assertEquals("PRO", CameraMode.PRO.displayName)
         assertEquals("VIDEO", CameraMode.VIDEO.displayName)
@@ -21,6 +22,7 @@ class CameraModeTest {
 
     @Test
     fun testIsVideoModeProperty() {
+        assertFalse(CameraMode.PORTRAIT.isVideoMode)
         assertFalse(CameraMode.PHOTO.isVideoMode)
         assertFalse(CameraMode.PRO.isVideoMode)
         assertTrue(CameraMode.VIDEO.isVideoMode)

@@ -44,6 +44,7 @@ enum class PhotoTimer(val seconds: Int, val displayName: String) {
 }
 
 enum class CameraMode(val displayName: String) {
+    PORTRAIT("PORTRAIT"),
     PHOTO("PHOTO"),
     PRO("PRO"),
     VIDEO("VIDEO"),

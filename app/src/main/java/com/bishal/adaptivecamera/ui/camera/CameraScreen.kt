@@ -46,6 +46,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -71,6 +72,7 @@ import com.bishal.adaptivecamera.ui.camera.components.TopBarControls
 import com.bishal.adaptivecamera.ui.camera.components.ViewfinderFramingMask
 import com.bishal.adaptivecamera.ui.camera.components.VirtualHorizonOverlay
 import com.bishal.adaptivecamera.ui.camera.lut.LookControlPanel
+import com.bishal.adaptivecamera.ui.camera.portrait.PortraitControlBar
 import com.bishal.adaptivecamera.ui.camera.video.VideoControlBar
 import com.bishal.adaptivecamera.ui.camera.video.VideoQuickSettingsSheet
 import com.bishal.adaptivecamera.ui.camera.pro.FalseColorOverlay
@@ -181,6 +183,12 @@ fun CameraScreen(
                         onSetCaptureFormat = { viewModel.setCaptureFormat(it) },
                         onSetAebBracketCount = { viewModel.setAebBracketCount(it) },
                         onSetAebEvStep = { viewModel.setAebEvStep(it) }
+                    )
+                } else if (uiState.configuration.mode == CameraMode.PORTRAIT) {
+                    PortraitControlBar(
+                        portraitConfig = uiState.portraitConfig,
+                        onApertureChanged = { viewModel.updatePortraitAperture(it) },
+                        onLightingStyleChanged = { viewModel.updatePortraitLightingStyle(it) }
                     )
                 }
                 BottomCaptureControls(
@@ -395,6 +403,43 @@ fun CameraScreen(
                             .align(Alignment.TopCenter)
                             .padding(top = 12.dp)
                     )
+                }
+
+                // Computational Stacking & Portrait Status Badge
+                if (uiState.configuration.mode == CameraMode.PORTRAIT) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(top = 12.dp, start = 14.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color.Black.copy(alpha = 0.55f))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "PORTRAIT ${uiState.portraitConfig.aperture.label}",
+                            color = AccentAmber,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                } else if (uiState.configuration.mode == CameraMode.PHOTO && uiState.imageStackingConfig.isEnabled) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(top = 12.dp, start = 14.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color.Black.copy(alpha = 0.55f))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "STACK: ${uiState.imageStackingConfig.mode.label.uppercase()} (${uiState.imageStackingConfig.frameCount.count}F)",
+                            color = PrimaryCyan,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
                 }
 
                 // 7. Live Histogram View (Pro Mode)

@@ -2,6 +2,7 @@ package com.bishal.adaptivecamera.ui.camera
 
 import android.app.Application
 import android.content.Context
+import android.graphics.Bitmap
 import android.view.Surface
 import androidx.camera.view.PreviewView
 import androidx.lifecycle.AndroidViewModel
@@ -43,6 +44,14 @@ import com.bishal.adaptivecamera.graphics.pipeline.GpuPhotoProcessor
 import com.bishal.adaptivecamera.lut.model.LutDefinition
 import com.bishal.adaptivecamera.lut.repository.LutRepository
 import com.bishal.adaptivecamera.lut.repository.LutRepositoryImpl
+import com.bishal.adaptivecamera.photography.computational.ComputationalPhotographyCoordinator
+import com.bishal.adaptivecamera.photography.computational.ImageStackingConfig
+import com.bishal.adaptivecamera.photography.computational.ImageStackingFrameCount
+import com.bishal.adaptivecamera.photography.computational.ImageStackingMode
+import com.bishal.adaptivecamera.photography.portrait.PortraitAperture
+import com.bishal.adaptivecamera.photography.portrait.PortraitBokehRenderer
+import com.bishal.adaptivecamera.photography.portrait.PortraitConfig
+import com.bishal.adaptivecamera.photography.portrait.PortraitLightingStyle
 import com.bishal.adaptivecamera.photography.pro.KelvinConverter
 import com.bishal.adaptivecamera.photography.pro.ProAppliedState
 import com.bishal.adaptivecamera.photography.pro.ProConfiguration
@@ -61,6 +70,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class CameraUiState(
     val sessionState: CameraSessionState = CameraSessionState.CLOSED,
@@ -88,7 +98,9 @@ data class CameraUiState(
     val videoConfig: VideoConfig = VideoConfig(),
     val videoRecordingState: VideoRecordingState = VideoRecordingState(),
     val isVideoQuickSettingsVisible: Boolean = false,
-    val themeMode: AppThemeMode = AppThemeMode.DARK
+    val themeMode: AppThemeMode = AppThemeMode.DARK,
+    val portraitConfig: PortraitConfig = PortraitConfig(),
+    val imageStackingConfig: ImageStackingConfig = ImageStackingConfig()
 )
 
 class CameraViewModel @JvmOverloads constructor(
@@ -102,7 +114,8 @@ class CameraViewModel @JvmOverloads constructor(
     val hapticEngine: HapticEngine = HapticEngineImpl(application.applicationContext) { true },
     val virtualHorizonSensor: VirtualHorizonSensor = VirtualHorizonSensorImpl(application.applicationContext),
     private val lutRepository: LutRepository = LutRepositoryImpl(application.applicationContext),
-    private val gpuPhotoProcessor: GpuPhotoProcessor = GpuPhotoProcessor()
+    private val gpuPhotoProcessor: GpuPhotoProcessor = GpuPhotoProcessor(),
+    private val computationalCoordinator: ComputationalPhotographyCoordinator = ComputationalPhotographyCoordinator(application.applicationContext, mediaStoreManager)
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(CameraUiState())
@@ -295,7 +308,17 @@ class CameraViewModel @JvmOverloads constructor(
                             isWatermarkEnabled = prefs.isWatermarkEnabled,
                             isExifPrivacyEnabled = prefs.isExifPrivacyEnabled
                         ),
-                        themeMode = prefs.themeMode
+                        themeMode = prefs.themeMode,
+                        portraitConfig = current.portraitConfig.copy(
+                            aperture = prefs.portraitAperture,
+                            lightingStyle = prefs.portraitLightingStyle
+                        ),
+                        imageStackingConfig = current.imageStackingConfig.copy(
+                            isEnabled = prefs.imageStackingEnabled,
+                            mode = prefs.imageStackingMode,
+                            frameCount = prefs.imageStackingFrameCount,
+                            retainOriginalFrames = prefs.retainOriginalFrames
+                        )
                     )
                 }
                 cameraEngine.setAspectRatio(prefs.aspectRatio)
@@ -462,6 +485,32 @@ class CameraViewModel @JvmOverloads constructor(
     }
 
     private fun executePhotoCapture() {
+        val currentMode = _uiState.value.configuration.mode
+        val stackingConfig = _uiState.value.imageStackingConfig
+
+        if (currentMode == CameraMode.PORTRAIT) {
+            triggerFlashAnimation()
+            cameraEngine.capturePhoto(
+                onSuccess = { item ->
+                    processPortraitCapturedPhoto(item)
+                },
+                onError = { error ->
+                    _uiState.update {
+                        it.copy(
+                            toastMessage = "Portrait capture failed: ${error.message}",
+                            isScreenFlashActive = false
+                        )
+                    }
+                }
+            )
+            return
+        }
+
+        if (currentMode == CameraMode.PHOTO && stackingConfig.isEnabled) {
+            executeStackedPhotoCapture()
+            return
+        }
+
         triggerFlashAnimation()
         cameraEngine.capturePhoto(
             onSuccess = { item ->
@@ -476,6 +525,148 @@ class CameraViewModel @JvmOverloads constructor(
                 }
             }
         )
+    }
+
+    private fun processPortraitCapturedPhoto(item: MediaItem) {
+        val portraitConfig = _uiState.value.portraitConfig
+        val uri = item.uri
+        if (uri != null) {
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    val context = getApplication<Application>().applicationContext
+                    val inputStream = context.contentResolver.openInputStream(uri)
+                    val originalBitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+                    inputStream?.close()
+
+                    if (originalBitmap != null) {
+                        val renderedBitmap = PortraitBokehRenderer.renderPortrait(originalBitmap, portraitConfig)
+
+                        // Also apply GPU color look if active
+                        val gpuConfig = _uiState.value.gpuColorConfig
+                        val finalBitmap = if (gpuConfig.lutEnabled || gpuConfig.grainEnabled || gpuConfig.halationEnabled) {
+                            val activeLut = if (gpuConfig.lutEnabled && gpuConfig.selectedLutId != null) {
+                                lutRepository.loadLutDefinition(gpuConfig.selectedLutId)
+                            } else null
+                            gpuPhotoProcessor.processPhoto(renderedBitmap, gpuConfig, activeLut)
+                        } else {
+                            renderedBitmap
+                        }
+
+                        val outputStream = context.contentResolver.openOutputStream(uri, "wt")
+                        if (outputStream != null) {
+                            finalBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, outputStream)
+                            outputStream.flush()
+                            outputStream.close()
+                        }
+
+                        if (finalBitmap !== originalBitmap) finalBitmap.recycle()
+                        if (renderedBitmap !== originalBitmap && renderedBitmap !== finalBitmap) renderedBitmap.recycle()
+                        originalBitmap.recycle()
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("CameraViewModel", "Error rendering portrait bokeh: ${e.message}", e)
+                } finally {
+                    withContext(Dispatchers.Main) {
+                        _uiState.update {
+                            it.copy(
+                                latestMedia = item,
+                                toastMessage = "Portrait saved (${portraitConfig.aperture.label} · ${portraitConfig.lightingStyle.label})",
+                                isScreenFlashActive = false
+                            )
+                        }
+                    }
+                }
+            }
+        } else {
+            _uiState.update {
+                it.copy(
+                    latestMedia = item,
+                    toastMessage = "Portrait photo saved!",
+                    isScreenFlashActive = false
+                )
+            }
+        }
+    }
+
+    private fun executeStackedPhotoCapture() {
+        triggerFlashAnimation()
+        val config = _uiState.value.imageStackingConfig
+        val targetCount = config.frameCount.count
+        val capturedItems = mutableListOf<MediaItem>()
+        val capturedBitmaps = mutableListOf<Bitmap>()
+
+        fun captureNext(index: Int) {
+            cameraEngine.capturePhoto(
+                onSuccess = { item ->
+                    capturedItems.add(item)
+                    val uri = item.uri
+                    if (uri != null) {
+                        try {
+                            val ctx = getApplication<Application>().applicationContext
+                            val inputStream = ctx.contentResolver.openInputStream(uri)
+                            val bmp = android.graphics.BitmapFactory.decodeStream(inputStream)
+                            inputStream?.close()
+                            if (bmp != null) capturedBitmaps.add(bmp)
+                        } catch (e: Exception) {
+                            android.util.Log.e("CameraViewModel", "Failed to decode frame for stacking", e)
+                        }
+                    }
+
+                    if (capturedBitmaps.size >= targetCount || index >= targetCount) {
+                        viewModelScope.launch(Dispatchers.Default) {
+                            val stackedItem = computationalCoordinator.processAndSaveStackedPhoto(
+                                frames = capturedBitmaps,
+                                config = config
+                            )
+                            if (!config.retainOriginalFrames) {
+                                for (ci in capturedItems) {
+                                    mediaStoreManager.deleteMedia(ci)
+                                }
+                            }
+                            withContext(Dispatchers.Main) {
+                                _uiState.update {
+                                    it.copy(
+                                        latestMedia = stackedItem ?: capturedItems.firstOrNull(),
+                                        toastMessage = "Stacked Photo saved (${config.mode.label} · ${capturedBitmaps.size}f)",
+                                        isScreenFlashActive = false
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        captureNext(index + 1)
+                    }
+                },
+                onError = { error: Throwable ->
+                    if (capturedBitmaps.isNotEmpty()) {
+                        viewModelScope.launch(Dispatchers.Default) {
+                            val stackedItem = computationalCoordinator.processAndSaveStackedPhoto(
+                                frames = capturedBitmaps,
+                                config = config
+                            )
+                            withContext(Dispatchers.Main) {
+                                _uiState.update {
+                                    it.copy(
+                                        latestMedia = stackedItem ?: capturedItems.firstOrNull(),
+                                        toastMessage = "Stacked Photo saved (${capturedBitmaps.size}f)",
+                                        isScreenFlashActive = false
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        _uiState.update {
+                            it.copy(
+                                toastMessage = "Stacking capture failed: ${error.message}",
+                                isScreenFlashActive = false
+                            )
+                        }
+                    }
+                }
+            )
+        }
+
+        captureNext(1)
     }
 
     private fun executeProCapture() {
@@ -1007,6 +1198,54 @@ class CameraViewModel @JvmOverloads constructor(
         } else if (state.status == VideoRecordingStatus.PAUSED) {
             cameraEngine.resumeVideoRecording()
             _uiState.update { it.copy(videoRecordingState = it.videoRecordingState.copy(status = VideoRecordingStatus.RECORDING)) }
+            hapticEngine.performClick()
+        }
+    }
+
+    fun updatePortraitAperture(aperture: PortraitAperture) {
+        _uiState.update { it.copy(portraitConfig = it.portraitConfig.copy(aperture = aperture)) }
+        viewModelScope.launch {
+            preferencesRepository.updatePortraitAperture(aperture)
+            hapticEngine.performTick()
+        }
+    }
+
+    fun updatePortraitLightingStyle(style: PortraitLightingStyle) {
+        _uiState.update { it.copy(portraitConfig = it.portraitConfig.copy(lightingStyle = style)) }
+        viewModelScope.launch {
+            preferencesRepository.updatePortraitLightingStyle(style)
+            hapticEngine.performTick()
+        }
+    }
+
+    fun updateImageStackingEnabled(enabled: Boolean) {
+        _uiState.update { it.copy(imageStackingConfig = it.imageStackingConfig.copy(isEnabled = enabled)) }
+        viewModelScope.launch {
+            preferencesRepository.updateImageStackingEnabled(enabled)
+            hapticEngine.performClick()
+        }
+    }
+
+    fun updateImageStackingMode(mode: ImageStackingMode) {
+        _uiState.update { it.copy(imageStackingConfig = it.imageStackingConfig.copy(mode = mode)) }
+        viewModelScope.launch {
+            preferencesRepository.updateImageStackingMode(mode)
+            hapticEngine.performTick()
+        }
+    }
+
+    fun updateImageStackingFrameCount(count: ImageStackingFrameCount) {
+        _uiState.update { it.copy(imageStackingConfig = it.imageStackingConfig.copy(frameCount = count)) }
+        viewModelScope.launch {
+            preferencesRepository.updateImageStackingFrameCount(count)
+            hapticEngine.performTick()
+        }
+    }
+
+    fun updateRetainOriginalFrames(retain: Boolean) {
+        _uiState.update { it.copy(imageStackingConfig = it.imageStackingConfig.copy(retainOriginalFrames = retain)) }
+        viewModelScope.launch {
+            preferencesRepository.updateRetainOriginalFrames(retain)
             hapticEngine.performClick()
         }
     }

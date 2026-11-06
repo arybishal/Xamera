@@ -12,6 +12,10 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.bishal.adaptivecamera.camera.config.AspectRatioConfig
 import com.bishal.adaptivecamera.camera.config.CompositionGridType
+import com.bishal.adaptivecamera.photography.computational.ImageStackingFrameCount
+import com.bishal.adaptivecamera.photography.computational.ImageStackingMode
+import com.bishal.adaptivecamera.photography.portrait.PortraitAperture
+import com.bishal.adaptivecamera.photography.portrait.PortraitLightingStyle
 import com.bishal.adaptivecamera.ui.theme.AppThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -42,6 +46,12 @@ interface CameraPreferencesRepository {
     suspend fun updateStripGpsLocation(enabled: Boolean)
     suspend fun updateStripDeviceModel(enabled: Boolean)
     suspend fun updateThemeMode(themeMode: AppThemeMode)
+    suspend fun updateImageStackingEnabled(enabled: Boolean)
+    suspend fun updateImageStackingMode(mode: ImageStackingMode)
+    suspend fun updateImageStackingFrameCount(count: ImageStackingFrameCount)
+    suspend fun updateRetainOriginalFrames(retain: Boolean)
+    suspend fun updatePortraitAperture(aperture: PortraitAperture)
+    suspend fun updatePortraitLightingStyle(style: PortraitLightingStyle)
 }
 
 class CameraPreferencesRepositoryImpl(
@@ -68,6 +78,12 @@ class CameraPreferencesRepositoryImpl(
         val KEY_STRIP_GPS_LOCATION = booleanPreferencesKey("strip_gps_location")
         val KEY_STRIP_DEVICE_MODEL = booleanPreferencesKey("strip_device_model")
         val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
+        val KEY_IMAGE_STACKING_ENABLED = booleanPreferencesKey("image_stacking_enabled")
+        val KEY_IMAGE_STACKING_MODE = stringPreferencesKey("image_stacking_mode")
+        val KEY_IMAGE_STACKING_FRAME_COUNT = stringPreferencesKey("image_stacking_frame_count")
+        val KEY_RETAIN_ORIGINAL_FRAMES = booleanPreferencesKey("retain_original_frames")
+        val KEY_PORTRAIT_APERTURE = stringPreferencesKey("portrait_aperture")
+        val KEY_PORTRAIT_LIGHTING_STYLE = stringPreferencesKey("portrait_lighting_style")
     }
 
     override val preferencesFlow: Flow<CameraPreferences> = context.dataStore.data
@@ -117,6 +133,37 @@ class CameraPreferencesRepositoryImpl(
                 AppThemeMode.DARK
             }
 
+            val imageStackingEnabled = preferences[PreferencesKeys.KEY_IMAGE_STACKING_ENABLED] ?: false
+            val imageStackingModeName = preferences[PreferencesKeys.KEY_IMAGE_STACKING_MODE] ?: ImageStackingMode.SMART_AUTO.name
+            val imageStackingMode = try {
+                ImageStackingMode.valueOf(imageStackingModeName)
+            } catch (_: Exception) {
+                ImageStackingMode.SMART_AUTO
+            }
+
+            val imageStackingFrameCountName = preferences[PreferencesKeys.KEY_IMAGE_STACKING_FRAME_COUNT] ?: ImageStackingFrameCount.AUTO.name
+            val imageStackingFrameCount = try {
+                ImageStackingFrameCount.valueOf(imageStackingFrameCountName)
+            } catch (_: Exception) {
+                ImageStackingFrameCount.AUTO
+            }
+
+            val retainOriginalFrames = preferences[PreferencesKeys.KEY_RETAIN_ORIGINAL_FRAMES] ?: false
+
+            val portraitApertureName = preferences[PreferencesKeys.KEY_PORTRAIT_APERTURE] ?: PortraitAperture.F2_8.name
+            val portraitAperture = try {
+                PortraitAperture.valueOf(portraitApertureName)
+            } catch (_: Exception) {
+                PortraitAperture.F2_8
+            }
+
+            val portraitLightingStyleName = preferences[PreferencesKeys.KEY_PORTRAIT_LIGHTING_STYLE] ?: PortraitLightingStyle.NATURAL.name
+            val portraitLightingStyle = try {
+                PortraitLightingStyle.valueOf(portraitLightingStyleName)
+            } catch (_: Exception) {
+                PortraitLightingStyle.NATURAL
+            }
+
             CameraPreferences(
                 gridType = gridType,
                 isVirtualHorizonEnabled = isVirtualHorizonEnabled,
@@ -136,7 +183,13 @@ class CameraPreferencesRepositoryImpl(
                 isExifPrivacyEnabled = isExifPrivacyEnabled,
                 stripGpsLocation = stripGpsLocation,
                 stripDeviceModel = stripDeviceModel,
-                themeMode = themeMode
+                themeMode = themeMode,
+                imageStackingEnabled = imageStackingEnabled,
+                imageStackingMode = imageStackingMode,
+                imageStackingFrameCount = imageStackingFrameCount,
+                retainOriginalFrames = retainOriginalFrames,
+                portraitAperture = portraitAperture,
+                portraitLightingStyle = portraitLightingStyle
             )
         }
 
@@ -253,6 +306,42 @@ class CameraPreferencesRepositoryImpl(
     override suspend fun updateThemeMode(themeMode: AppThemeMode) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.KEY_THEME_MODE] = themeMode.name
+        }
+    }
+
+    override suspend fun updateImageStackingEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.KEY_IMAGE_STACKING_ENABLED] = enabled
+        }
+    }
+
+    override suspend fun updateImageStackingMode(mode: ImageStackingMode) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.KEY_IMAGE_STACKING_MODE] = mode.name
+        }
+    }
+
+    override suspend fun updateImageStackingFrameCount(count: ImageStackingFrameCount) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.KEY_IMAGE_STACKING_FRAME_COUNT] = count.name
+        }
+    }
+
+    override suspend fun updateRetainOriginalFrames(retain: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.KEY_RETAIN_ORIGINAL_FRAMES] = retain
+        }
+    }
+
+    override suspend fun updatePortraitAperture(aperture: PortraitAperture) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.KEY_PORTRAIT_APERTURE] = aperture.name
+        }
+    }
+
+    override suspend fun updatePortraitLightingStyle(style: PortraitLightingStyle) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.KEY_PORTRAIT_LIGHTING_STYLE] = style.name
         }
     }
 }

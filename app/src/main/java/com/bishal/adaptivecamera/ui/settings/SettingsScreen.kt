@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
@@ -100,6 +101,10 @@ import androidx.compose.material.icons.filled.TouchApp
 import com.bishal.adaptivecamera.ui.theme.TextPrimary
 import com.bishal.adaptivecamera.ui.theme.TextSecondary
 import com.bishal.adaptivecamera.photography.capture.CaptureFormat
+import com.bishal.adaptivecamera.photography.computational.ImageStackingFrameCount
+import com.bishal.adaptivecamera.photography.computational.ImageStackingMode
+import com.bishal.adaptivecamera.photography.portrait.PortraitAperture
+import com.bishal.adaptivecamera.photography.portrait.PortraitLightingStyle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -195,7 +200,7 @@ fun SettingsScreen(
                         SettingRow(
                             icon = Icons.Default.Info,
                             title = "Application Version",
-                            subtitle = "v0.12.0 · Phase 11 Real-Time GPU Video & Modes"
+                            subtitle = "v0.14.0 · Phase 13 Computational Photography & Portrait Mode"
                         )
                     }
                 }
@@ -737,6 +742,204 @@ fun SettingsScreen(
                                     tint = PrimaryCyan,
                                     modifier = Modifier.size(18.dp)
                                 )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Section 4b: Computational Photography & Image Stacking (Phase 13)
+            item {
+                SettingsSectionHeader("Computational Photography & Stacking", Icons.Default.AutoAwesome)
+            }
+
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp))
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        // 1. Image Stacking Toggle
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Image Stacking & Fusion",
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    "Multi-frame alignment, ghost rejection & temporal fusion",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 11.sp
+                                )
+                            }
+                            Switch(
+                                checked = camUiState?.imageStackingConfig?.isEnabled ?: false,
+                                onCheckedChange = { cameraViewModel?.updateImageStackingEnabled(it) },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                    checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                )
+                            )
+                        }
+
+                        if (camUiState?.imageStackingConfig?.isEnabled == true) {
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            // 2. Stacking Mode
+                            Text(
+                                "Stacking Algorithm Mode",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "Select fusion objective: noise reduction, dynamic range, or edge detail",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 11.sp,
+                                modifier = Modifier.padding(top = 2.dp, bottom = 8.dp)
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                val currentMode = camUiState?.imageStackingConfig?.mode ?: ImageStackingMode.SMART_AUTO
+                                ImageStackingMode.values().forEach { mode ->
+                                    val isSelected = currentMode == mode
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(if (isSelected) PrimaryCyan else MaterialTheme.colorScheme.surfaceVariant)
+                                            .border(1.dp, if (isSelected) PrimaryCyan else MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                                            .clickable { cameraViewModel?.updateImageStackingMode(mode) }
+                                            .padding(vertical = 8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = mode.label,
+                                            color = if (isSelected) Color.Black else MaterialTheme.colorScheme.onSurface,
+                                            fontSize = 10.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // 3. Frame Count
+                            Text(
+                                "Burst Frame Count",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                val currentCount = camUiState?.imageStackingConfig?.frameCount ?: ImageStackingFrameCount.AUTO
+                                ImageStackingFrameCount.values().forEach { count ->
+                                    val isSelected = currentCount == count
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(if (isSelected) PrimaryCyan else MaterialTheme.colorScheme.surfaceVariant)
+                                            .border(1.dp, if (isSelected) PrimaryCyan else MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                                            .clickable { cameraViewModel?.updateImageStackingFrameCount(count) }
+                                            .padding(vertical = 8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = count.label,
+                                            color = if (isSelected) Color.Black else MaterialTheme.colorScheme.onSurface,
+                                            fontSize = 11.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // 4. Retain Original Frames
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        "Retain Original Frames",
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        "Save all intermediate unaligned burst captures into the gallery",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 11.sp
+                                    )
+                                }
+                                Switch(
+                                    checked = camUiState?.imageStackingConfig?.retainOriginalFrames ?: false,
+                                    onCheckedChange = { cameraViewModel?.updateRetainOriginalFrames(it) },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                        checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                    )
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // 5. Default Portrait Aperture
+                        Text(
+                            "Default Portrait Aperture",
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            val activeAperture = camUiState?.portraitConfig?.aperture ?: PortraitAperture.F2_8
+                            PortraitAperture.values().forEach { ap ->
+                                val isSelected = activeAperture == ap
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) AccentAmber else MaterialTheme.colorScheme.surfaceVariant)
+                                        .border(1.dp, if (isSelected) AccentAmber else MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                                        .clickable { cameraViewModel?.updatePortraitAperture(ap) }
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = ap.label,
+                                        color = if (isSelected) Color.Black else MaterialTheme.colorScheme.onSurface,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
                     }

@@ -2,6 +2,10 @@ package com.bishal.adaptivecamera.core.settings
 
 import com.bishal.adaptivecamera.camera.config.AspectRatioConfig
 import com.bishal.adaptivecamera.camera.config.CompositionGridType
+import com.bishal.adaptivecamera.photography.computational.ImageStackingFrameCount
+import com.bishal.adaptivecamera.photography.computational.ImageStackingMode
+import com.bishal.adaptivecamera.photography.portrait.PortraitAperture
+import com.bishal.adaptivecamera.photography.portrait.PortraitLightingStyle
 import com.bishal.adaptivecamera.ui.theme.AppThemeMode
 
 /**
@@ -26,5 +30,11 @@ data class CameraPreferences(
     val isExifPrivacyEnabled: Boolean = false,
     val stripGpsLocation: Boolean = true,
     val stripDeviceModel: Boolean = true,
-    val themeMode: AppThemeMode = AppThemeMode.DARK
+    val themeMode: AppThemeMode = AppThemeMode.DARK,
+    val imageStackingEnabled: Boolean = false,
+    val imageStackingMode: ImageStackingMode = ImageStackingMode.SMART_AUTO,
+    val imageStackingFrameCount: ImageStackingFrameCount = ImageStackingFrameCount.AUTO,
+    val retainOriginalFrames: Boolean = false,
+    val portraitAperture: PortraitAperture = PortraitAperture.F2_8,
+    val portraitLightingStyle: PortraitLightingStyle = PortraitLightingStyle.NATURAL
 )

@@ -5,7 +5,7 @@
 **Workspace:** `D:\Webapp\xamera`  
 **Repository:** https://github.com/arybishal/Xamera  
 **Developer:** Bishal Aryal  
-**Version:** 0.13.0  
+**Version:** 0.14.0  
 **Date:** 2026-11-06  
 
 > [!NOTE]
@@ -60,9 +60,10 @@ com.bishal.adaptivecamera
 │   ├── auto/                # Smart Auto orchestrator & suggestion chip
 │   ├── pro/                 # Camera2ManualEngine, ISO/Shutter/Focus/Kelvin controllers
 │   ├── raw/                 # RAW_SENSOR capture, DngCaptureManager, DngCreator
-│   ├── hdr/                 # Multi-frame HDR fusion and de-ghosting
-│   ├── night/               # Handheld night capture & astrophotography engines
-│   └── processing/          # Watermarking, EXIF manager, bokeh renderer, focus stacking
+│   ├── computational/       # Multi-frame Image Stacking, FrameAlignmentEngine, MotionEstimationEngine, ImageFusionEngine
+│   ├── portrait/            # Dedicated Portrait mode, PortraitBokehRenderer, SubjectSegmentationEngine, PortraitControlBar
+│   ├── watermark/           # PhotoWatermarkCompositor, text & PNG logo overlay
+│   └── capture/             # ZSL ring buffer, AEB exposure coordinator
 │
 ├── video/
 │   ├── recording/           # Pro video engine, GpuVideoRecorder, and recording coordinator
