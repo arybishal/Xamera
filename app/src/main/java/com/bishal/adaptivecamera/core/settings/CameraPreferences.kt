@@ -2,6 +2,7 @@ package com.bishal.adaptivecamera.core.settings
 
 import com.bishal.adaptivecamera.camera.config.AspectRatioConfig
 import com.bishal.adaptivecamera.camera.config.CompositionGridType
+import com.bishal.adaptivecamera.ui.theme.AppThemeMode
 
 /**
  * Persisted camera user preferences.
@@ -24,5 +25,6 @@ data class CameraPreferences(
     val watermarkText: String = "Xamera Professional",
     val isExifPrivacyEnabled: Boolean = false,
     val stripGpsLocation: Boolean = true,
-    val stripDeviceModel: Boolean = true
+    val stripDeviceModel: Boolean = true,
+    val themeMode: AppThemeMode = AppThemeMode.DARK
 )

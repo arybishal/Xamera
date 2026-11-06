@@ -2,6 +2,7 @@ package com.bishal.adaptivecamera.core.settings
 
 import com.bishal.adaptivecamera.camera.config.AspectRatioConfig
 import com.bishal.adaptivecamera.camera.config.CompositionGridType
+import com.bishal.adaptivecamera.ui.theme.AppThemeMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -29,6 +30,7 @@ class CameraPreferencesTest {
         assertFalse(prefs.isExifPrivacyEnabled)
         assertTrue(prefs.stripGpsLocation)
         assertTrue(prefs.stripDeviceModel)
+        assertEquals(AppThemeMode.DARK, prefs.themeMode)
     }
 
     @Test
@@ -41,7 +43,8 @@ class CameraPreferencesTest {
             isFloatingShutterEnabled = true,
             floatingShutterX = 0.5f,
             floatingShutterY = 0.5f,
-            isFrontScreenFlashEnabled = false
+            isFrontScreenFlashEnabled = false,
+            themeMode = AppThemeMode.LIGHT
         )
 
         assertEquals(CompositionGridType.GOLDEN_RATIO, prefs.gridType)
@@ -52,5 +55,6 @@ class CameraPreferencesTest {
         assertEquals(0.5f, prefs.floatingShutterX, 0.001f)
         assertEquals(0.5f, prefs.floatingShutterY, 0.001f)
         assertFalse(prefs.isFrontScreenFlashEnabled)
+        assertEquals(AppThemeMode.LIGHT, prefs.themeMode)
     }
 }

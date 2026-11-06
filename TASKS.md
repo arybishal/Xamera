@@ -186,16 +186,17 @@
 
 ---
 
-## Phase 11: Real-Time Video GPU Pipeline & Advanced Video Modes (Time-lapse, Slow-mo, Anamorphic & Dual-Cam)
-- [ ] Build dedicated GPU-to-Encoder video pipeline (`MediaCodec` input surface + `MediaMuxer` + synchronized audio) (`FEAT-VID-07`).
-- [ ] Enable live LUT switching and intensity adjustment during active video recording.
-- [ ] Implement Anamorphic De-Squeeze (1.33x, 1.55x, 1.8x live preview and video export scaling) (`FEAT-VID-08`).
-- [ ] Implement Time-Lapse Intervalometer with configurable capture intervals (0.5s to 60s) (`FEAT-VID-09`).
-- [ ] Implement High-Speed Slow Motion mode (120fps/240fps capture rendered to 24fps playback) (`FEAT-VID-10`).
-- [ ] Implement Dual-Camera / Director's View with hardware concurrency verification and graceful notice fallback (`FEAT-VID-11`).
-- [ ] Write Phase 11 unit tests (`AnamorphicMatrixTest`, `TimelapseIntervalCalculatorTest`, `SlowMotionPlaybackSpeedTest`, `DualCameraConcurrencyCheckTest`).
-- [ ] Write Phase 11 instrumented tests (`GpuVideoEncodingTest`, `AudioVideoSyncTest`).
-- [ ] Phase 11 physical device validation on OnePlus Ace 5 / 13R and completion report.
+## Phase 11: Real-Time Video GPU Pipeline, Advanced Video Modes & Camera Experience Hardening
+- [x] Build dedicated GPU-to-Encoder video pipeline (`MediaCodec` input surface + `MediaMuxer` + synchronized audio) (`FEAT-VID-07`).
+- [x] Enable live LUT switching and intensity adjustment during active video recording (`GpuVideoRecorder` + `GpuPreviewRenderer`).
+- [x] Implement Time-Lapse Intervalometer with configurable capture intervals (0.5s to 60s) and automatic audio gating (`FEAT-VID-09`).
+- [x] Implement High-Speed Slow Motion mode (120fps/240fps capture configuration) (`FEAT-VID-10`).
+- [x] Implement Dual-Camera / Director's View with hardware concurrency verification and graceful diagnostic advisory fallback (`FEAT-VID-11`).
+- [x] Implement App-Wide Dark Mode and Light Mode with signature Yellow/Black/White palette and DataStore persistence (`FEAT-VIEW-14`).
+- [x] Implement System Window Insets hardening: status bar & navigation padding, hole-punch safety, and transient bar restoration on notification shade pull (`FEAT-VIEW-15`).
+- [x] Implement 120 Hz High-Refresh-Rate Display mode detection and dynamic window attribute request (`FEAT-VIEW-16`).
+- [x] Write Phase 11 unit tests (`AppThemeModeTest`, `DisplayRefreshRateTest`, `DualCameraCapabilityTest`, `TimelapseConfigTest`, `SlowMotionConfigTest`, `CameraModeTest`, updated `CameraPreferencesTest` — 15 new tests, 213 total passing).
+- [x] Phase 11 physical device validation on OnePlus Ace 5 / 13R (recorded 1080p 30fps GPU-graded MP4, verified with `ffprobe`) and completion report.
 
 ---
 

@@ -5,7 +5,7 @@
 **Workspace:** `D:\Webapp\xamera`  
 **Repository:** https://github.com/arybishal/Xamera  
 **Developer:** Bishal Aryal  
-**Version:** 0.11.0  
+**Version:** 0.12.0  
 **Date:** 2026-11-06  
 
 ---
@@ -93,6 +93,30 @@
 - **Symptom:** In modern Android releases (Android 14–17 / ColorOS), attempting to enable audio recording without explicit runtime user consent or with audio permission restricted by OS policies throws `java.lang.SecurityException` or crashes the recording pipeline.
 - **Root Cause:** Android requires runtime `RECORD_AUDIO` permission for video recording with sound. In unrooted shells, `pm grant` is restricted by platform security.
 - **Fix:** Architected `VideoRecordingEngine` and `CameraXEngine` with dual permission checking (`ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED`). When audio permission is granted and audio recording is enabled by the user, `pendingRecording.withAudioEnabled()` is configured. If ungranted or disabled, the video recording engine seamlessly falls back to video-only recording without crashing or dropping frames, while the UI displays the audio badge status accordingly. Verified on OnePlus Ace 5 / 13R running Android 17 API 37.
+
+### Issue 20: GPU-to-Encoder Direct Surface EGL Presentation Timestamps & Render Thread Synchronization
+- **Status:** **RESOLVED** (Phase 11)
+- **Symptom:** When rendering camera preview frames directly to a `MediaCodec` input surface (`WindowSurface`) for real-time GPU video recording, the hardware encoder could produce stuttering output, desynchronized audio, or invalid video durations if hardware timestamps were not set or defaulted to zero.
+- **Root Cause:** Android's hardware `MediaCodec` surface encoder (`COLOR_FormatSurface`) requires explicit monotonically increasing presentation timestamps on every submitted frame via `EGLExt.eglPresentationTimeANDROID`. Without exact hardware timestamps, the encoder drops frames or assigns wall-clock timestamps with jitter.
+- **Fix:** In `GpuPreviewRenderer.drawFrame()`, whenever an encoder surface is attached, the renderer calls `encoderSurface.setPresentationTime(camST.timestamp)` using the raw nanosecond timestamp from `SurfaceTexture.timestamp` before calling `encoderSurface.swapBuffers()`. For Time-Lapse modes, timestamps are synthesized at target playback frame intervals ($33{,}333{,}333\text{ ns}$ for 30fps). Verified via `ffprobe` on an 8.4-second 1080p recording (`VID_20261106_210836.mp4`), showing a stable 30.01 fps frame rate and zero frame drops.
+
+### Issue 21: System Window Insets Overlap with Viewfinder Controls and Punch-Hole Camera Cutout
+- **Status:** **RESOLVED** (Phase 11)
+- **Symptom:** Top bar controls (flash, timer, look palette, aspect ratio) and bottom mode selectors clipped into Android status bars, gesture navigation bars, or the 140px camera hole-punch cutout, particularly after dismissing notification shades.
+- **Root Cause:** Edge-to-edge window configuration (`enableEdgeToEdge()`) removes default system window insets without providing safe margins unless explicitly consumed via Compose insets or window focus listeners.
+- **Fix:** Applied `Modifier.statusBarsPadding()` to `TopBarControls` and `Modifier.navigationBarsPadding()` to `BottomCaptureControls`. In `MainActivity`, overridden `onWindowFocusChanged(hasFocus)` to re-invoke `WindowInsetsControllerCompat.hide(WindowInsetsCompat.Type.statusBars())` with `BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE` whenever window focus is regained after dismissing the notification shade.
+
+### Issue 22: High-Refresh-Rate Display (120 Hz) Dynamic Negotiation
+- **Status:** **RESOLVED** (Phase 11)
+- **Symptom:** Modern flagship displays (such as OnePlus Ace 5 / 13R with 120Hz LTPO panels) default to 60Hz or adaptive downclocking in camera viewfinder applications unless high refresh rate modes are explicitly declared.
+- **Root Cause:** The Android display manager conserves battery during camera preview by downclocking to the sensor preview frame rate (30fps or 60fps) unless the window attributes declare a preferred display mode with a high refresh rate.
+- **Fix:** Implemented `DisplayRefreshRateManager` which inspects `Display.supportedModes`, locates the mode with the highest refresh rate (120Hz, mode ID 1 on 1264x2780 panel), and applies `window.attributes.preferredDisplayModeId` and `window.attributes.preferredRefreshRate = 120f` during `onCreate`, `onResume`, and window focus restoration.
+
+### Issue 23: Concurrent Dual-Camera Hardware ISP Concurrency Limitation
+- **Status:** **RESOLVED** via Honest Diagnostic Gating (Phase 11)
+- **Symptom:** Attempting simultaneous front and rear video recording (`CameraMode.DUAL`) on Qualcomm Snapdragon 8 Gen 3 (`CPH2691IN` / `OP5D3BL1`) crashes or fails to open sessions.
+- **Root Cause:** Android Camera2 `CameraManager.getConcurrentCameraIds()` returns an empty set on this platform because the OEM vendor HAL restricts ISP pipeline concurrency to a single active stream.
+- **Fix:** Created `DualCameraCapabilityDetector` to query `concurrentCameraIds`. When unsupported, `CameraViewModel` prevents invalid camera session creation, displays an informative toast, and logs an explainable hardware diagnostic message. Verified on OnePlus Ace 5 / 13R.
 
 ---
 

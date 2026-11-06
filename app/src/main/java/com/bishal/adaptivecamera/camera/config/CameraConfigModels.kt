@@ -46,7 +46,13 @@ enum class PhotoTimer(val seconds: Int, val displayName: String) {
 enum class CameraMode(val displayName: String) {
     PHOTO("PHOTO"),
     PRO("PRO"),
-    VIDEO("VIDEO")
+    VIDEO("VIDEO"),
+    TIME_LAPSE("TIME-LAPSE"),
+    SLOW_MO("SLOW-MO"),
+    DUAL("DUAL");
+
+    val isVideoMode: Boolean
+        get() = this == VIDEO || this == TIME_LAPSE || this == SLOW_MO || this == DUAL
 }
 
 data class CameraConfiguration(

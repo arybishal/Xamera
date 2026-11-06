@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,8 +14,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -60,9 +64,10 @@ fun BottomCaptureControls(
 
     Column(
         modifier = modifier
+            .navigationBarsPadding()
             .fillMaxWidth()
             .background(DarkSurface.copy(alpha = 0.85f))
-            .padding(bottom = 24.dp, top = 10.dp),
+            .padding(bottom = 12.dp, top = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Recording duration indicator
@@ -95,28 +100,25 @@ fun BottomCaptureControls(
             }
             Spacer(modifier = Modifier.height(10.dp))
         } else {
-            // Mode Selector: PHOTO | PRO | VIDEO
+            // Mode Selector: PHOTO | PRO | VIDEO | TIME-LAPSE | SLOW-MO | DUAL
             Row(
-                horizontalArrangement = Arrangement.spacedBy(28.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                ModeItem(
-                    label = "PHOTO",
-                    isSelected = mode == CameraMode.PHOTO,
-                    onClick = { onModeChanged(CameraMode.PHOTO) }
-                )
-                ModeItem(
-                    label = "PRO",
-                    isSelected = mode == CameraMode.PRO,
-                    onClick = { onModeChanged(CameraMode.PRO) }
-                )
-                ModeItem(
-                    label = "VIDEO",
-                    isSelected = mode == CameraMode.VIDEO,
-                    onClick = { onModeChanged(CameraMode.VIDEO) }
-                )
+                Spacer(modifier = Modifier.width(20.dp))
+                CameraMode.values().forEach { m ->
+                    ModeItem(
+                        label = m.displayName,
+                        isSelected = mode == m,
+                        onClick = { onModeChanged(m) }
+                    )
+                    Spacer(modifier = Modifier.width(20.dp))
+                }
             }
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
         }
 
         // Primary Buttons Row: Gallery Thumbnail | Shutter Button | Camera Flip
@@ -214,7 +216,7 @@ private fun ShutterButton(
     onClick: () -> Unit
 ) {
     val coreSize by animateDpAsState(
-        targetValue = if (isRecording) 32.dp else if (mode == CameraMode.VIDEO) 54.dp else 58.dp,
+        targetValue = if (isRecording) 32.dp else if (mode.isVideoMode) 54.dp else 58.dp,
         label = "coreSize"
     )
     val cornerRadius by animateDpAsState(
@@ -230,7 +232,7 @@ private fun ShutterButton(
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        val coreColor = if (mode == CameraMode.VIDEO || isRecording) ErrorRed else Color.White
+        val coreColor = if (mode.isVideoMode || isRecording) ErrorRed else Color.White
 
         Box(
             modifier = Modifier

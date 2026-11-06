@@ -373,7 +373,7 @@ fun CameraScreen(
                             .align(Alignment.TopCenter)
                             .padding(top = 10.dp)
                     )
-                } else if (uiState.configuration.mode == CameraMode.VIDEO) {
+                } else if (uiState.configuration.mode.isVideoMode) {
                     VideoControlBar(
                         videoConfig = uiState.videoConfig,
                         recordingState = uiState.videoRecordingState,

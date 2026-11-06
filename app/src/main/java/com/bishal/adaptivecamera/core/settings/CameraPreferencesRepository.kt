@@ -12,6 +12,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.bishal.adaptivecamera.camera.config.AspectRatioConfig
 import com.bishal.adaptivecamera.camera.config.CompositionGridType
+import com.bishal.adaptivecamera.ui.theme.AppThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -40,6 +41,7 @@ interface CameraPreferencesRepository {
     suspend fun updateExifPrivacyEnabled(enabled: Boolean)
     suspend fun updateStripGpsLocation(enabled: Boolean)
     suspend fun updateStripDeviceModel(enabled: Boolean)
+    suspend fun updateThemeMode(themeMode: AppThemeMode)
 }
 
 class CameraPreferencesRepositoryImpl(
@@ -65,6 +67,7 @@ class CameraPreferencesRepositoryImpl(
         val KEY_EXIF_PRIVACY_ENABLED = booleanPreferencesKey("exif_privacy_enabled")
         val KEY_STRIP_GPS_LOCATION = booleanPreferencesKey("strip_gps_location")
         val KEY_STRIP_DEVICE_MODEL = booleanPreferencesKey("strip_device_model")
+        val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
     }
 
     override val preferencesFlow: Flow<CameraPreferences> = context.dataStore.data
@@ -107,6 +110,12 @@ class CameraPreferencesRepositoryImpl(
             val isExifPrivacyEnabled = preferences[PreferencesKeys.KEY_EXIF_PRIVACY_ENABLED] ?: false
             val stripGpsLocation = preferences[PreferencesKeys.KEY_STRIP_GPS_LOCATION] ?: true
             val stripDeviceModel = preferences[PreferencesKeys.KEY_STRIP_DEVICE_MODEL] ?: true
+            val themeModeName = preferences[PreferencesKeys.KEY_THEME_MODE] ?: AppThemeMode.DARK.name
+            val themeMode = try {
+                AppThemeMode.valueOf(themeModeName)
+            } catch (_: Exception) {
+                AppThemeMode.DARK
+            }
 
             CameraPreferences(
                 gridType = gridType,
@@ -126,7 +135,8 @@ class CameraPreferencesRepositoryImpl(
                 watermarkText = watermarkText,
                 isExifPrivacyEnabled = isExifPrivacyEnabled,
                 stripGpsLocation = stripGpsLocation,
-                stripDeviceModel = stripDeviceModel
+                stripDeviceModel = stripDeviceModel,
+                themeMode = themeMode
             )
         }
 
@@ -237,6 +247,12 @@ class CameraPreferencesRepositoryImpl(
     override suspend fun updateStripDeviceModel(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.KEY_STRIP_DEVICE_MODEL] = enabled
+        }
+    }
+
+    override suspend fun updateThemeMode(themeMode: AppThemeMode) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.KEY_THEME_MODE] = themeMode.name
         }
     }
 }

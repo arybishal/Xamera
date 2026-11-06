@@ -27,6 +27,13 @@ class GpuPreviewRenderer(
     private var windowSurface: WindowSurface? = null
     private var pipeline: GpuRenderPipeline? = null
 
+    private var encoderWindowSurface: WindowSurface? = null
+    private var encoderWidth: Int = 0
+    private var encoderHeight: Int = 0
+    private var isRecording: Boolean = false
+    private var lastRecordedFrameNs: Long = 0L
+    private var timelapseIntervalNs: Long = 0L
+
     private var cameraTextureId: Int = 0
     private var cameraSurfaceTexture: SurfaceTexture? = null
     var cameraSurface: Surface? = null
@@ -117,6 +124,29 @@ class GpuPreviewRenderer(
             pipe.drawPreview(cameraTextureId, texMatrix, viewportWidth, viewportHeight, currentTimeSec)
             winSurf.swapBuffers()
 
+            // Render to attached Video Encoder Surface if recording
+            val encSurf = encoderWindowSurface
+            if (isRecording && encSurf != null) {
+                val timestampNs = camST.timestamp
+                val shouldRecordFrame = if (timelapseIntervalNs > 0L) {
+                    if (lastRecordedFrameNs == 0L || (timestampNs - lastRecordedFrameNs) >= timelapseIntervalNs) {
+                        lastRecordedFrameNs = timestampNs
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    true
+                }
+
+                if (shouldRecordFrame) {
+                    encSurf.makeCurrent()
+                    pipe.drawPreview(cameraTextureId, texMatrix, encoderWidth, encoderHeight, currentTimeSec)
+                    encSurf.setPresentationTime(timestampNs)
+                    encSurf.swapBuffers()
+                }
+            }
+
             frameCount++
             val nowMs = System.currentTimeMillis()
             val elapsedMs = nowMs - lastFpsTimestamp
@@ -144,6 +174,42 @@ class GpuPreviewRenderer(
         }
     }
 
+    /**
+     * Attaches an encoder input [Surface] (from MediaCodec or VideoCapture) to receive
+     * real-time GPU-graded frames during recording.
+     */
+    fun attachEncoderSurface(surface: Surface, width: Int, height: Int, timelapseIntervalSec: Float = 0f) {
+        val handler = renderHandler ?: return
+        handler.post {
+            val core = eglCore ?: return@post
+            try {
+                encoderWindowSurface?.release()
+                encoderWindowSurface = WindowSurface(core, surface)
+                encoderWidth = width
+                encoderHeight = height
+                isRecording = true
+                timelapseIntervalNs = (timelapseIntervalSec * 1_000_000_000L).toLong()
+                lastRecordedFrameNs = 0L
+                Log.i(TAG, "Attached encoder surface: ${width}x$height (timelapseIntervalSec=$timelapseIntervalSec)")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to attach encoder surface: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * Detaches the encoder surface and stops pumping frames to the video encoder.
+     */
+    fun detachEncoderSurface() {
+        val handler = renderHandler ?: return
+        handler.post {
+            isRecording = false
+            encoderWindowSurface?.release()
+            encoderWindowSurface = null
+            Log.i(TAG, "Detached encoder surface")
+        }
+    }
+
     fun stop() {
         isRunning = false
         val handler = renderHandler
@@ -163,6 +229,8 @@ class GpuPreviewRenderer(
                 cameraTextureId = 0
             }
 
+            encoderWindowSurface?.release()
+            encoderWindowSurface = null
             windowSurface?.release()
             windowSurface = null
             eglCore?.release()

@@ -1,5 +1,6 @@
 package com.bishal.adaptivecamera
 
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -9,6 +10,7 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -16,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.bishal.adaptivecamera.core.display.DisplayRefreshRateManager
 import com.bishal.adaptivecamera.core.storage.MediaItem
 import com.bishal.adaptivecamera.gallery.ui.GalleryScreen
 import com.bishal.adaptivecamera.gallery.ui.GalleryViewModel
@@ -28,6 +31,7 @@ import com.bishal.adaptivecamera.ui.lut.LutLibraryScreen
 import com.bishal.adaptivecamera.ui.lut.LutViewModel
 import com.bishal.adaptivecamera.ui.settings.SettingsScreen
 import com.bishal.adaptivecamera.ui.theme.AdaptiveCameraTheme
+import com.bishal.adaptivecamera.ui.theme.AppThemeMode
 import com.bishal.adaptivecamera.ui.vault.RawVaultScreen
 
 enum class AppDestination {
@@ -47,18 +51,23 @@ class MainActivity : ComponentActivity() {
     private val diagnosticsViewModel: DiagnosticsViewModel by viewModels()
     private val lutViewModel: LutViewModel by viewModels()
 
+    private var activeDestination = AppDestination.CAMERA
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        DisplayRefreshRateManager.applyOptimalRefreshRate(window)
 
         setContent {
-            AdaptiveCameraTheme {
+            val cameraState by cameraViewModel.uiState.collectAsState()
+            AdaptiveCameraTheme(themeMode = cameraState.themeMode) {
                 MainAppNavHost(
                     activity = this,
                     cameraViewModel = cameraViewModel,
                     galleryViewModel = galleryViewModel,
                     diagnosticsViewModel = diagnosticsViewModel,
-                    lutViewModel = lutViewModel
+                    lutViewModel = lutViewModel,
+                    onDestinationChanged = { activeDestination = it }
                 )
             }
         }
@@ -66,7 +75,20 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        // If returning to activity, insets controller is re-synchronized via Compose destination
+        DisplayRefreshRateManager.applyOptimalRefreshRate(window)
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            DisplayRefreshRateManager.applyOptimalRefreshRate(window)
+            val win = window ?: return
+            val insetsController = WindowCompat.getInsetsController(win, win.decorView)
+            if (activeDestination == AppDestination.CAMERA) {
+                insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                insetsController.hide(WindowInsetsCompat.Type.statusBars())
+            }
+        }
     }
 
     override fun onPause() {
@@ -85,20 +107,30 @@ fun MainAppNavHost(
     cameraViewModel: CameraViewModel,
     galleryViewModel: GalleryViewModel,
     diagnosticsViewModel: DiagnosticsViewModel,
-    lutViewModel: LutViewModel
+    lutViewModel: LutViewModel,
+    onDestinationChanged: (AppDestination) -> Unit = {}
 ) {
     var currentDestination by remember { mutableStateOf(AppDestination.CAMERA) }
     var viewingItem by remember { mutableStateOf<MediaItem?>(null) }
+    val cameraState by cameraViewModel.uiState.collectAsState()
 
     // Synchronize Immersive Status Bar with current destination
-    LaunchedEffect(currentDestination) {
+    LaunchedEffect(currentDestination, cameraState.themeMode) {
+        onDestinationChanged(currentDestination)
         val window = activity.window ?: return@LaunchedEffect
         val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+        val isDark = when (cameraState.themeMode) {
+            AppThemeMode.SYSTEM -> activity.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+            AppThemeMode.DARK -> true
+            AppThemeMode.LIGHT -> false
+        }
+
         if (currentDestination == AppDestination.CAMERA) {
             insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             insetsController.hide(WindowInsetsCompat.Type.statusBars())
         } else {
             insetsController.show(WindowInsetsCompat.Type.statusBars())
+            insetsController.isAppearanceLightStatusBars = !isDark
         }
     }
 

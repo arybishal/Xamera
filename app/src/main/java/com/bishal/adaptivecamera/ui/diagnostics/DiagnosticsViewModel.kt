@@ -21,7 +21,8 @@ data class DiagnosticsUiState(
     val report: DeviceCapabilityReport? = null,
     val hasCameraPermission: Boolean = false,
     val isFromCache: Boolean = false,
-    val toastMessage: String? = null
+    val toastMessage: String? = null,
+    val dualCameraCapability: com.bishal.adaptivecamera.video.capability.DualCameraCapability? = null
 )
 
 class DiagnosticsViewModel @JvmOverloads constructor(
@@ -46,11 +47,13 @@ class DiagnosticsViewModel @JvmOverloads constructor(
         viewModelScope.launch {
             try {
                 val report = repository.getDeviceReport(forceRefresh = forceRefresh)
+                val dualCap = com.bishal.adaptivecamera.video.capability.DualCameraCapabilityDetector(getApplication()).detectCapability()
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         report = report,
-                        isFromCache = report.isFromCache
+                        isFromCache = report.isFromCache,
+                        dualCameraCapability = dualCap
                     )
                 }
             } catch (e: Exception) {

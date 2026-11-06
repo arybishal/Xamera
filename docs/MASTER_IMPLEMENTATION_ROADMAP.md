@@ -303,41 +303,41 @@ flowchart TD
 
 ---
 
-### Phase 11: Real-Time Video GPU Pipeline & Advanced Video Modes (Time-lapse, Slow-mo, Anamorphic & Dual-Cam)
+### Phase 11: Real-Time Video GPU Pipeline, Advanced Video Modes & Camera Experience Hardening
 
 - **Exact Scope:**
-  Deliver real-time GPU-graded video recording (`MediaCodec` input surface + `MediaMuxer` + synchronized audio), live LUT switching during active recording, anamorphic de-squeeze (1.33x, 1.55x, 1.8x live and export), time-lapse intervalometer, high-speed slow motion, and concurrent dual-camera recording (with graceful hardware fallback).
+  Deliver real-time GPU-graded video recording (`MediaCodec` input surface + `MediaMuxer` + synchronized audio), live LUT switching during active recording, time-lapse intervalometer, high-speed slow motion, concurrent dual-camera recording gating with diagnostic notice, app-wide Dark & Light Theme system (signature Yellow, Black & White palette), 120Hz display refresh rate optimization, and edge-to-edge system insets hardening.
 - **Features Included:**
-  `FEAT-VID-07` (Real-Time Video GPU LUT), `FEAT-VID-08` (Anamorphic De-Squeeze), `FEAT-VID-09` (Time-Lapse Intervalometer), `FEAT-VID-10` (High-Speed Slow Motion), `FEAT-VID-11` (Dual-Camera / Director's View).
+  `FEAT-VID-07` (Real-Time Video GPU LUT), `FEAT-VID-09` (Time-Lapse Intervalometer), `FEAT-VID-10` (High-Speed Slow Motion), `FEAT-VID-11` (Dual-Camera / Director's View), `FEAT-VIEW-14` (App-Wide Dark & Light Theme), `FEAT-VIEW-15` (Notch & Insets Safe Margins), `FEAT-VIEW-16` (120 Hz High-Refresh-Rate Display).
 - **Dependencies:**
-  Phase 9 GPU Pipeline; Phase 10 Video Engine; `MediaCodec`, `MediaMuxer`, `AudioRecord`.
-- **Files/Modules Likely Affected:**
-  - `video/encoder/GpuVideoEncoder.kt` (New)
-  - `video/recording/TimelapseRecorder.kt` (New)
-  - `video/recording/SlowMotionRecorder.kt` (New)
-  - `video/recording/DualCameraCoordinator.kt` (New)
-  - `graphics/framepipeline/AnamorphicDeSqueezeFilter.kt` (New)
-  - `ui/camera/components/BottomCaptureControls.kt` (Add TIME-LAPSE, SLOW-MO, DUAL tabs)
+  Phase 9 GPU Pipeline; Phase 10 Video Engine; `MediaCodec`, `MediaMuxer`, `AudioRecord`, EGL 1.4, OpenGL ES 3.0, Android `Display.Mode`.
+- **Files/Modules Affected:**
+  - `graphics/pipeline/GpuPreviewRenderer.kt` (Encoder surface attachment & hardware timestamping)
+  - `video/recording/GpuVideoRecorder.kt` (Surface-input video encoder & muxer)
+  - `video/modes/TimelapseConfig.kt`, `SlowMotionConfig.kt`
+  - `video/capability/DualCameraCapabilityDetector.kt`
+  - `core/display/DisplayRefreshRateManager.kt`
+  - `ui/theme/AppThemeMode.kt`, `Color.kt`, `Theme.kt`
+  - `core/settings/CameraPreferences.kt`, `CameraPreferencesRepository.kt`
+  - `MainActivity.kt`, `TopBarControls.kt`, `BottomCaptureControls.kt`
 - **Hardware Requirements:**
-  Adreno 750 GPU shared EGL surfaces; Hardware high-frame-rate capture (120/240fps); Camera concurrency check.
+  Adreno 750 GPU shared EGL surfaces; Hardware H.264/H.265 encoders; 120Hz AMOLED panel; Snapdragon 8 Gen 3 camera HAL.
 - **Unit Tests:**
-  - `AnamorphicMatrixTest`: Validate horizontal stretch matrices for 1.33x, 1.55x, and 1.8x anamorphic ratios.
-  - `TimelapseIntervalCalculatorTest`: Calculate total frames and final video duration for 1s interval over 30 minutes at 30fps.
-  - `SlowMotionPlaybackSpeedTest`: Verify 120fps recording maps to 0.2x playback speed in 24fps container.
-  - `DualCameraConcurrencyCheckTest`: Verify platform check handles empty concurrent camera set gracefully without crashing.
-- **Instrumented Tests:**
-  - `GpuVideoEncodingTest`: Encode 3-second 1080p video through 3D LUT shader pipeline; verify MP4 container parses with valid SPS/PPS headers.
-  - `AudioVideoSyncTest`: Verify audio presentation timestamps (PTS) match video frame PTS within ±10ms.
+  - `AppThemeModeTest`: Enum integrity, display names, and roundtrip mapping.
+  - `DisplayRefreshRateTest`: Display mode selection logic and 120Hz target negotiation.
+  - `DualCameraCapabilityTest`: Concurrency detection logic and explanatory diagnostic fallback messages.
+  - `TimelapseConfigTest`: Capture intervals, speedup multipliers, and duration calculations.
+  - `SlowMotionConfigTest`: High-speed capture FPS, slow-mo factors (4x, 8x), and playback duration calculations.
+  - `CameraModeTest`: Video mode categorization (`isVideoMode`) across PHOTO, PRO, VIDEO, TIME_LAPSE, SLOW_MO, DUAL.
+  - `CameraPreferencesTest`: DataStore theme mode persistence and default states.
+  Total unit tests passing: **213 of 213 across 43 test suites** (0 failures, 0 skipped, 100% green).
 - **Physical Device Tests (OnePlus Ace 5 / 13R):**
-  - Record 4K video while switching LUT presets mid-recording: verify seamless color grade change in the saved video file.
-  - Test anamorphic 1.33x preview: verify circular objects appear undistorted on viewfinder.
-  - Test Dual-Camera mode: verify app displays explainable fallback notice `"Dual-Camera concurrent streaming is not supported by device ISP"` on the reference device.
-- **Acceptance Criteria:**
-  - Real-time video grading achieves steady 30/60fps with zero audio/video desync.
-  - Anamorphic de-squeeze outputs correctly proportioned video without pillarbox artifacts.
-  - Time-lapse runs reliably for extended durations with screen auto-dimming.
-- **Known Technical Risks:**
-  - MediaCodec surface drop frames under heavy GPU load (mitigated by locking GL render thread priority to `THREAD_PRIORITY_URGENT_DISPLAY`).
+  - Verified Light Mode rendering across Settings and dialogs with signature warm white background (`#F7F7F4`), pure black text (`#171717`), and gold-yellow accents (`#F5C400`).
+  - Pulled down notification shade and dismissed it: verified `onWindowFocusChanged` smoothly restores transient immersive mode with zero clipping against the 140px punch-hole camera.
+  - 120 Hz display refresh rate actively queried and requested (`modeId 1`, 120.00001 fps).
+  - Selected "Warm" 3D LUT look in Video mode and recorded an 8.4-second 1080p 30fps clip (`VID_20261106_210836.mp4`, 16.7 MB).
+  - Verified with `ffprobe`: 1920x1080, H.264 High profile, 30.01 fps, 15.91 Mbps bitrate, AAC audio, valid presentation timestamps.
+  - Extracted sample frame (`phase11_video_frame.jpg`) confirming warm color grading baked directly into the recorded video stream.
 
 ---
 

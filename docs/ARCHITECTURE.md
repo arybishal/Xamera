@@ -5,7 +5,7 @@
 **Workspace:** `D:\Webapp\xamera`  
 **Repository:** https://github.com/arybishal/Xamera  
 **Developer:** Bishal Aryal  
-**Version:** 0.11.0  
+**Version:** 0.12.0  
 **Date:** 2026-11-06  
 
 ---
@@ -30,8 +30,9 @@ com.bishal.adaptivecamera
 ├── core/
 │   ├── common/              # Common Result types, Dispatchers, Constants
 │   ├── diagnostics/         # DeviceInfo, OEM detection, system telemetry, thermal monitor
+│   ├── display/             # 120Hz display refresh rate manager & display mode selector
 │   ├── permissions/         # Camera and Audio permission handling
-│   ├── settings/            # User settings management & DataStore
+│   ├── settings/            # User settings management & DataStore (Theme, Quality, Watermark)
 │   ├── storage/             # Scoped storage, MediaStoreManager, RAW vault
 │   ├── sensors/             # Gyroscope & Accelerometer virtual horizon sensors
 │   ├── haptics/             # System tactile haptic feedback engine
@@ -61,7 +62,9 @@ com.bishal.adaptivecamera
 │   └── processing/          # Watermarking, EXIF manager, bokeh renderer, focus stacking
 │
 ├── video/
-│   ├── recording/           # Pro video engine & recording coordinator
+│   ├── recording/           # Pro video engine, GpuVideoRecorder, and recording coordinator
+│   ├── modes/               # Time-Lapse and Slow-Motion configurations & calculations
+│   ├── capability/          # DualCameraCapabilityDetector and concurrent pipeline gating
 │   ├── profiles/            # Resolution, FPS, and bitrate validators
 │   ├── encoder/             # MediaCodec video pipeline & GPU video encoder
 │   ├── audio/               # Audio routing manager & real-time VU meter processor
@@ -95,7 +98,7 @@ com.bishal.adaptivecamera
     ├── diagnostics/         # Hardware diagnostic inspection screen
     ├── settings/            # Dedicated settings & "Check Hardware Capability" screen
     ├── lut/                 # LUT selection drawer, slider, and comparison
-    └── theme/               # Dark-first theme, colors, typography, haptics
+    └── theme/               # Dark, Light (Yellow/Black/White), System themes, colors, typography, haptics
 ```
 
 ---

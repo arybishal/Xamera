@@ -151,6 +151,48 @@ class MediaStoreManager(private val context: Context) {
         ).setContentValues(contentValues).build()
     }
 
+    /**
+     * Publishes a completed video recording file into the Android MediaStore under DCIM/AdaptiveCamera.
+     */
+    fun insertVideoFile(file: File, mimeType: String = VIDEO_MIME_TYPE): MediaItem? {
+        val fileName = file.name
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+            put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+            put(MediaStore.MediaColumns.RELATIVE_PATH, ALBUM_DIRECTORY)
+            put(MediaStore.Video.Media.DATE_TAKEN, System.currentTimeMillis())
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaStore.Video.Media.IS_PENDING, 1)
+            }
+        }
+        val uri = contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values) ?: return null
+        contentResolver.openOutputStream(uri)?.use { out ->
+            file.inputStream().use { input ->
+                input.copyTo(out)
+            }
+            out.flush()
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            values.clear()
+            values.put(MediaStore.Video.Media.IS_PENDING, 0)
+            contentResolver.update(uri, values, null, null)
+        }
+        val id = try {
+            ContentUris.parseId(uri)
+        } catch (_: Exception) {
+            System.currentTimeMillis()
+        }
+        return MediaItem(
+            id = id,
+            uri = uri,
+            displayName = fileName,
+            mimeType = mimeType,
+            dateTakenMs = System.currentTimeMillis(),
+            sizeBytes = file.length(),
+            mediaType = MediaType.VIDEO
+        )
+    }
+
     fun queryLatestMedia(): MediaItem? {
         val photos = queryRecentMedia(limit = 1, type = MediaType.PHOTO)
         val videos = queryRecentMedia(limit = 1, type = MediaType.VIDEO)

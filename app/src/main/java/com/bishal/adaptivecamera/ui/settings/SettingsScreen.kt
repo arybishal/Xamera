@@ -49,6 +49,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -83,8 +84,6 @@ import com.bishal.adaptivecamera.ui.diagnostics.DiagnosticsViewModel
 import com.bishal.adaptivecamera.ui.theme.AccentAmber
 import com.bishal.adaptivecamera.ui.theme.DarkBackground
 import com.bishal.adaptivecamera.ui.theme.DarkSurface
-import com.bishal.adaptivecamera.ui.theme.DarkSurfaceVariant
-import com.bishal.adaptivecamera.ui.theme.DividerColor
 import com.bishal.adaptivecamera.ui.theme.ErrorRed
 import com.bishal.adaptivecamera.ui.theme.PrimaryCyan
 import com.bishal.adaptivecamera.ui.theme.SuccessGreen
@@ -92,6 +91,7 @@ import com.bishal.adaptivecamera.ui.theme.TextMuted
 import com.bishal.adaptivecamera.camera.config.AspectRatioConfig
 import com.bishal.adaptivecamera.camera.config.CompositionGridType
 import com.bishal.adaptivecamera.ui.camera.CameraViewModel
+import com.bishal.adaptivecamera.ui.theme.AppThemeMode
 import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Vibration
@@ -131,13 +131,13 @@ fun SettingsScreen(
     }
 
     Scaffold(
-        containerColor = DarkBackground,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = {
                     Text(
                         text = "Camera Settings",
-                        color = TextPrimary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -147,11 +147,15 @@ fun SettingsScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = TextPrimary
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkSurface)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface
+                )
             )
         }
     ) { innerPadding ->
@@ -169,11 +173,11 @@ fun SettingsScreen(
 
             item {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(14.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, DividerColor, RoundedCornerShape(14.dp))
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp))
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         SettingRow(
@@ -191,8 +195,63 @@ fun SettingsScreen(
                         SettingRow(
                             icon = Icons.Default.Info,
                             title = "Application Version",
-                            subtitle = "v0.11.0 · Phase 10 Professional Video Recording"
+                            subtitle = "v0.12.0 · Phase 11 Real-Time GPU Video & Modes"
                         )
+                    }
+                }
+            }
+
+            // Section 1b: Appearance & Theme (Phase 11)
+            item {
+                SettingsSectionHeader("Appearance & Theme", Icons.Default.Palette)
+            }
+
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp))
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Text(
+                            text = "Theme Palette",
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Select Dark, Light (Yellow/Black/White), or System default theme",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(top = 2.dp, bottom = 8.dp)
+                        )
+                        val currentTheme = camUiState?.themeMode ?: AppThemeMode.DARK
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            AppThemeMode.values().forEach { mode ->
+                                val isSelected = currentTheme == mode
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
+                                        .clickable { cameraViewModel?.updateThemeMode(mode) }
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = mode.displayName,
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -204,23 +263,23 @@ fun SettingsScreen(
 
             item {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(14.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, DividerColor, RoundedCornerShape(14.dp))
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp))
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         // Aspect Ratio Selector
                         Text(
                             text = "Aspect Ratio Framing",
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "Select photographic composition framing (4:3 is 3:4 in portrait)",
-                            color = TextSecondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 11.sp,
                             modifier = Modifier.padding(top = 2.dp, bottom = 8.dp)
                         )
@@ -235,7 +294,7 @@ fun SettingsScreen(
                                     modifier = Modifier
                                         .weight(1f)
                                         .clip(RoundedCornerShape(8.dp))
-                                        .background(if (isSelected) PrimaryCyan else DarkSurfaceVariant)
+                                        .background(if (isSelected) PrimaryCyan else MaterialTheme.colorScheme.surfaceVariant)
                                         .clickable { cameraViewModel?.setAspectRatio(ratio) }
                                         .padding(vertical = 6.dp),
                                     contentAlignment = Alignment.Center
@@ -255,13 +314,13 @@ fun SettingsScreen(
                         // Composition Grid Selector
                         Text(
                             text = "Composition Grid Overlay",
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "Assists in framing; does not modify captured photos",
-                            color = TextSecondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 11.sp,
                             modifier = Modifier.padding(top = 2.dp, bottom = 8.dp)
                         )
@@ -283,7 +342,7 @@ fun SettingsScreen(
                                     modifier = Modifier
                                         .weight(1f)
                                         .clip(RoundedCornerShape(8.dp))
-                                        .background(if (isSelected) PrimaryCyan else DarkSurfaceVariant)
+                                        .background(if (isSelected) PrimaryCyan else MaterialTheme.colorScheme.surfaceVariant)
                                         .clickable { cameraViewModel?.setGridType(grid) }
                                         .padding(vertical = 6.dp),
                                     contentAlignment = Alignment.Center
@@ -307,13 +366,13 @@ fun SettingsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Virtual Horizon Level", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                                Text("Real-time gyroscope pitch and roll leveling reticle", color = TextSecondary, fontSize = 11.sp)
+                                Text("Virtual Horizon Level", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                Text("Real-time gyroscope pitch and roll leveling reticle", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                             }
                             Switch(
                                 checked = camUiState?.configuration?.isVirtualHorizonEnabled ?: true,
                                 onCheckedChange = { cameraViewModel?.toggleVirtualHorizon() },
-                                colors = SwitchDefaults.colors(checkedThumbColor = PrimaryCyan)
+                                colors = SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.primary, checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
                             )
                         }
 
@@ -326,13 +385,13 @@ fun SettingsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Haptic Feedback", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                                Text("Tactile response on shutter trip, zoom dial ticks, and horizon lock", color = TextSecondary, fontSize = 11.sp)
+                                Text("Haptic Feedback", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                Text("Tactile response on shutter trip, zoom dial ticks, and horizon lock", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                             }
                             Switch(
                                 checked = camUiState?.configuration?.isHapticsEnabled ?: true,
                                 onCheckedChange = { cameraViewModel?.toggleHaptics() },
-                                colors = SwitchDefaults.colors(checkedThumbColor = PrimaryCyan)
+                                colors = SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.primary, checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
                             )
                         }
 
@@ -345,13 +404,13 @@ fun SettingsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Floating Shutter Button", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                                Text("Repositionable capture button for one-handed reach", color = TextSecondary, fontSize = 11.sp)
+                                Text("Floating Shutter Button", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                Text("Repositionable capture button for one-handed reach", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                             }
                             Switch(
                                 checked = camUiState?.configuration?.isFloatingShutterEnabled ?: false,
                                 onCheckedChange = { cameraViewModel?.toggleFloatingShutter() },
-                                colors = SwitchDefaults.colors(checkedThumbColor = PrimaryCyan)
+                                colors = SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.primary, checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
                             )
                         }
 
@@ -377,11 +436,11 @@ fun SettingsScreen(
 
             item {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(14.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, DividerColor, RoundedCornerShape(14.dp))
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp))
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         // 1. Zero Shutter Lag (ZSL)
@@ -391,21 +450,21 @@ fun SettingsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Zero Shutter Lag (ZSL)", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                                Text("Bounded rolling buffer for instantaneous shutter response", color = TextSecondary, fontSize = 11.sp)
+                                Text("Zero Shutter Lag (ZSL)", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                Text("Bounded rolling buffer for instantaneous shutter response", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                             }
                             Switch(
                                 checked = camUiState?.configuration?.isZslEnabled ?: true,
                                 onCheckedChange = { cameraViewModel?.toggleZsl() },
-                                colors = SwitchDefaults.colors(checkedThumbColor = PrimaryCyan)
+                                colors = SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.primary, checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
                             )
                         }
 
                         Spacer(modifier = Modifier.height(14.dp))
 
                         // 2. Capture Format
-                        Text("Capture Format", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        Text("Select image capture output stream and RAW negative format", color = TextSecondary, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
+                        Text("Capture Format", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text("Select image capture output stream and RAW negative format", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -417,8 +476,8 @@ fun SettingsScreen(
                                     modifier = Modifier
                                         .weight(1f)
                                         .clip(RoundedCornerShape(8.dp))
-                                        .background(if (isSelected) PrimaryCyan else DarkSurfaceVariant)
-                                        .border(1.dp, if (isSelected) PrimaryCyan else DividerColor, RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) PrimaryCyan else MaterialTheme.colorScheme.surfaceVariant)
+                                        .border(1.dp, if (isSelected) PrimaryCyan else MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
                                         .clickable { cameraViewModel?.setCaptureFormat(fmt) }
                                         .padding(vertical = 8.dp),
                                     contentAlignment = Alignment.Center
@@ -436,8 +495,8 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.height(14.dp))
 
                         // 3. Auto Exposure Bracketing (AEB)
-                        Text("Auto Exposure Bracketing (AEB)", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        Text("Burst exposure sequence with calibrated EV offsets", color = TextSecondary, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
+                        Text("Auto Exposure Bracketing (AEB)", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text("Burst exposure sequence with calibrated EV offsets", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -450,8 +509,8 @@ fun SettingsScreen(
                                     modifier = Modifier
                                         .weight(1f)
                                         .clip(RoundedCornerShape(8.dp))
-                                        .background(if (isSelected) AccentAmber else DarkSurfaceVariant)
-                                        .border(1.dp, if (isSelected) AccentAmber else DividerColor, RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) AccentAmber else MaterialTheme.colorScheme.surfaceVariant)
+                                        .border(1.dp, if (isSelected) AccentAmber else MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
                                         .clickable { cameraViewModel?.setAebBracketCount(count) }
                                         .padding(vertical = 8.dp),
                                     contentAlignment = Alignment.Center
@@ -468,7 +527,7 @@ fun SettingsScreen(
 
                         if ((camUiState?.proConfig?.aebBracketCount ?: 0) > 0) {
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("Bracket Step Size (ΔEV)", color = TextSecondary, fontSize = 11.sp, modifier = Modifier.padding(bottom = 6.dp))
+                            Text("Bracket Step Size (ΔEV)", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, modifier = Modifier.padding(bottom = 6.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -481,8 +540,8 @@ fun SettingsScreen(
                                         modifier = Modifier
                                             .weight(1f)
                                             .clip(RoundedCornerShape(8.dp))
-                                            .background(if (isSelected) AccentAmber.copy(alpha = 0.8f) else DarkSurfaceVariant)
-                                            .border(1.dp, if (isSelected) AccentAmber else DividerColor, RoundedCornerShape(8.dp))
+                                            .background(if (isSelected) AccentAmber.copy(alpha = 0.8f) else MaterialTheme.colorScheme.surfaceVariant)
+                                            .border(1.dp, if (isSelected) AccentAmber else MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
                                             .clickable { cameraViewModel?.setAebEvStep(step) }
                                             .padding(vertical = 6.dp),
                                         contentAlignment = Alignment.Center
@@ -507,13 +566,13 @@ fun SettingsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Photo Watermark", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                                Text("Burn subtle metadata into exported JPEG/HEIC", color = TextSecondary, fontSize = 11.sp)
+                                Text("Photo Watermark", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                Text("Burn subtle metadata into exported JPEG/HEIC", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                             }
                             Switch(
                                 checked = camUiState?.proConfig?.isWatermarkEnabled ?: false,
                                 onCheckedChange = { cameraViewModel?.toggleWatermark() },
-                                colors = SwitchDefaults.colors(checkedThumbColor = PrimaryCyan)
+                                colors = SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.primary, checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
                             )
                         }
 
@@ -526,13 +585,13 @@ fun SettingsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("EXIF Privacy Mode", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                                Text("Strip GPS location and camera hardware serial from exported photos", color = TextSecondary, fontSize = 11.sp)
+                                Text("EXIF Privacy Mode", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                Text("Strip GPS location and camera hardware serial from exported photos", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                             }
                             Switch(
                                 checked = camUiState?.proConfig?.isExifPrivacyEnabled ?: false,
                                 onCheckedChange = { cameraViewModel?.toggleExifPrivacy() },
-                                colors = SwitchDefaults.colors(checkedThumbColor = PrimaryCyan)
+                                colors = SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.primary, checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
                             )
                         }
 
@@ -540,7 +599,7 @@ fun SettingsScreen(
 
                         // 6. RAW Vault Navigation Card
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = DarkSurfaceVariant),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                             shape = RoundedCornerShape(10.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -573,13 +632,13 @@ fun SettingsScreen(
                                     Column {
                                         Text(
                                             text = "Open RAW Vault",
-                                            color = TextPrimary,
+                                            color = MaterialTheme.colorScheme.onSurface,
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.Bold
                                         )
                                         Text(
                                             text = "Manage, inspect, share, and export local DNGs",
-                                            color = TextSecondary,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             fontSize = 11.sp
                                         )
                                     }
@@ -603,11 +662,11 @@ fun SettingsScreen(
 
             item {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         Text(
@@ -620,7 +679,7 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "Offline color science management, .cube parser, mathematical film presets, and look profile database.",
-                            color = TextSecondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 11.sp
                         )
 
@@ -628,7 +687,7 @@ fun SettingsScreen(
 
                         // LUT Library Navigation Card
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = DarkSurfaceVariant),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                             shape = RoundedCornerShape(10.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -661,13 +720,13 @@ fun SettingsScreen(
                                     Column {
                                         Text(
                                             text = "Open LUT Library",
-                                            color = TextPrimary,
+                                            color = MaterialTheme.colorScheme.onSurface,
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.Bold
                                         )
                                         Text(
                                             text = "Browse presets, import 1D/3D .cube files, manage favorites",
-                                            color = TextSecondary,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             fontSize = 11.sp
                                         )
                                     }
@@ -692,7 +751,7 @@ fun SettingsScreen(
             item {
                 // Central Hardware Capability Card
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -723,13 +782,13 @@ fun SettingsScreen(
                                 Column {
                                     Text(
                                         text = "Check Hardware Capability",
-                                        color = TextPrimary,
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.Bold
                                     )
                                     Text(
                                         text = "Deep HAL & sensor telemetry",
-                                        color = TextSecondary,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontSize = 11.sp
                                     )
                                 }
@@ -752,7 +811,7 @@ fun SettingsScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(DarkSurfaceVariant)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
                                 .padding(horizontal = 10.dp, vertical = 6.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
@@ -815,32 +874,32 @@ fun SettingsScreen(
                             Button(
                                 onClick = { diagnosticsViewModel.copyToClipboard(context, asJson = true) },
                                 modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                                 shape = RoundedCornerShape(8.dp)
                             ) {
                                 Icon(Icons.Default.ContentCopy, contentDescription = null, tint = PrimaryCyan, modifier = Modifier.size(14.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("JSON", color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text("JSON", color = MaterialTheme.colorScheme.onSurface, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                             Button(
                                 onClick = { diagnosticsViewModel.copyToClipboard(context, asJson = false) },
                                 modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                                 shape = RoundedCornerShape(8.dp)
                             ) {
                                 Icon(Icons.Default.ContentCopy, contentDescription = null, tint = PrimaryCyan, modifier = Modifier.size(14.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("TXT", color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text("TXT", color = MaterialTheme.colorScheme.onSurface, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                             Button(
                                 onClick = { diagnosticsViewModel.shareReport(context, asJson = false) },
                                 modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                                 shape = RoundedCornerShape(8.dp)
                             ) {
                                 Icon(Icons.Default.Share, contentDescription = null, tint = PrimaryCyan, modifier = Modifier.size(14.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Share", color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text("Share", color = MaterialTheme.colorScheme.onSurface, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -898,13 +957,13 @@ private fun SettingsSectionHeader(title: String, icon: ImageVector) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = PrimaryCyan,
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(16.dp)
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = title,
-            color = PrimaryCyan,
+            color = MaterialTheme.colorScheme.primary,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.5.sp
@@ -925,20 +984,20 @@ private fun SettingRow(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = TextSecondary,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(20.dp)
         )
         Spacer(modifier = Modifier.width(12.dp))
         Column {
             Text(
                 text = title,
-                color = TextPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium
             )
             Text(
                 text = subtitle,
-                color = TextSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 11.sp
             )
         }
@@ -1067,7 +1126,7 @@ private fun CameraDetailedCapabilitySection(index: Int, profile: CameraCapabilit
 @Composable
 private fun CapabilityWarningsSection(warnings: List<String>) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier
             .fillMaxWidth()
@@ -1088,7 +1147,7 @@ private fun CapabilityWarningsSection(warnings: List<String>) {
             warnings.forEach { w ->
                 Text(
                     text = "• $w",
-                    color = TextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 11.sp,
                     modifier = Modifier.padding(vertical = 2.dp)
                 )
@@ -1103,11 +1162,11 @@ private fun CapabilitySectionCard(
     content: @Composable () -> Unit
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
@@ -1137,13 +1196,13 @@ private fun CapabilityInfoRow(
     ) {
         Text(
             text = label,
-            color = TextSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 11.sp,
             modifier = Modifier.weight(1.1f)
         )
         Text(
             text = value,
-            color = TextPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium,
             fontFamily = if (isMonospace) FontFamily.Monospace else FontFamily.Default,

@@ -181,7 +181,7 @@ class CameraXEngine(
 
             // 6. Bind use cases according to active mode
             val useCases = mutableListOf<UseCase>(newPreview)
-            if (_configuration.value.mode == CameraMode.VIDEO) {
+            if (_configuration.value.mode.isVideoMode) {
                 useCases.add(newVideoCapture)
             } else {
                 useCases.add(newImageCapture)
@@ -237,7 +237,7 @@ class CameraXEngine(
                 newCamera.cameraControl.enableTorch(true)
             }
 
-            if (_configuration.value.mode == CameraMode.VIDEO) {
+            if (_configuration.value.mode.isVideoMode) {
                 applyVideoCamera2Controls(newCamera)
             }
 
@@ -286,7 +286,11 @@ class CameraXEngine(
         if (_sessionState.value == CameraSessionState.RECORDING) {
             stopVideoRecording()
         }
+        val prev = _configuration.value.mode
         _configuration.update { it.copy(mode = mode) }
+        if (prev.isVideoMode != mode.isVideoMode) {
+            rebindInternal()
+        }
     }
 
     override fun setFlashMode(flashMode: FlashMode) {
@@ -577,7 +581,7 @@ class CameraXEngine(
         videoConfig = config
 
         val cam = camera
-        if (cam != null && _configuration.value.mode == CameraMode.VIDEO) {
+        if (cam != null && _configuration.value.mode.isVideoMode) {
             if (_sessionState.value != CameraSessionState.RECORDING) {
                 if (resolutionChanged || bitrateChanged) {
                     rebindInternal()

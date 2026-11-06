@@ -33,6 +33,7 @@ import com.bishal.adaptivecamera.core.storage.MediaItem
 import com.bishal.adaptivecamera.core.storage.MediaStoreManager
 import com.bishal.adaptivecamera.photography.auto.SmartAutoOrchestrator
 import com.bishal.adaptivecamera.photography.auto.SmartAutoState
+import com.bishal.adaptivecamera.ui.theme.AppThemeMode
 import com.bishal.adaptivecamera.photography.pro.Camera2ManualEngine
 import com.bishal.adaptivecamera.photography.pro.FalseColorMap
 import com.bishal.adaptivecamera.photography.pro.FocusPeakingMap
@@ -86,7 +87,8 @@ data class CameraUiState(
     val isLookControlPanelVisible: Boolean = false,
     val videoConfig: VideoConfig = VideoConfig(),
     val videoRecordingState: VideoRecordingState = VideoRecordingState(),
-    val isVideoQuickSettingsVisible: Boolean = false
+    val isVideoQuickSettingsVisible: Boolean = false,
+    val themeMode: AppThemeMode = AppThemeMode.DARK
 )
 
 class CameraViewModel @JvmOverloads constructor(
@@ -292,7 +294,8 @@ class CameraViewModel @JvmOverloads constructor(
                             isRawCaptureEnabled = capFormat.isRaw,
                             isWatermarkEnabled = prefs.isWatermarkEnabled,
                             isExifPrivacyEnabled = prefs.isExifPrivacyEnabled
-                        )
+                        ),
+                        themeMode = prefs.themeMode
                     )
                 }
                 cameraEngine.setAspectRatio(prefs.aspectRatio)
@@ -351,7 +354,7 @@ class CameraViewModel @JvmOverloads constructor(
         val state = _uiState.value
         hapticEngine.performShutter()
 
-        if (state.configuration.mode == CameraMode.VIDEO) {
+        if (state.configuration.mode.isVideoMode) {
             if (state.sessionState == CameraSessionState.RECORDING || state.videoRecordingState.status.isRecordingOrPaused) {
                 cameraEngine.stopVideoRecording()
                 _uiState.update {
@@ -361,8 +364,9 @@ class CameraViewModel @JvmOverloads constructor(
                 _uiState.update {
                     it.copy(videoRecordingState = VideoRecordingState(status = VideoRecordingStatus.PREPARING))
                 }
+                val recordAudio = state.videoConfig.audioEnabled && state.configuration.mode != CameraMode.TIME_LAPSE
                 cameraEngine.startVideoRecording(
-                    withAudio = state.videoConfig.audioEnabled,
+                    withAudio = recordAudio,
                     onStarted = {
                         _uiState.update {
                             it.copy(
@@ -585,12 +589,25 @@ class CameraViewModel @JvmOverloads constructor(
 
     fun setCameraMode(mode: CameraMode) {
         if (_uiState.value.configuration.mode == mode) return
+
+        if (mode == CameraMode.DUAL) {
+            val detector = com.bishal.adaptivecamera.video.capability.DualCameraCapabilityDetector(getApplication())
+            val capability = detector.detectCapability()
+            if (!capability.isSupported) {
+                hapticEngine.performClick()
+                _uiState.update { it.copy(toastMessage = capability.diagnosticReason) }
+                return
+            }
+        }
+
         hapticEngine.performModeSwitch()
         val previousMode = _uiState.value.configuration.mode
 
-        if (mode == CameraMode.VIDEO) {
-            audioRecordingManager.startVuMonitoring()
-        } else if (previousMode == CameraMode.VIDEO) {
+        if (mode.isVideoMode) {
+            if (mode != CameraMode.TIME_LAPSE) {
+                audioRecordingManager.startVuMonitoring()
+            }
+        } else if (previousMode.isVideoMode) {
             audioRecordingManager.stopVuMonitoring()
             _uiState.update { it.copy(isVideoQuickSettingsVisible = false) }
         }
@@ -1004,5 +1021,11 @@ class CameraViewModel @JvmOverloads constructor(
 
     fun clearToastMessage() {
         _uiState.update { it.copy(toastMessage = null) }
+    }
+
+    fun updateThemeMode(mode: AppThemeMode) {
+        viewModelScope.launch {
+            preferencesRepository.updateThemeMode(mode)
+        }
     }
 }
