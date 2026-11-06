@@ -70,6 +70,7 @@ import com.bishal.adaptivecamera.ui.camera.components.ScreenFlashOverlay
 import com.bishal.adaptivecamera.ui.camera.components.TopBarControls
 import com.bishal.adaptivecamera.ui.camera.components.ViewfinderFramingMask
 import com.bishal.adaptivecamera.ui.camera.components.VirtualHorizonOverlay
+import com.bishal.adaptivecamera.ui.camera.lut.LookControlPanel
 import com.bishal.adaptivecamera.ui.camera.pro.FalseColorOverlay
 import com.bishal.adaptivecamera.ui.camera.pro.FocusMagnifierOverlay
 import com.bishal.adaptivecamera.ui.camera.pro.FocusPeakingOverlay
@@ -88,7 +89,8 @@ import com.bishal.adaptivecamera.ui.theme.TextSecondary
 fun CameraScreen(
     viewModel: CameraViewModel,
     onOpenGallery: () -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    onOpenLutLibrary: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -145,6 +147,8 @@ fun CameraScreen(
                 onToggleExposure = { viewModel.toggleExposureSlider() },
                 onCycleAspectRatio = { viewModel.cycleAspectRatio() },
                 onCycleGrid = { viewModel.cycleGridType() },
+                isLookActive = uiState.gpuColorConfig.lutEnabled || uiState.gpuColorConfig.grainEnabled || uiState.gpuColorConfig.halationEnabled,
+                onToggleColorLooks = { viewModel.toggleLookControlPanel() },
                 onOpenSettings = onOpenSettings
             )
         },
@@ -454,6 +458,16 @@ fun CameraScreen(
 
                 // 13. Front Screen Flash Overlay
                 ScreenFlashOverlay(isActive = uiState.isScreenFlashActive)
+
+                // 14. Floating Look & Shader Control Panel
+                LookControlPanel(
+                    isVisible = uiState.isLookControlPanelVisible,
+                    config = uiState.gpuColorConfig,
+                    onUpdateConfig = { viewModel.updateGpuColorConfig(it) },
+                    onOpenLutLibrary = onOpenLutLibrary,
+                    onClose = { viewModel.toggleLookControlPanel(false) },
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                )
 
             } else {
                 // Permission Denied Card

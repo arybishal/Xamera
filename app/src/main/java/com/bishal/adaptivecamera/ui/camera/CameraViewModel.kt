@@ -37,11 +37,17 @@ import com.bishal.adaptivecamera.photography.pro.Camera2ManualEngine
 import com.bishal.adaptivecamera.photography.pro.FalseColorMap
 import com.bishal.adaptivecamera.photography.pro.FocusPeakingMap
 import com.bishal.adaptivecamera.photography.pro.HistogramData
+import com.bishal.adaptivecamera.graphics.pipeline.GpuColorConfig
+import com.bishal.adaptivecamera.graphics.pipeline.GpuPhotoProcessor
+import com.bishal.adaptivecamera.lut.model.LutDefinition
+import com.bishal.adaptivecamera.lut.repository.LutRepository
+import com.bishal.adaptivecamera.lut.repository.LutRepositoryImpl
 import com.bishal.adaptivecamera.photography.pro.KelvinConverter
 import com.bishal.adaptivecamera.photography.pro.ProAppliedState
 import com.bishal.adaptivecamera.photography.pro.ProConfiguration
 import com.bishal.adaptivecamera.photography.pro.ProWhiteBalance
 import com.bishal.adaptivecamera.photography.pro.ZebraStripingMap
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -70,7 +76,9 @@ data class CameraUiState(
     val falseColorMap: FalseColorMap = FalseColorMap(),
     val activeProfile: CameraCapabilityProfile? = null,
     val virtualHorizonState: VirtualHorizonState = VirtualHorizonState(),
-    val isScreenFlashActive: Boolean = false
+    val isScreenFlashActive: Boolean = false,
+    val gpuColorConfig: GpuColorConfig = GpuColorConfig.DEFAULT,
+    val isLookControlPanelVisible: Boolean = false
 )
 
 class CameraViewModel @JvmOverloads constructor(
@@ -82,7 +90,9 @@ class CameraViewModel @JvmOverloads constructor(
     val smartAutoOrchestrator: SmartAutoOrchestrator = SmartAutoOrchestrator(),
     private val preferencesRepository: CameraPreferencesRepository = CameraPreferencesRepositoryImpl(application.applicationContext),
     val hapticEngine: HapticEngine = HapticEngineImpl(application.applicationContext) { true },
-    val virtualHorizonSensor: VirtualHorizonSensor = VirtualHorizonSensorImpl(application.applicationContext)
+    val virtualHorizonSensor: VirtualHorizonSensor = VirtualHorizonSensorImpl(application.applicationContext),
+    private val lutRepository: LutRepository = LutRepositoryImpl(application.applicationContext),
+    private val gpuPhotoProcessor: GpuPhotoProcessor = GpuPhotoProcessor()
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(CameraUiState())
@@ -108,6 +118,22 @@ class CameraViewModel @JvmOverloads constructor(
     init {
         // Connect frame analyzer to camera engine
         cameraEngine.setImageAnalyzer(smartAutoOrchestrator.frameAnalyzer)
+
+        // Observe active LUT selection from repository
+        viewModelScope.launch {
+            lutRepository.selectedLutIdFlow.collect { lutId ->
+                if (lutId != null) {
+                    _uiState.update { current ->
+                        current.copy(
+                            gpuColorConfig = current.gpuColorConfig.copy(
+                                selectedLutId = lutId,
+                                lutEnabled = true
+                            )
+                        )
+                    }
+                }
+            }
+        }
 
         // Session state listeners
         viewModelScope.launch {
@@ -395,13 +421,7 @@ class CameraViewModel @JvmOverloads constructor(
         triggerFlashAnimation()
         cameraEngine.capturePhoto(
             onSuccess = { item ->
-                _uiState.update {
-                    it.copy(
-                        latestMedia = item,
-                        toastMessage = "Photo saved!",
-                        isScreenFlashActive = false
-                    )
-                }
+                processCapturedPhotoWithGpu(item)
             },
             onError = { error ->
                 _uiState.update {
@@ -419,13 +439,7 @@ class CameraViewModel @JvmOverloads constructor(
             onSuccess = { item ->
                 val isRaw = _uiState.value.proConfig.isRawCaptureEnabled
                 val msg = if (isRaw) "RAW DNG + JPEG saved!" else "Pro Photo saved!"
-                _uiState.update {
-                    it.copy(
-                        latestMedia = item,
-                        toastMessage = msg,
-                        isScreenFlashActive = false
-                    )
-                }
+                processCapturedPhotoWithGpu(item, msg)
             },
             onError = { error ->
                 _uiState.update {
@@ -436,6 +450,68 @@ class CameraViewModel @JvmOverloads constructor(
                 }
             }
         )
+    }
+
+    private fun processCapturedPhotoWithGpu(item: MediaItem, customSuccessMsg: String? = null) {
+        val config = _uiState.value.gpuColorConfig
+        val uri = item.uri
+        if (uri != null && (config.lutEnabled || config.grainEnabled || config.halationEnabled)) {
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    val context = getApplication<Application>().applicationContext
+                    val inputStream = context.contentResolver.openInputStream(uri)
+                    val originalBitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+                    inputStream?.close()
+
+                    if (originalBitmap != null) {
+                        val activeLut = if (config.lutEnabled && config.selectedLutId != null) {
+                            lutRepository.loadLutDefinition(config.selectedLutId)
+                        } else null
+
+                        val gradedBitmap = gpuPhotoProcessor.processPhoto(originalBitmap, config, activeLut)
+
+                        val outputStream = context.contentResolver.openOutputStream(uri, "wt")
+                        if (outputStream != null) {
+                            gradedBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, outputStream)
+                            outputStream.flush()
+                            outputStream.close()
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("CameraViewModel", "Error applying GPU look to photo: ${e.message}")
+                } finally {
+                    val msg = customSuccessMsg ?: if (config.lutEnabled) "Graded Photo saved!" else "Photo saved!"
+                    _uiState.update {
+                        it.copy(
+                            latestMedia = item,
+                            toastMessage = msg,
+                            isScreenFlashActive = false
+                        )
+                    }
+                }
+            }
+        } else {
+            _uiState.update {
+                it.copy(
+                    latestMedia = item,
+                    toastMessage = customSuccessMsg ?: "Photo saved!",
+                    isScreenFlashActive = false
+                )
+            }
+        }
+    }
+
+    fun toggleLookControlPanel(visible: Boolean? = null) {
+        _uiState.update { it.copy(isLookControlPanelVisible = visible ?: !it.isLookControlPanelVisible) }
+    }
+
+    fun updateGpuColorConfig(newConfig: GpuColorConfig) {
+        _uiState.update { it.copy(gpuColorConfig = newConfig) }
+        if (newConfig.lutEnabled && newConfig.selectedLutId != null) {
+            viewModelScope.launch {
+                lutRepository.selectLut(newConfig.selectedLutId)
+            }
+        }
     }
 
     private fun triggerFlashAnimation() {

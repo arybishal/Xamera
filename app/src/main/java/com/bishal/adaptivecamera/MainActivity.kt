@@ -129,6 +129,9 @@ fun MainAppNavHost(
                 },
                 onOpenSettings = {
                     currentDestination = AppDestination.SETTINGS
+                },
+                onOpenLutLibrary = {
+                    currentDestination = AppDestination.LUT_LIBRARY
                 }
             )
         }

@@ -5,7 +5,7 @@
 **Workspace:** `D:\Webapp\xamera`  
 **Repository:** https://github.com/arybishal/Xamera  
 **Developer:** Bishal Aryal  
-**Version:** 0.9.0  
+**Version:** 0.10.0  
 **Date:** 2026-11-06  
 
 ---
@@ -73,6 +73,20 @@
 - **Fix:** Implemented mathematical domain normalization:
   $$\hat{c} = \frac{c - \text{domainMin}}{\text{domainMax} - \text{domainMin}}$$
   followed by strict clamping to $[0.0, 1.0]$. Coordinate mapping to lattice vertex indices $i = \lfloor \hat{c} \cdot (N - 1) \rfloor$ uses safe bounds clamping with $i_1 = \min(i_0 + 1, N - 1)$, ensuring 100% numerical stability across all edge and corner coordinates.
+
+### Issue 17: Half-Texel 3D Texture Coordination Distortion in OpenGL ES 3.0 LUT Sampling
+- **Status:** **RESOLVED** (Phase 9)
+- **Symptom:** When directly sampling a 3D texture using normalized color coordinates $(r, g, b) \in [0.0, 1.0]$ in OpenGL ES shaders, extreme shadow values ($r, g, b = 0.0$) and peak highlights ($r, g, b = 1.0$) undergo edge texel clamping. Coords fall exactly on the boundary of the texture rather than at the center of the edge texels, causing clipped tone curves and color shifts at tonal extremes.
+- **Root Cause:** In OpenGL ES, texture coordinates $[0.0, 1.0]$ span the outer edges of the texture boundary. For a 3D texture of size $N$, texel centers are located at $\frac{i + 0.5}{N}$ for $i \in [0, N - 1]$. The span between the first and last texel centers is $\frac{N - 1}{N}$, offset by $\frac{0.5}{N}$.
+- **Fix:** Implemented rigorous half-texel offset compensation in `GlTexture3D.kt` and shader routines:
+  $$\text{scale} = \frac{N - 1.0}{N}, \quad \text{offset} = \frac{0.5}{N}, \quad \text{coord}_{3D} = \text{clamp}(c, 0.0, 1.0) \cdot \text{scale} + \text{offset}$$
+  With `GL_LINEAR` filtering and `GL_CLAMP_TO_EDGE` wrapping, hardware trilinear interpolation yields mathematically exact color grades across the entire gamut without boundary distortion.
+
+### Issue 18: Headless Offscreen FBO Photo Grading & Android Bitmap Alpha Premultiplication
+- **Status:** **RESOLVED** (Phase 9)
+- **Symptom:** Captured still photos graded via GPU framebuffer objects (FBO) could experience luminance darkening or alpha corruption when transferring pixels between Android `Bitmap` memory and OpenGL ES textures.
+- **Root Cause:** Android `Bitmap.Config.ARGB_8888` defaults to premultiplied alpha. Uploading premultiplied pixels to an OpenGL texture and reading them back via `glReadPixels(..., GL_RGBA, GL_UNSIGNED_BYTE, ...)` without configuring `Bitmap.setPremultiplied(false)` causes double-multiplication or alpha desynchronization.
+- **Fix:** Architected `GpuPhotoProcessor` using headless `OffscreenSurface` (EGL 1x1 pbuffer) and `GlFrameBuffer` configured with `GL_COLOR_ATTACHMENT0`. Bitmap initialization explicitly specifies `bitmap.isPremultiplied = false` prior to `glReadPixels` buffer copying, guaranteeing byte-level color fidelity across full-resolution photo captures. Verified on Snapdragon 8 Gen 3 GPU pipeline.
 
 ---
 

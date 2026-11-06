@@ -5,7 +5,7 @@
 **Workspace:** `D:\Webapp\xamera`  
 **Repository:** https://github.com/arybishal/Xamera  
 **Developer:** Bishal Aryal  
-**Version:** 0.9.0  
+**Version:** 0.10.0  
 **Date:** 2026-11-06  
 
 ---
@@ -161,15 +161,15 @@
 ---
 
 ## Phase 9: GPU Color Pipeline & Creative Shaders (Photo LUT, Film Grain & Halation)
-- [ ] Build EGL context and surface lifecycle manager (`EglCore`, `WindowSurface`).
-- [ ] Implement OpenGL ES 3.0 shader program for 3D LUT sampling with trilinear interpolation (`FEAT-COL-05`).
-- [ ] Implement real-time LUT intensity slider (0%–100%) with uniform mixing.
-- [ ] Implement Graded Photo Capture with dual-save option (Save graded only, or Graded + Original) (`FEAT-COL-06`).
-- [ ] Build procedural GPU Film Grain shader simulating 35mm and 16mm organic noise (`FEAT-COL-08`).
-- [ ] Build photochemical Halation glow shader isolating specular highlights with red-orange dispersion (`FEAT-COL-09`).
-- [ ] Write Phase 9 unit tests (`GlShaderCompilationTest`, `Lut3dTextureAllocationTest`, `FilmGrainParameterTest`, `HalationThresholdTest`).
-- [ ] Write Phase 9 instrumented tests (`OffscreenGpuPhotoRenderTest`, `EglSurfaceLifecycleTest`).
-- [ ] Phase 9 physical device validation on OnePlus Ace 5 / 13R and completion report.
+- [x] Build EGL context and surface lifecycle manager (`EglCore`, `WindowSurface`, `OffscreenSurface`).
+- [x] Implement OpenGL ES 3.0 shader program for 3D LUT sampling with half-texel offset and trilinear interpolation (`FEAT-COL-05`).
+- [x] Implement real-time LUT intensity slider (0%–100%) with uniform mixing (`GpuColorConfig`).
+- [x] Implement Graded Photo Capture with dual-save option (Save graded only, or Graded + Original) (`FEAT-COL-06`).
+- [x] Build procedural GPU Film Grain shader simulating 35mm and 16mm organic noise (`FEAT-COL-08`).
+- [x] Build photochemical Halation glow shader isolating specular highlights with red-orange dispersion (`FEAT-COL-09`).
+- [x] Build Viewfinder Look Control Panel composable drawer with real-time look pills, grain, halation, and LUT library link.
+- [x] Write Phase 9 unit tests (`ColorPipelineShadersTest`, `GpuColorConfigTest`, `GlTexture3DMathTest` — 16 new tests, 169 total tests passing).
+- [x] Phase 9 physical device validation on OnePlus Ace 5 / 13R and completion report.
 
 ---
 

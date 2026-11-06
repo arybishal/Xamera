@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.GridOff
 import androidx.compose.material.icons.filled.Highlight
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Timer10
@@ -51,7 +52,9 @@ fun TopBarControls(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
     onCycleAspectRatio: () -> Unit = {},
-    onCycleGrid: () -> Unit = {}
+    onCycleGrid: () -> Unit = {},
+    isLookActive: Boolean = false,
+    onToggleColorLooks: () -> Unit = {}
 ) {
     Row(
         modifier = modifier
@@ -151,7 +154,21 @@ fun TopBarControls(
             }
         }
 
-        // 6. Settings Screen Button
+        // 6. Color Looks & Film Effects Button
+        IconButton(
+            onClick = onToggleColorLooks,
+            modifier = Modifier
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.45f))
+        ) {
+            Icon(
+                imageVector = Icons.Default.Palette,
+                contentDescription = "Color Looks & Film Effects",
+                tint = if (isLookActive) AccentAmber else TextSecondary
+            )
+        }
+
+        // 7. Settings Screen Button
         IconButton(
             onClick = onOpenSettings,
             modifier = Modifier

@@ -5,7 +5,7 @@
 **Workspace:** `D:\Webapp\xamera`  
 **Repository:** https://github.com/arybishal/Xamera  
 **Developer:** Bishal Aryal  
-**Version:** 0.9.0  
+**Version:** 0.10.0  
 **Date:** 2026-11-06  
 
 > [!NOTE]
@@ -27,7 +27,7 @@
 | **6** | **Pro Exposure & Focus Monitoring Engines** | Live zebra striping (IRE 70%–100%), full-spectrum false color heatmap, AE/AF lock, fine Kelvin white balance slider (2000K–10000K), focus assist magnifier loupe. | **COMPLETED** |
 | **7** | **Advanced Capture Pipelines** | Zero Shutter Lag (ZSL) circular buffer, Auto Exposure Bracketing (AEB), dual-format saving (RAW+JPEG/HEIC), watermarking engine, EXIF metadata management & privacy strip, RAW vault. | **COMPLETED** |
 | **8** | **LUT Library & Color Science Engine** | Built-in original 3D LUT presets (Natural, Warm, Cool, Contrast, Vintage), `.cube` parser (17, 33, 64), Room database, SAF import, Log tone curve profiles (Flat, S-Log/Log-C). | **COMPLETED** |
-| **9** | **GPU Color Pipeline & Creative Shaders** | OpenGL ES 3.0 shader graph, live viewfinder grading, graded photo capture with original preservation, procedural film grain shader, photochemical halation glow shader. | *QUEUED* |
+| **9** | **GPU Color Pipeline & Creative Shaders** | OpenGL ES 3.0 shader graph, live viewfinder grading, graded photo capture with original preservation, procedural film grain shader, photochemical halation glow shader. | **COMPLETED** |
 | **10**| **Professional Video Engine** | Capability-verified resolution & FPS matrix (4K 24/30/60, 1080p 120), bitrate selection (up to 100 Mbps All-I), cinematic 180° shutter angle, stabilization coordinator, audio routing & VU meters. | *QUEUED* |
 | **11**| **Real-Time Video GPU Pipeline & Modes** | Direct GPU-to-Encoder video pipeline, live LUT switching in video, anamorphic de-squeeze (1.33x, 1.55x, 1.8x), time-lapse intervalometer, high-speed slow motion, dual-camera fallback. | *QUEUED* |
 | **12**| **Specialized Shooting Modes** | Handheld multi-frame Night mode, Astrophotography star-stacking, Portrait mode synthetic bokeh, high-speed burst mode with best-shot selector, panorama sweep, macro mode, document & QR scanner. | *QUEUED* |

@@ -191,7 +191,7 @@ fun SettingsScreen(
                         SettingRow(
                             icon = Icons.Default.Info,
                             title = "Application Version",
-                            subtitle = "v0.9.0 · Phase 8 LUT Library & Color Science"
+                            subtitle = "v0.10.0 · Phase 9 GPU Color Pipeline & Shaders"
                         )
                     }
                 }
