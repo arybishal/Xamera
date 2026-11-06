@@ -71,6 +71,8 @@ import com.bishal.adaptivecamera.ui.camera.components.TopBarControls
 import com.bishal.adaptivecamera.ui.camera.components.ViewfinderFramingMask
 import com.bishal.adaptivecamera.ui.camera.components.VirtualHorizonOverlay
 import com.bishal.adaptivecamera.ui.camera.lut.LookControlPanel
+import com.bishal.adaptivecamera.ui.camera.video.VideoControlBar
+import com.bishal.adaptivecamera.ui.camera.video.VideoQuickSettingsSheet
 import com.bishal.adaptivecamera.ui.camera.pro.FalseColorOverlay
 import com.bishal.adaptivecamera.ui.camera.pro.FocusMagnifierOverlay
 import com.bishal.adaptivecamera.ui.camera.pro.FocusPeakingOverlay
@@ -95,6 +97,7 @@ fun CameraScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val uiState by viewModel.uiState.collectAsState()
+    val audioVuState by viewModel.audioVuState.collectAsState()
 
     var hasCameraPermission by remember {
         mutableStateOf(
@@ -361,11 +364,22 @@ fun CameraScreen(
                     )
                 }
 
-                // 6. Pro Applied Telemetry Badge (Pro Mode)
+                // 6. Pro Applied Telemetry Badge (Pro Mode) / Video Control Bar (Video Mode) / Scene Suggestion Chip (Photo Mode)
                 if (uiState.configuration.mode == CameraMode.PRO) {
                     ProAppliedTelemetryBadge(
                         appliedState = uiState.proAppliedState,
                         proConfig = uiState.proConfig,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 10.dp)
+                    )
+                } else if (uiState.configuration.mode == CameraMode.VIDEO) {
+                    VideoControlBar(
+                        videoConfig = uiState.videoConfig,
+                        recordingState = uiState.videoRecordingState,
+                        audioVuState = audioVuState,
+                        onOpenQuickSettings = { viewModel.toggleVideoQuickSettings() },
+                        onTogglePauseResume = { viewModel.toggleVideoPauseResume() },
                         modifier = Modifier
                             .align(Alignment.TopCenter)
                             .padding(top = 10.dp)
@@ -468,6 +482,16 @@ fun CameraScreen(
                     onClose = { viewModel.toggleLookControlPanel(false) },
                     modifier = Modifier.align(Alignment.BottomCenter)
                 )
+
+                // 15. Video Quick Settings Sheet
+                if (uiState.isVideoQuickSettingsVisible) {
+                    VideoQuickSettingsSheet(
+                        config = uiState.videoConfig,
+                        onConfigChanged = { viewModel.setVideoConfig(it) },
+                        onDismiss = { viewModel.dismissVideoQuickSettings() },
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                    )
+                }
 
             } else {
                 // Permission Denied Card

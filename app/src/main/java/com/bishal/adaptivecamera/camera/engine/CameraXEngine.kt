@@ -33,6 +33,10 @@ import com.bishal.adaptivecamera.camera.config.PhotoTimer
 import com.bishal.adaptivecamera.camera.session.CameraSessionState
 import com.bishal.adaptivecamera.core.storage.MediaItem
 import com.bishal.adaptivecamera.core.storage.MediaStoreManager
+import com.bishal.adaptivecamera.video.config.VideoConfig
+import com.bishal.adaptivecamera.video.config.VideoExposureMode
+import com.bishal.adaptivecamera.video.exposure.ShutterAngleCalculator
+import com.bishal.adaptivecamera.video.stabilization.VideoStabilizationCoordinator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -76,6 +80,7 @@ class CameraXEngine(
     private val analysisExecutor = Executors.newSingleThreadExecutor()
     private var activeRecording: Recording? = null
     private var recordingTimerJob: Job? = null
+    private var videoConfig: VideoConfig = VideoConfig()
 
     private var currentLifecycleOwner: LifecycleOwner? = null
     private var currentPreviewView: PreviewView? = null
@@ -159,13 +164,19 @@ class CameraXEngine(
             }
 
             // 5. VideoCapture
-            val qualitySelector = QualitySelector.fromOrderedList(
-                listOf(Quality.FHD, Quality.HD, Quality.SD),
+            val qualitySelector = QualitySelector.from(
+                videoConfig.resolution.quality,
                 androidx.camera.video.FallbackStrategy.lowerQualityOrHigherThan(Quality.SD)
             )
-            val recorder = Recorder.Builder()
+            val recorderBuilder = Recorder.Builder()
                 .setQualitySelector(qualitySelector)
-                .build()
+                .setExecutor(ContextCompat.getMainExecutor(context))
+
+            val bitrate = videoConfig.targetBitrateBps.toInt()
+            if (bitrate in 500_000..200_000_000) {
+                recorderBuilder.setTargetVideoEncodingBitRate(bitrate)
+            }
+            val recorder = recorderBuilder.build()
             val newVideoCapture = VideoCapture.withOutput(recorder)
 
             // 6. Bind use cases according to active mode
@@ -224,6 +235,10 @@ class CameraXEngine(
             // Apply torch if configured
             if (_configuration.value.flashMode == FlashMode.TORCH) {
                 newCamera.cameraControl.enableTorch(true)
+            }
+
+            if (_configuration.value.mode == CameraMode.VIDEO) {
+                applyVideoCamera2Controls(newCamera)
             }
 
             _sessionState.value = CameraSessionState.READY
@@ -467,6 +482,11 @@ class CameraXEngine(
             return
         }
 
+        if (getAvailableStorageBytes() < 100L * 1024L * 1024L) {
+            onError(IllegalStateException("Insufficient storage space (< 100MB)"))
+            return
+        }
+
         val outputOptions = mediaStoreManager.createVideoOutputOptions()
         val executor = ContextCompat.getMainExecutor(context)
 
@@ -488,6 +508,18 @@ class CameraXEngine(
                 is VideoRecordEvent.Start -> {
                     startRecordingTimer()
                     onStarted()
+                }
+                is VideoRecordEvent.Pause -> {
+                    // Recording paused
+                }
+                is VideoRecordEvent.Resume -> {
+                    // Recording resumed
+                }
+                is VideoRecordEvent.Status -> {
+                    if (getAvailableStorageBytes() < 25L * 1024L * 1024L) {
+                        Log.w(TAG, "Low storage boundary reached during recording, stopping safely")
+                        stopVideoRecording()
+                    }
                 }
                 is VideoRecordEvent.Finalize -> {
                     stopRecordingTimer()
@@ -515,6 +547,150 @@ class CameraXEngine(
             activeRecording = null
         }
         stopRecordingTimer()
+    }
+
+    override fun pauseVideoRecording() {
+        val recording = activeRecording
+        if (recording != null) {
+            try {
+                recording.pause()
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to pause video recording", e)
+            }
+        }
+    }
+
+    override fun resumeVideoRecording() {
+        val recording = activeRecording
+        if (recording != null) {
+            try {
+                recording.resume()
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to resume video recording", e)
+            }
+        }
+    }
+
+    override fun updateVideoConfig(config: VideoConfig) {
+        val resolutionChanged = videoConfig.resolution != config.resolution
+        val bitrateChanged = videoConfig.targetBitrateBps != config.targetBitrateBps
+        videoConfig = config
+
+        val cam = camera
+        if (cam != null && _configuration.value.mode == CameraMode.VIDEO) {
+            if (_sessionState.value != CameraSessionState.RECORDING) {
+                if (resolutionChanged || bitrateChanged) {
+                    rebindInternal()
+                } else {
+                    applyVideoCamera2Controls(cam)
+                }
+            }
+        }
+    }
+
+    private fun applyVideoCamera2Controls(cam: Camera) {
+        try {
+            val camera2Control = androidx.camera.camera2.interop.Camera2CameraControl.from(cam.cameraControl)
+            val builder = androidx.camera.camera2.interop.CaptureRequestOptions.Builder()
+
+            // 1. Stabilization Options
+            val stabOptions = VideoStabilizationCoordinator.createCaptureRequestOptions(
+                videoConfig.stabilizationMode
+            )
+            camera2Control.setCaptureRequestOptions(stabOptions)
+
+            // 2. Exposure & Shutter Angle
+            if (videoConfig.exposureMode != VideoExposureMode.AUTO) {
+                builder.setCaptureRequestOption(
+                    android.hardware.camera2.CaptureRequest.CONTROL_AE_MODE,
+                    android.hardware.camera2.CameraMetadata.CONTROL_AE_MODE_OFF
+                )
+
+                val expNanos = if (videoConfig.manualShutterSpeedSeconds != null) {
+                    (videoConfig.manualShutterSpeedSeconds!! * 1_000_000_000.0).toLong()
+                } else if (videoConfig.shutterAngle != null) {
+                    ShutterAngleCalculator.calculateExposureNanoseconds(
+                        fps = videoConfig.frameRate.fps,
+                        shutterAngle = videoConfig.shutterAngle!!
+                    )
+                } else {
+                    16_666_666L // 1/60s default
+                }
+
+                builder.setCaptureRequestOption(
+                    android.hardware.camera2.CaptureRequest.SENSOR_EXPOSURE_TIME,
+                    expNanos
+                )
+
+                val iso = videoConfig.manualIso ?: 100
+                builder.setCaptureRequestOption(
+                    android.hardware.camera2.CaptureRequest.SENSOR_SENSITIVITY,
+                    iso
+                )
+            } else {
+                builder.setCaptureRequestOption(
+                    android.hardware.camera2.CaptureRequest.CONTROL_AE_MODE,
+                    android.hardware.camera2.CameraMetadata.CONTROL_AE_MODE_ON
+                )
+                builder.setCaptureRequestOption(
+                    android.hardware.camera2.CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION,
+                    videoConfig.exposureCompensationIndex
+                )
+            }
+
+            // 3. Manual Kelvin White Balance
+            if (videoConfig.isKelvinManual) {
+                builder.setCaptureRequestOption(
+                    android.hardware.camera2.CaptureRequest.CONTROL_AWB_MODE,
+                    android.hardware.camera2.CameraMetadata.CONTROL_AWB_MODE_OFF
+                )
+                val gains = com.bishal.adaptivecamera.photography.pro.KelvinConverter.kelvinToRgbGains(videoConfig.manualKelvin)
+                builder.setCaptureRequestOption(
+                    android.hardware.camera2.CaptureRequest.COLOR_CORRECTION_MODE,
+                    android.hardware.camera2.CameraMetadata.COLOR_CORRECTION_MODE_TRANSFORM_MATRIX
+                )
+                builder.setCaptureRequestOption(
+                    android.hardware.camera2.CaptureRequest.COLOR_CORRECTION_GAINS,
+                    gains.toCamera2Gains()
+                )
+            } else {
+                builder.setCaptureRequestOption(
+                    android.hardware.camera2.CaptureRequest.CONTROL_AWB_MODE,
+                    android.hardware.camera2.CameraMetadata.CONTROL_AWB_MODE_AUTO
+                )
+            }
+
+            // 4. Manual Focus
+            if (videoConfig.isFocusManual) {
+                builder.setCaptureRequestOption(
+                    android.hardware.camera2.CaptureRequest.CONTROL_AF_MODE,
+                    android.hardware.camera2.CameraMetadata.CONTROL_AF_MODE_OFF
+                )
+                builder.setCaptureRequestOption(
+                    android.hardware.camera2.CaptureRequest.LENS_FOCUS_DISTANCE,
+                    videoConfig.manualFocusDistanceDiopters
+                )
+            } else {
+                builder.setCaptureRequestOption(
+                    android.hardware.camera2.CaptureRequest.CONTROL_AF_MODE,
+                    android.hardware.camera2.CameraMetadata.CONTROL_AF_MODE_CONTINUOUS_VIDEO
+                )
+            }
+
+            camera2Control.setCaptureRequestOptions(builder.build())
+
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed applying Video Camera2 controls", e)
+        }
+    }
+
+    private fun getAvailableStorageBytes(): Long {
+        return try {
+            val stat = android.os.StatFs(android.os.Environment.getExternalStorageDirectory().path)
+            stat.availableBlocksLong * stat.blockSizeLong
+        } catch (_: Exception) {
+            Long.MAX_VALUE
+        }
     }
 
     private fun startRecordingTimer() {

@@ -191,7 +191,7 @@ fun SettingsScreen(
                         SettingRow(
                             icon = Icons.Default.Info,
                             title = "Application Version",
-                            subtitle = "v0.10.0 · Phase 9 GPU Color Pipeline & Shaders"
+                            subtitle = "v0.11.0 · Phase 10 Professional Video Recording"
                         )
                     }
                 }

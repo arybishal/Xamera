@@ -5,7 +5,7 @@
 **Workspace:** `D:\Webapp\xamera`  
 **Repository:** https://github.com/arybishal/Xamera  
 **Developer:** Bishal Aryal  
-**Version:** 0.10.0  
+**Version:** 0.11.0  
 **Date:** 2026-11-06  
 
 ---
@@ -174,15 +174,15 @@
 ---
 
 ## Phase 10: Professional Video Engine (Bitrate, Shutter Angle, Stabilization, VU Meters & Audio Routing)
-- [ ] Build verified video resolution and frame-rate matrix (4K 24/30/60, 1080p 24/30/60/120, 720p 240) (`FEAT-VID-01`).
-- [ ] Implement configurable Video Bitrate (Standard, High 100 Mbps, Intra-frame All-I) (`FEAT-VID-02`).
-- [ ] Implement cinematic 180° Shutter Angle automatic exposure calculator (`FEAT-VID-03`).
-- [ ] Implement Multi-Mode Video Stabilization coordinator (Standard OIS, Combined OIS+EIS, Super Steady) (`FEAT-VID-04`).
-- [ ] Implement Professional Audio Routing (Internal Mic array, USB-C external audio interface, Bluetooth mic) (`FEAT-VID-05`).
-- [ ] Build dual-channel real-time Audio VU Meters (-40dBFS to 0dBFS) with clipping indicator (`FEAT-VID-06`).
-- [ ] Write Phase 10 unit tests (`VideoProfileValidatorTest`, `ShutterAngleCalculatorTest`, `AudioVuMeterDecibelTest`, `StabilizationModeNegotiationTest`).
-- [ ] Write Phase 10 instrumented tests (`AudioDeviceEnumerationTest`, `VideoRecordingSanityTest`).
-- [ ] Phase 10 physical device validation on OnePlus Ace 5 / 13R and completion report.
+- [x] Build verified video resolution and frame-rate matrix (4K 24/30/60, 1080p 24/30/60/120, 720p 240) (`FEAT-VID-01`).
+- [x] Implement configurable Video Bitrate (Standard, High 100 Mbps, Intra-frame All-I) (`FEAT-VID-02`).
+- [x] Implement cinematic 180° Shutter Angle automatic exposure calculator (`FEAT-VID-03`).
+- [x] Implement Multi-Mode Video Stabilization coordinator (Standard OIS, Combined OIS+EIS, Super Steady) (`FEAT-VID-04`).
+- [x] Implement Professional Audio Routing (Internal Mic array, USB-C external audio interface, Bluetooth mic) (`FEAT-VID-05`).
+- [x] Build dual-channel real-time Audio VU Meters (-40dBFS to 0dBFS) with clipping indicator (`FEAT-VID-06`).
+- [x] Build VideoControlBar and VideoQuickSettingsSheet for ergonomic video parameters adjustment.
+- [x] Write Phase 10 unit tests (`VideoConfigTest`, `ShutterAngleCalculatorTest`, `VideoBitrateProfileTest`, `VideoRecordingStateTest`, `AudioVuStateTest`, `VideoStabilizationCoordinatorTest` — 29 new tests, 198 total passing).
+- [x] Phase 10 physical device validation on OnePlus Ace 5 / 13R and completion report.
 
 ---
 

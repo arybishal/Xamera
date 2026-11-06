@@ -53,4 +53,7 @@ interface CameraEngine {
     )
 
     fun stopVideoRecording()
+    fun pauseVideoRecording() {}
+    fun resumeVideoRecording() {}
+    fun updateVideoConfig(config: com.bishal.adaptivecamera.video.config.VideoConfig) {}
 }

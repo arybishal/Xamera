@@ -5,7 +5,7 @@
 **Workspace:** `D:\Webapp\xamera`  
 **Repository:** https://github.com/arybishal/Xamera  
 **Developer:** Bishal Aryal  
-**Version:** 0.10.0  
+**Version:** 0.11.0  
 **Date:** 2026-11-06  
 
 ---
@@ -87,6 +87,12 @@
 - **Symptom:** Captured still photos graded via GPU framebuffer objects (FBO) could experience luminance darkening or alpha corruption when transferring pixels between Android `Bitmap` memory and OpenGL ES textures.
 - **Root Cause:** Android `Bitmap.Config.ARGB_8888` defaults to premultiplied alpha. Uploading premultiplied pixels to an OpenGL texture and reading them back via `glReadPixels(..., GL_RGBA, GL_UNSIGNED_BYTE, ...)` without configuring `Bitmap.setPremultiplied(false)` causes double-multiplication or alpha desynchronization.
 - **Fix:** Architected `GpuPhotoProcessor` using headless `OffscreenSurface` (EGL 1x1 pbuffer) and `GlFrameBuffer` configured with `GL_COLOR_ATTACHMENT0`. Bitmap initialization explicitly specifies `bitmap.isPremultiplied = false` prior to `glReadPixels` buffer copying, guaranteeing byte-level color fidelity across full-resolution photo captures. Verified on Snapdragon 8 Gen 3 GPU pipeline.
+
+### Issue 19: Android 17 / ColorOS Audio Permission Guard & Graceful Video-Only Fallback
+- **Status:** **RESOLVED** (Phase 10)
+- **Symptom:** In modern Android releases (Android 14–17 / ColorOS), attempting to enable audio recording without explicit runtime user consent or with audio permission restricted by OS policies throws `java.lang.SecurityException` or crashes the recording pipeline.
+- **Root Cause:** Android requires runtime `RECORD_AUDIO` permission for video recording with sound. In unrooted shells, `pm grant` is restricted by platform security.
+- **Fix:** Architected `VideoRecordingEngine` and `CameraXEngine` with dual permission checking (`ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED`). When audio permission is granted and audio recording is enabled by the user, `pendingRecording.withAudioEnabled()` is configured. If ungranted or disabled, the video recording engine seamlessly falls back to video-only recording without crashing or dropping frames, while the UI displays the audio badge status accordingly. Verified on OnePlus Ace 5 / 13R running Android 17 API 37.
 
 ---
 

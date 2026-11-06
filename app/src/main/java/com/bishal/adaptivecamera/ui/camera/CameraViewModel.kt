@@ -47,6 +47,11 @@ import com.bishal.adaptivecamera.photography.pro.ProAppliedState
 import com.bishal.adaptivecamera.photography.pro.ProConfiguration
 import com.bishal.adaptivecamera.photography.pro.ProWhiteBalance
 import com.bishal.adaptivecamera.photography.pro.ZebraStripingMap
+import com.bishal.adaptivecamera.video.audio.AudioRecordingManager
+import com.bishal.adaptivecamera.video.audio.AudioVuState
+import com.bishal.adaptivecamera.video.config.VideoConfig
+import com.bishal.adaptivecamera.video.recording.VideoRecordingState
+import com.bishal.adaptivecamera.video.recording.VideoRecordingStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -78,7 +83,10 @@ data class CameraUiState(
     val virtualHorizonState: VirtualHorizonState = VirtualHorizonState(),
     val isScreenFlashActive: Boolean = false,
     val gpuColorConfig: GpuColorConfig = GpuColorConfig.DEFAULT,
-    val isLookControlPanelVisible: Boolean = false
+    val isLookControlPanelVisible: Boolean = false,
+    val videoConfig: VideoConfig = VideoConfig(),
+    val videoRecordingState: VideoRecordingState = VideoRecordingState(),
+    val isVideoQuickSettingsVisible: Boolean = false
 )
 
 class CameraViewModel @JvmOverloads constructor(
@@ -97,6 +105,9 @@ class CameraViewModel @JvmOverloads constructor(
 
     private val _uiState = MutableStateFlow(CameraUiState())
     val uiState: StateFlow<CameraUiState> = _uiState.asStateFlow()
+
+    val audioRecordingManager = AudioRecordingManager(application.applicationContext, viewModelScope)
+    val audioVuState: StateFlow<AudioVuState> = audioRecordingManager.vuState
 
     private var countdownJob: Job? = null
     private var focusTimeoutJob: Job? = null
@@ -215,7 +226,12 @@ class CameraViewModel @JvmOverloads constructor(
         }
         viewModelScope.launch {
             cameraEngine.recordingDurationSec.collect { sec ->
-                _uiState.update { it.copy(recordingDurationSec = sec) }
+                _uiState.update {
+                    it.copy(
+                        recordingDurationSec = sec,
+                        videoRecordingState = it.videoRecordingState.copy(durationMs = sec * 1000L)
+                    )
+                }
             }
         }
         viewModelScope.launch {
@@ -336,22 +352,46 @@ class CameraViewModel @JvmOverloads constructor(
         hapticEngine.performShutter()
 
         if (state.configuration.mode == CameraMode.VIDEO) {
-            if (state.sessionState == CameraSessionState.RECORDING) {
+            if (state.sessionState == CameraSessionState.RECORDING || state.videoRecordingState.status.isRecordingOrPaused) {
                 cameraEngine.stopVideoRecording()
+                _uiState.update {
+                    it.copy(videoRecordingState = it.videoRecordingState.copy(status = VideoRecordingStatus.FINALIZING))
+                }
             } else if (state.sessionState.canStartRecording) {
+                _uiState.update {
+                    it.copy(videoRecordingState = VideoRecordingState(status = VideoRecordingStatus.PREPARING))
+                }
                 cameraEngine.startVideoRecording(
-                    withAudio = state.configuration.isAudioEnabled,
-                    onStarted = {},
+                    withAudio = state.videoConfig.audioEnabled,
+                    onStarted = {
+                        _uiState.update {
+                            it.copy(
+                                videoRecordingState = VideoRecordingState(status = VideoRecordingStatus.RECORDING)
+                            )
+                        }
+                    },
                     onFinalized = { media ->
                         _uiState.update {
                             it.copy(
                                 latestMedia = media ?: it.latestMedia,
+                                videoRecordingState = VideoRecordingState(
+                                    status = VideoRecordingStatus.COMPLETED,
+                                    outputUri = media?.uri
+                                ),
                                 toastMessage = if (media != null) "Video saved!" else null
                             )
                         }
                     },
                     onError = { error ->
-                        _uiState.update { it.copy(toastMessage = "Video error: ${error.message}") }
+                        _uiState.update {
+                            it.copy(
+                                videoRecordingState = VideoRecordingState(
+                                    status = VideoRecordingStatus.ERROR,
+                                    errorMessage = error.message
+                                ),
+                                toastMessage = "Video error: ${error.message}"
+                            )
+                        }
                     }
                 )
             }
@@ -547,6 +587,14 @@ class CameraViewModel @JvmOverloads constructor(
         if (_uiState.value.configuration.mode == mode) return
         hapticEngine.performModeSwitch()
         val previousMode = _uiState.value.configuration.mode
+
+        if (mode == CameraMode.VIDEO) {
+            audioRecordingManager.startVuMonitoring()
+        } else if (previousMode == CameraMode.VIDEO) {
+            audioRecordingManager.stopVuMonitoring()
+            _uiState.update { it.copy(isVideoQuickSettingsVisible = false) }
+        }
+
         if (mode == CameraMode.PRO) {
             cameraEngine.unbindCamera()
             _uiState.update {
@@ -915,6 +963,43 @@ class CameraViewModel @JvmOverloads constructor(
         viewModelScope.launch {
             preferencesRepository.updateStripDeviceModel(enabled)
         }
+    }
+
+    fun setVideoConfig(config: VideoConfig) {
+        val synced = config.syncBitrate()
+        _uiState.update { it.copy(videoConfig = synced) }
+        cameraEngine.updateVideoConfig(synced)
+    }
+
+    fun toggleVideoQuickSettings() {
+        val next = !_uiState.value.isVideoQuickSettingsVisible
+        _uiState.update { it.copy(isVideoQuickSettingsVisible = next) }
+        hapticEngine.performClick()
+    }
+
+    fun dismissVideoQuickSettings() {
+        _uiState.update { it.copy(isVideoQuickSettingsVisible = false) }
+    }
+
+    fun toggleVideoPauseResume() {
+        val state = _uiState.value.videoRecordingState
+        if (state.status == VideoRecordingStatus.RECORDING) {
+            cameraEngine.pauseVideoRecording()
+            _uiState.update { it.copy(videoRecordingState = it.videoRecordingState.copy(status = VideoRecordingStatus.PAUSED)) }
+            hapticEngine.performClick()
+        } else if (state.status == VideoRecordingStatus.PAUSED) {
+            cameraEngine.resumeVideoRecording()
+            _uiState.update { it.copy(videoRecordingState = it.videoRecordingState.copy(status = VideoRecordingStatus.RECORDING)) }
+            hapticEngine.performClick()
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        audioRecordingManager.stopVuMonitoring()
+        cameraEngine.unbindCamera()
+        camera2ProEngine.unbindCamera()
+        virtualHorizonSensor.stopListening()
     }
 
     fun clearToastMessage() {
