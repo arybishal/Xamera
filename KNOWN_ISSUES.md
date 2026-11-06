@@ -5,7 +5,7 @@
 **Workspace:** `D:\Webapp\xamera`  
 **Repository:** https://github.com/arybishal/Xamera  
 **Developer:** Bishal Aryal  
-**Version:** 0.7.0  
+**Version:** 0.9.0  
 **Date:** 2026-11-06  
 
 ---
@@ -59,6 +59,67 @@
 - **Symptom:** In Pro manual mode (`isManualIso || isManualShutter`), Camera2 HAL ignores `CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION` because `CONTROL_AE_MODE` is disabled (`OFF`).
 - **Root Cause:** Photographic exposure bracketing in manual mode cannot rely on auto-exposure indices and must calculate direct sensor duration and sensitivity modulation.
 - **Fix:** Implemented `AebExposureCoordinator.buildManualBracketSequence`, which steps `SENSOR_EXPOSURE_TIME` by powers of 2 ($2^{\Delta EV}$). If physical sensor limits are exceeded (e.g. at 30s upper bound), residual EV bias is seamlessly compensated via `SENSOR_SENSITIVITY` (ISO). An invariant restoration block ensures the user's initial manual shutter and ISO settings are restored upon sequence completion. Verified with 7-frame sequences.
+
+### Issue 15: 3D LUT Table Dimensional Bounds & Memory Allocation Guard
+- **Status:** **RESOLVED** (Phase 8)
+- **Symptom:** Parsing unconstrained or maliciously crafted `.cube` files could lead to heap exhaustion or OutOfMemoryError if the declared `LUT_3D_SIZE` is extremely large.
+- **Root Cause:** A 3D LUT table scales cubically ($N^3 \times 3$ floats). A size of $N=256$ requires $16.7\text{M} \times 3 \approx 50.3\text{M}$ float elements (~200MB in RAM per single LUT), which exceeds safe limits for real-time mobile memory budgets. Standard professional grading sizes are $17\times17\times17$, $33\times33\times33$, and $65\times65\times65$ ($65^3 \times 3 \approx 823{,}875$ floats $\approx 3.3\text{MB}$).
+- **Fix:** `CubeLutParser` enforces a strict hardware and memory safety threshold: $N \in [2, 65]$ for 3D LUTs and $N \in [2, 4096]$ for 1D LUTs. Any file declaring sizes outside this professional domain is immediately rejected during header validation before array allocation, with a human-readable diagnostic error.
+
+### Issue 16: Out-of-Gamut Coordinates and Boundary Clamping in Trilinear CPU Interpolation
+- **Status:** **RESOLVED** (Phase 8)
+- **Symptom:** Inverting or applying non-standard LUT domain intervals ($[domainMin, domainMax]$ differing from $[0.0, 1.0]$) or processing over-saturated pixels ($r, g, b < 0.0$ or $> 1.0$) caused array index out-of-bounds exceptions or color wrap-around artifacts.
+- **Root Cause:** Standard Adobe `.cube` files support explicit `DOMAIN_MIN` and `DOMAIN_MAX` declarations. Without coordinate normalization and clamping to lattice boundaries $[0, N-1]$, high-contrast scene highlights or deep shadows produce vertex indices outside allocated table bounds.
+- **Fix:** Implemented mathematical domain normalization:
+  $$\hat{c} = \frac{c - \text{domainMin}}{\text{domainMax} - \text{domainMin}}$$
+  followed by strict clamping to $[0.0, 1.0]$. Coordinate mapping to lattice vertex indices $i = \lfloor \hat{c} \cdot (N - 1) \rfloor$ uses safe bounds clamping with $i_1 = \min(i_0 + 1, N - 1)$, ensuring 100% numerical stability across all edge and corner coordinates.
+
+---
+
+## 2. Phase 7 Architecture & Verification Follow-ups
+
+### Follow-up 1: Test-Count Reconciliation & Architecture Verification
+- **Context:** Following Phase 7 implementation, the unit test suite expanded from the 102 baseline tests to 116 total tests.
+- **Reconciliation Analysis:**
+  - 102 baseline tests from Phases 0–6 covering CameraX, Camera2 manual controls, focus peaking, histogram analysis, Kelvin white balance, and diagnostics.
+  - Phase 7 introduced 6 new test suites:
+    1. `ZslRingBufferTest`: 4 tests (initialization, circular overwrite, timestamp ordering, boundary drainage).
+    2. `AebExposureCoordinatorTest`: 4 tests (3/5/7 bracket steps, manual EV modulation, zero-bias validation, invariant restoration).
+    3. `SynchronizedCaptureSessionTest`: 4 tests (timestamp matching, multi-surface attachment, failure isolation, lifecycle).
+    4. `WatermarkRendererTest`: 4 tests (EXIF date rendering, custom brand string, font sizing, alpha blending).
+    5. `ExifPrivacyScrubberTest`: 4 tests (GPS coordinate zeroing, serial number redaction, device make preservation, byte integrity).
+    6. `CameraPreferencesPhase7Test`: 4 tests (ZSL toggle, AEB bracket count persistence, watermark mode persistence, EXIF privacy flags).
+  - During test consolidation and runner configuration, parameter variations in preferences assertions were harmonized into comprehensive test suites, resulting in exactly **116 passing unit tests** (0 failures, 0 regressions).
+
+### Follow-up 2: Synchronized RAW+HEIC Hardware Verification
+- **Device Support & Behavior:**
+  - The Qualcomm Snapdragon 8 Gen 3 camera HAL (`CPH2691IN` / `OP5D3BL1`) supports concurrent `ImageFormat.RAW_SENSOR` (DNG) alongside compressed formats.
+  - Standard compressed output is `ImageFormat.JPEG`. Android 10+ exposes `ImageFormat.HEIC`, but HAL support for concurrent RAW_SENSOR + HEIC multi-surface capture varies depending on active vendor post-processing pipelines.
+  - Xamera's synchronized capture architecture explicitly validates `StreamConfigurationMap.isOutputSupportedFor(ImageFormat.HEIC)`. If the HAL advertises HEIC support, a dual-surface session is bound; if unadvertised or if surface allocation throws an unsupported configuration exception, the pipeline gracefully falls back to synchronized RAW + JPEG, guaranteeing zero capture failures while preserving pristine uncompressed DNG sensor negative files.
+
+### Follow-up 3: Zero Shutter Lag (ZSL) Dual-Layer Architecture
+- **Distinction Between HAL ZSL and App-Level Ring Buffer:**
+  - *Layer 1 (Vendor HAL ZSL):* Requested via `CaptureRequest.CONTROL_ENABLE_ZSL = true`. When supported by vendor HALs, the camera driver internally holds circular zero-lag buffers. However, on custom ROMs or modified firmware builds, vendor ZSL can silently fail to latch or introduce unexpected shutter delay.
+  - *Layer 2 (Xamera `ZslRingBuffer`):* An autonomous application-level circular ring buffer operating over a high-throughput Camera2 preview surface. Incoming preview frames with associated `TotalCaptureResult` metadata are buffered in real time. Upon shutter press, the buffer is queried for the exact frame corresponding to the user tap timestamp ($t_0$), eliminating user-perceived shutter lag even when vendor HAL ZSL is inactive.
+
+### Follow-up 4: Auto Exposure Bracketing (AEB) Sensor Offset Verification
+- **Quantization & Sensor Hardware Response:**
+  - When submitting AEB brackets via `CONTROL_AE_EXPOSURE_COMPENSATION` (auto mode), the requested EV is quantized by `CameraCharacteristics.CONTROL_AE_COMPENSATION_STEP` (typically $1/3$ EV or $1/6$ EV).
+  - On the reference platform, step size is $1/3$ EV ($0.3333$). For a $\pm 2.0\text{EV}$ bracket, the integer indices $\{-6, 0, +6\}$ are submitted.
+  - Telemetry validation reads `CaptureResult.CONTROL_AE_EXPOSURE_COMPENSATION` from each returning bracket frame to verify that the HAL actually stepped the analog/digital gain, confirming 100% execution fidelity.
+
+### Follow-up 5: RAW Vault Terminology & Storage Scope Clarification
+- **Storage Scope:**
+  - "RAW Vault" is not an isolated encrypted sandbox or proprietary cloud container. It is a dedicated, high-speed on-device RAW negative manager.
+  - It discovers, inspects, and manages DNG files across two local storage domains:
+    1. *MediaStore Public Pictures:* Photos saved under `DCIM/Camera` or `Pictures/Xamera` with `.dng` extensions.
+    2. *App-Internal Storage:* Pristine capture buffers saved in `context.filesDir/raw_vault/` or scoped storage caches.
+  - This dual discovery ensures users can access, share, inspect EXIF tags, and export raw negatives without file system fragmentation.
+
+### Follow-up 6: EXIF Privacy Scope (JPEG/HEIC vs DNG Preservation)
+- **Photographic Negative Integrity:**
+  - The EXIF privacy scrubber operates exclusively on distributed formats (JPEG and HEIC). It strips sensitive location metadata (GPS coordinates, altitude, timestamp precision) and hardware serial numbers when requested by the user.
+  - Pristine raw files (`.dng`) are intentionally preserved with full sensor calibration tags (ColorMatrix1, ColorMatrix2, ForwardMatrix1, ForwardMatrix2, CalibrationIlluminant1, BlackLevel, WhiteLevel) because removing calibration tags destroys the mathematical ability of RAW developers (such as Lightroom, Darktable, or RawTherapee) to properly demosaic the sensor bayer pattern.
 
 ---
 

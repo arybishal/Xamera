@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
@@ -107,7 +108,8 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
     cameraViewModel: CameraViewModel? = null,
-    onNavigateToRawVault: () -> Unit = {}
+    onNavigateToRawVault: () -> Unit = {},
+    onNavigateToLutLibrary: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val diagState by diagnosticsViewModel.uiState.collectAsState()
@@ -189,7 +191,7 @@ fun SettingsScreen(
                         SettingRow(
                             icon = Icons.Default.Info,
                             title = "Application Version",
-                            subtitle = "v0.8.0 · Phase 7 Advanced Capture & RAW"
+                            subtitle = "v0.9.0 · Phase 8 LUT Library & Color Science"
                         )
                     }
                 }
@@ -594,7 +596,95 @@ fun SettingsScreen(
                 }
             }
 
-            // Section 4: Prominent "Check Hardware Capability" Section
+            // Section 4: Color Science & LUT Library (Phase 8)
+            item {
+                SettingsSectionHeader("Color Science & Look Profiles", Icons.Default.Palette)
+            }
+
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Text(
+                            text = "LUT Library & Color Calibration",
+                            color = PrimaryCyan,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Offline color science management, .cube parser, mathematical film presets, and look profile database.",
+                            color = TextSecondary,
+                            fontSize = 11.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // LUT Library Navigation Card
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = DarkSurfaceVariant),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onNavigateToLutLibrary() }
+                                .border(1.dp, PrimaryCyan.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(PrimaryCyan.copy(alpha = 0.15f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Palette,
+                                            contentDescription = null,
+                                            tint = PrimaryCyan,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text(
+                                            text = "Open LUT Library",
+                                            color = TextPrimary,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "Browse presets, import 1D/3D .cube files, manage favorites",
+                                            color = TextSecondary,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                }
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = "Open",
+                                    tint = PrimaryCyan,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Section 5: Prominent "Check Hardware Capability" Section
             item {
                 SettingsSectionHeader("Hardware Intelligence", Icons.Default.Memory)
             }

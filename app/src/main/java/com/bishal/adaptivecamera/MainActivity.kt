@@ -24,6 +24,8 @@ import com.bishal.adaptivecamera.ui.camera.CameraScreen
 import com.bishal.adaptivecamera.ui.camera.CameraViewModel
 import com.bishal.adaptivecamera.ui.diagnostics.DiagnosticsScreen
 import com.bishal.adaptivecamera.ui.diagnostics.DiagnosticsViewModel
+import com.bishal.adaptivecamera.ui.lut.LutLibraryScreen
+import com.bishal.adaptivecamera.ui.lut.LutViewModel
 import com.bishal.adaptivecamera.ui.settings.SettingsScreen
 import com.bishal.adaptivecamera.ui.theme.AdaptiveCameraTheme
 import com.bishal.adaptivecamera.ui.vault.RawVaultScreen
@@ -34,7 +36,8 @@ enum class AppDestination {
     MEDIA_VIEWER,
     SETTINGS,
     DIAGNOSTICS,
-    RAW_VAULT
+    RAW_VAULT,
+    LUT_LIBRARY
 }
 
 class MainActivity : ComponentActivity() {
@@ -42,6 +45,7 @@ class MainActivity : ComponentActivity() {
     private val cameraViewModel: CameraViewModel by viewModels()
     private val galleryViewModel: GalleryViewModel by viewModels()
     private val diagnosticsViewModel: DiagnosticsViewModel by viewModels()
+    private val lutViewModel: LutViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,7 +57,8 @@ class MainActivity : ComponentActivity() {
                     activity = this,
                     cameraViewModel = cameraViewModel,
                     galleryViewModel = galleryViewModel,
-                    diagnosticsViewModel = diagnosticsViewModel
+                    diagnosticsViewModel = diagnosticsViewModel,
+                    lutViewModel = lutViewModel
                 )
             }
         }
@@ -79,7 +84,8 @@ fun MainAppNavHost(
     activity: ComponentActivity,
     cameraViewModel: CameraViewModel,
     galleryViewModel: GalleryViewModel,
-    diagnosticsViewModel: DiagnosticsViewModel
+    diagnosticsViewModel: DiagnosticsViewModel,
+    lutViewModel: LutViewModel
 ) {
     var currentDestination by remember { mutableStateOf(AppDestination.CAMERA) }
     var viewingItem by remember { mutableStateOf<MediaItem?>(null) }
@@ -102,7 +108,7 @@ fun MainAppNavHost(
                 viewingItem = null
                 currentDestination = AppDestination.GALLERY
             }
-            AppDestination.RAW_VAULT -> {
+            AppDestination.RAW_VAULT, AppDestination.LUT_LIBRARY -> {
                 currentDestination = AppDestination.SETTINGS
             }
             AppDestination.GALLERY, AppDestination.SETTINGS, AppDestination.DIAGNOSTICS -> {
@@ -168,11 +174,22 @@ fun MainAppNavHost(
                 },
                 onNavigateToRawVault = {
                     currentDestination = AppDestination.RAW_VAULT
+                },
+                onNavigateToLutLibrary = {
+                    currentDestination = AppDestination.LUT_LIBRARY
                 }
             )
         }
         AppDestination.RAW_VAULT -> {
             RawVaultScreen(
+                onNavigateBack = {
+                    currentDestination = AppDestination.SETTINGS
+                }
+            )
+        }
+        AppDestination.LUT_LIBRARY -> {
+            LutLibraryScreen(
+                viewModel = lutViewModel,
                 onNavigateBack = {
                     currentDestination = AppDestination.SETTINGS
                 }

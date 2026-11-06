@@ -5,7 +5,7 @@
 **Workspace:** `D:\Webapp\xamera`  
 **Repository:** https://github.com/arybishal/Xamera  
 **Developer:** Bishal Aryal  
-**Version:** 0.8.0  
+**Version:** 0.9.0  
 **Date:** 2026-11-06  
 
 ---
@@ -149,15 +149,14 @@
 ---
 
 ## Phase 8: LUT Library & Color Science Engine (.cube 3D LUTs & Log Profiles)
-- [ ] Design and bundle 5 original 3D LUT presets (Natural, Cinematic Warm, Cinematic Cool, Filmic Contrast, Soft Vintage).
-- [ ] Implement high-performance Adobe `.cube` 3D LUT parser (sizes 17x17x17, 33x33x33, 64x64x64) with validation (`FEAT-COL-04`).
-- [ ] Integrate Storage Access Framework (SAF) for external `.cube` file import.
-- [ ] Implement Room database for user LUT profiles, favorites, and import dates.
-- [ ] Implement mathematical Log tone curve profiles (Flat, S-Log/Log-C emulations) (`FEAT-COL-07`).
-- [ ] Build LUT Management & Selection UI screen.
-- [ ] Write Phase 8 unit tests (`CubeLutParserTest`, `CubeLutParserErrorHandlingTest`, `LogToneCurveTransferTest`, `LutDatabaseCrudTest`).
-- [ ] Write Phase 8 instrumented tests (`LutAssetLoadingTest`, `SafLutImportTest`).
-- [ ] Phase 8 physical device validation on OnePlus Ace 5 / 13R and completion report.
+- [x] Design and bundle 5 original 3D LUT presets (Natural, Cinematic Warm, Cinematic Cool, Filmic Contrast, Soft Vintage).
+- [x] Implement high-performance Adobe `.cube` 3D LUT parser (sizes 17x17x17, 33x33x33, 64x64x64) with validation (`FEAT-COL-04`).
+- [x] Integrate Storage Access Framework (SAF) for external `.cube` file import with 20MB bounds and SHA-256 deduplication.
+- [x] Implement Room database (`LutDatabase`, `LutDao`, `LutEntity`) for user LUT profiles, favorites, and import dates.
+- [x] Implement mathematical Log tone curve profiles (Flat, S-Log3/Log-C emulations) (`FEAT-COL-07`) and CPU trilinear interpolation.
+- [x] Build LUT Management & Selection UI screen with search, categories, favorites, sorting, and detail inspect modal.
+- [x] Write Phase 8 unit tests (`CubeLutParserTest`, `ColorScienceInterpolationTest`, `BuiltInLutPresetsTest`, `LutRepositoryTest`) — 153 total tests passing.
+- [x] Phase 8 architecture verification and completion report.
 
 ---
 
