@@ -170,7 +170,10 @@ fun CameraScreen(
                         onSetZebraThreshold = { viewModel.setZebraThreshold(it) },
                         onToggleFalseColor = { viewModel.toggleFalseColor(it) },
                         onToggleFocusMagnifier = { viewModel.toggleFocusMagnifier(it) },
-                        onSetFocusMagnifierScale = { viewModel.setFocusMagnifierScale(it) }
+                        onSetFocusMagnifierScale = { viewModel.setFocusMagnifierScale(it) },
+                        onSetCaptureFormat = { viewModel.setCaptureFormat(it) },
+                        onSetAebBracketCount = { viewModel.setAebBracketCount(it) },
+                        onSetAebEvStep = { viewModel.setAebEvStep(it) }
                     )
                 }
                 BottomCaptureControls(

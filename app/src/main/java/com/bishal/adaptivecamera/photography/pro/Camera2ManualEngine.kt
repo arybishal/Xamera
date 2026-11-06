@@ -30,6 +30,12 @@ import com.bishal.adaptivecamera.camera.session.CameraSessionState
 import com.bishal.adaptivecamera.core.storage.MediaItem
 import com.bishal.adaptivecamera.core.storage.MediaStoreManager
 import com.bishal.adaptivecamera.photography.raw.DngCaptureManager
+import com.bishal.adaptivecamera.photography.capture.CaptureFormat
+import com.bishal.adaptivecamera.photography.capture.AebExposureCoordinator
+import com.bishal.adaptivecamera.photography.watermark.PhotoWatermarkCompositor
+import com.bishal.adaptivecamera.photography.watermark.WatermarkConfig
+import com.bishal.adaptivecamera.photography.exif.ExifPrivacyManager
+import com.bishal.adaptivecamera.photography.exif.ExifPrivacyConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -442,15 +448,36 @@ class Camera2ManualEngine(
             return
         }
 
+        // Check if AEB sequence is requested
+        if (_proConfig.value.aebBracketCount > 0) {
+            captureAebSequence(
+                bracketCount = _proConfig.value.aebBracketCount,
+                evStep = _proConfig.value.aebEvStep,
+                onSuccess = { items ->
+                    items.firstOrNull()?.let(onSuccess) ?: onError(IllegalStateException("No AEB frames captured"))
+                },
+                onError = onError
+            )
+            return
+        }
+
         _sessionState.value = CameraSessionState.CAPTURING
 
         try {
             val captureBuilder = device.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
-            captureBuilder.addTarget(jpegImageReader!!.surface)
+            val format = _proConfig.value.captureFormat
+            val isRawRequested = _proConfig.value.isRawOutputActive && rawImageReader != null
+            val isProcessedRequested = format.isProcessed
 
-            val isRawRequested = _proConfig.value.isRawCaptureEnabled && rawImageReader != null
-            if (isRawRequested) {
+            if (isProcessedRequested && jpegImageReader != null) {
+                captureBuilder.addTarget(jpegImageReader!!.surface)
+            }
+            if (isRawRequested && rawImageReader != null) {
                 captureBuilder.addTarget(rawImageReader!!.surface)
+            }
+
+            if (_proConfig.value.isZslEnabled) {
+                captureBuilder.set(CaptureRequest.CONTROL_ENABLE_ZSL, true)
             }
 
             // Copy manual parameters
@@ -463,16 +490,18 @@ class Camera2ManualEngine(
                 p.get(CaptureRequest.CONTROL_AWB_MODE)?.let { captureBuilder.set(CaptureRequest.CONTROL_AWB_MODE, it) }
             }
 
-            // Set up JPEG listener
-            jpegImageReader?.setOnImageAvailableListener({ reader ->
-                val image = reader.acquireLatestImage() ?: return@setOnImageAvailableListener
-                engineScope.launch {
-                    val saved = saveJpegImage(image)
-                    image.close()
-                    _sessionState.value = CameraSessionState.READY
-                    saved.fold(onSuccess = onSuccess, onFailure = onError)
-                }
-            }, backgroundHandler)
+            // Set up JPEG listener if processed image requested
+            if (isProcessedRequested) {
+                jpegImageReader?.setOnImageAvailableListener({ reader ->
+                    val image = reader.acquireLatestImage() ?: return@setOnImageAvailableListener
+                    engineScope.launch {
+                        val saved = saveJpegImage(image)
+                        image.close()
+                        _sessionState.value = CameraSessionState.READY
+                        saved.fold(onSuccess = onSuccess, onFailure = onError)
+                    }
+                }, backgroundHandler)
+            }
 
             // Set up RAW listener if requested
             if (isRawRequested) {
@@ -492,11 +521,14 @@ class Camera2ManualEngine(
                         val rawImg = rawImageReader?.acquireLatestImage()
                         if (rawImg != null) {
                             engineScope.launch {
-                                dngCaptureManager.saveDngImage(
+                                val dngResult = dngCaptureManager.saveDngImage(
                                     rawImage = rawImg,
                                     characteristics = chars,
                                     captureResult = result
                                 )
+                                if (!isProcessedRequested) {
+                                    dngResult.fold(onSuccess = onSuccess, onFailure = onError)
+                                }
                             }
                         }
                     }
@@ -518,11 +550,144 @@ class Camera2ManualEngine(
 
             val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
             val filename = "IMG_${timeStamp}.jpg"
-            val croppedBytes = mediaStoreManager.cropJpegBytes(bytes, _configuration.value.aspectRatio)
-            val item = mediaStoreManager.saveImageBytes(croppedBytes, filename)
+            var finalBytes = mediaStoreManager.cropJpegBytes(bytes, _configuration.value.aspectRatio)
+
+            // 1. Watermark processing
+            if (_proConfig.value.isWatermarkEnabled) {
+                val wmResult = PhotoWatermarkCompositor.applyWatermark(
+                    sourceJpegBytes = finalBytes,
+                    captureTimestampMs = System.currentTimeMillis(),
+                    config = WatermarkConfig(isEnabled = true),
+                    context = context
+                )
+                if (wmResult.isSuccess) {
+                    finalBytes = wmResult.getOrThrow()
+                }
+            }
+
+            // 2. EXIF Privacy Stripping
+            if (_proConfig.value.isExifPrivacyEnabled) {
+                finalBytes = ExifPrivacyManager.stripExifPrivacyBytes(
+                    jpegBytes = finalBytes,
+                    config = ExifPrivacyConfig(isPrivacyModeEnabled = true)
+                )
+            }
+
+            val item = mediaStoreManager.saveImageBytes(finalBytes, filename)
             Result.success(item)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    /**
+     * Executes an Auto Exposure Bracketing (AEB) burst sequence across 3, 5, or 7 frames.
+     * Guarantees that original exposure parameters are restored immediately upon completion.
+     */
+    fun captureAebSequence(
+        bracketCount: Int,
+        evStep: Float,
+        onSuccess: (List<MediaItem>) -> Unit,
+        onError: (Throwable) -> Unit
+    ) {
+        val device = cameraDevice ?: return onError(IllegalStateException("Camera not ready"))
+        val session = captureSession ?: return onError(IllegalStateException("Capture session not ready"))
+
+        val offsets = AebExposureCoordinator.calculateEvOffsets(bracketCount, evStep)
+        if (offsets.isEmpty()) {
+            capturePhoto(onSuccess = { onSuccess(listOf(it)) }, onError = onError)
+            return
+        }
+
+        _sessionState.value = CameraSessionState.CAPTURING
+
+        val sessionId = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+        val isManual = _proConfig.value.isManualIso || _proConfig.value.isManualShutter
+
+        val aebSteps = if (isManual) {
+            val baseShutter = _proConfig.value.requestedShutterSpeedNs
+            val baseIso = _proConfig.value.requestedIso
+            AebExposureCoordinator.buildManualBracketSequence(
+                offsets = offsets,
+                baseShutterNs = baseShutter,
+                minShutterNs = 100_000L,
+                maxShutterNs = 30_000_000_000L,
+                baseIso = baseIso,
+                minIso = 100,
+                maxIso = 6400
+            )
+        } else {
+            val baseIndex = _configuration.value.exposureCompensationIndex
+            val stepEv = _configuration.value.exposureStepEv
+            val minIndex = _configuration.value.minExposureIndex
+            val maxIndex = _configuration.value.maxExposureIndex
+            AebExposureCoordinator.buildAutoBracketSequence(
+                offsets = offsets,
+                baseIndex = baseIndex,
+                stepEv = stepEv,
+                minIndex = minIndex,
+                maxIndex = maxIndex
+            )
+        }
+
+        val capturedItems = mutableListOf<MediaItem>()
+
+        engineScope.launch {
+            try {
+                for (step in aebSteps) {
+                    val captureBuilder = device.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
+                    captureBuilder.addTarget(jpegImageReader!!.surface)
+
+                    if (isManual) {
+                        captureBuilder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_OFF)
+                        captureBuilder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, step.manualShutterNs)
+                        captureBuilder.set(CaptureRequest.SENSOR_SENSITIVITY, step.manualIso)
+                    } else {
+                        step.aeCompensationIndex?.let { idx ->
+                            captureBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, idx)
+                        }
+                    }
+
+                    // Copy preview settings
+                    previewRequestBuilder?.let { p ->
+                        p.get(CaptureRequest.LENS_FOCUS_DISTANCE)?.let { captureBuilder.set(CaptureRequest.LENS_FOCUS_DISTANCE, it) }
+                        p.get(CaptureRequest.CONTROL_AF_MODE)?.let { captureBuilder.set(CaptureRequest.CONTROL_AF_MODE, it) }
+                        p.get(CaptureRequest.CONTROL_AWB_MODE)?.let { captureBuilder.set(CaptureRequest.CONTROL_AWB_MODE, it) }
+                    }
+
+                    val filename = AebExposureCoordinator.formatAebFilename(
+                        sessionId = sessionId,
+                        frameIndex = step.frameIndex,
+                        totalFrames = step.totalFrames,
+                        evOffset = step.evOffset
+                    )
+
+                    val completer = kotlinx.coroutines.CompletableDeferred<Unit>()
+                    jpegImageReader?.setOnImageAvailableListener({ reader ->
+                        val img = reader.acquireLatestImage() ?: return@setOnImageAvailableListener
+                        val buffer = img.planes[0].buffer
+                        val bytes = ByteArray(buffer.remaining())
+                        buffer.get(bytes)
+                        img.close()
+                        val cropped = mediaStoreManager.cropJpegBytes(bytes, _configuration.value.aspectRatio)
+                        val item = mediaStoreManager.saveImageBytes(cropped, filename)
+                        capturedItems.add(item)
+                        completer.complete(Unit)
+                    }, backgroundHandler)
+
+                    session.capture(captureBuilder.build(), null, backgroundHandler)
+                    completer.await()
+                }
+
+                // Restore original exposure parameters
+                applyRepeatingProRequest()
+                _sessionState.value = CameraSessionState.READY
+                onSuccess(capturedItems)
+            } catch (e: Exception) {
+                applyRepeatingProRequest()
+                _sessionState.value = CameraSessionState.READY
+                onError(e)
+            }
         }
     }
 
@@ -615,6 +780,34 @@ class Camera2ManualEngine(
                 focusMagnifierScale = scale.coerceIn(1.5f, 5.0f)
             )
         }
+    }
+
+    // Phase 7 Advanced Capture & RAW Setters
+    override fun setZslEnabled(enabled: Boolean) {
+        _proConfig.update { it.copy(isZslEnabled = enabled) }
+        _configuration.update { it.copy(isZslEnabled = enabled) }
+    }
+
+    override fun setAebBracketCount(count: Int) {
+        _proConfig.update { it.copy(aebBracketCount = count) }
+        _configuration.update { it.copy(aebBracketCount = count) }
+    }
+
+    override fun setAebEvStep(step: Float) {
+        _proConfig.update { it.copy(aebEvStep = step) }
+        _configuration.update { it.copy(aebEvStep = step) }
+    }
+
+    override fun setCaptureFormat(format: CaptureFormat) {
+        _proConfig.update { it.copy(captureFormat = format, isRawCaptureEnabled = format.isRaw) }
+    }
+
+    fun setWatermarkEnabled(enabled: Boolean) {
+        _proConfig.update { it.copy(isWatermarkEnabled = enabled) }
+    }
+
+    fun setExifPrivacyEnabled(enabled: Boolean) {
+        _proConfig.update { it.copy(isExifPrivacyEnabled = enabled) }
     }
 
     fun resetAllManualToAuto() {

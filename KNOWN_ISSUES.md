@@ -48,6 +48,18 @@
 - **Root Cause:** In Camera2 HAL architecture, fine continuous chromaticity control requires disabling auto white balance (`CONTROL_AWB_MODE_OFF`), enabling transform matrix color correction (`COLOR_CORRECTION_MODE_TRANSFORM_MATRIX`), and passing precise 4-channel chromatic gains via `CaptureRequest.COLOR_CORRECTION_GAINS`.
 - **Fix:** Implemented `KelvinConverter` modeling Planckian locus blackbody radiation to compute normalized `RggbChannelVector(r, gEven, gOdd, b)` with green/magenta tint offset. Conversely, real-time HAL telemetry extracts `CaptureResult.COLOR_CORRECTION_GAINS` and computes dynamic live CCT estimation (`rgbGainsToKelvin`) displayed directly in the pro telemetry badge. Verified on OnePlus Ace 5 / 13R.
 
+### Issue 13: Single CaptureRequest Multi-Surface Synchronization for Synchronized RAW + JPEG
+- **Status:** **RESOLVED** (Phase 7)
+- **Symptom:** Disconnected asynchronous capture requests for RAW and JPEG output frames result in divergent exposure timestamps, differing motion blur, and mismatched subject positioning between the RAW negative and the processed companion.
+- **Root Cause:** If RAW and JPEG surfaces are submitted in separate `session.capture` requests or via distinct capture builders, Android Camera2 HAL processes them as two distinct sensor exposure events with varying total exposure duration, ISO sensitivity, and nanosecond timestamps.
+- **Fix:** Architected `Camera2ManualEngine` to attach both `jpegImageReader.surface` and `rawImageReader.surface` to a single unified `CaptureRequest.Builder(CameraDevice.TEMPLATE_STILL_CAPTURE)`. Both buffers originate from the exact same exposure cycle, sharing an identical `TotalCaptureResult.SENSOR_TIMESTAMP`.
+
+### Issue 14: Manual Exposure Modulation During Auto Exposure Bracketing (AEB)
+- **Status:** **RESOLVED** (Phase 7)
+- **Symptom:** In Pro manual mode (`isManualIso || isManualShutter`), Camera2 HAL ignores `CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION` because `CONTROL_AE_MODE` is disabled (`OFF`).
+- **Root Cause:** Photographic exposure bracketing in manual mode cannot rely on auto-exposure indices and must calculate direct sensor duration and sensitivity modulation.
+- **Fix:** Implemented `AebExposureCoordinator.buildManualBracketSequence`, which steps `SENSOR_EXPOSURE_TIME` by powers of 2 ($2^{\Delta EV}$). If physical sensor limits are exceeded (e.g. at 30s upper bound), residual EV bias is seamlessly compensated via `SENSOR_SENSITIVITY` (ISO). An invariant restoration block ensures the user's initial manual shutter and ISO settings are restored upon sequence completion. Verified with 7-frame sequences.
+
 ---
 
 ## 2. Hardware Limitations & Device Compatibility (OnePlus Ace 5 / 13R Platform)

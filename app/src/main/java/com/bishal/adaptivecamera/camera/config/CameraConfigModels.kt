@@ -72,7 +72,10 @@ data class CameraConfiguration(
     val isFloatingShutterEnabled: Boolean = false,
     val floatingShutterX: Float = 0.82f,
     val floatingShutterY: Float = 0.65f,
-    val isFrontScreenFlashActive: Boolean = false
+    val isFrontScreenFlashActive: Boolean = false,
+    val isZslEnabled: Boolean = true,
+    val aebBracketCount: Int = 0,
+    val aebEvStep: Float = 1.0f
 ) {
     val isExposureControlAvailable: Boolean
         get() = isExposureStateReady && isExposureCompensationSupported && minExposureIndex < maxExposureIndex

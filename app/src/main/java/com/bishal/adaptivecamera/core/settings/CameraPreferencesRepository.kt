@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.bishal.adaptivecamera.camera.config.AspectRatioConfig
 import com.bishal.adaptivecamera.camera.config.CompositionGridType
@@ -29,6 +30,16 @@ interface CameraPreferencesRepository {
     suspend fun updateFloatingShutterPosition(x: Float, y: Float)
     suspend fun resetFloatingShutterPosition()
     suspend fun updateFrontScreenFlashEnabled(enabled: Boolean)
+    suspend fun updateZslEnabled(enabled: Boolean)
+    suspend fun updateAebBracketCount(count: Int)
+    suspend fun updateAebEvStep(step: Float)
+    suspend fun updateCaptureFormat(format: String)
+    suspend fun updateWatermarkEnabled(enabled: Boolean)
+    suspend fun updateWatermarkType(type: String)
+    suspend fun updateWatermarkText(text: String)
+    suspend fun updateExifPrivacyEnabled(enabled: Boolean)
+    suspend fun updateStripGpsLocation(enabled: Boolean)
+    suspend fun updateStripDeviceModel(enabled: Boolean)
 }
 
 class CameraPreferencesRepositoryImpl(
@@ -44,6 +55,16 @@ class CameraPreferencesRepositoryImpl(
         val KEY_FLOATING_SHUTTER_X = floatPreferencesKey("floating_shutter_x")
         val KEY_FLOATING_SHUTTER_Y = floatPreferencesKey("floating_shutter_y")
         val KEY_FRONT_SCREEN_FLASH_ENABLED = booleanPreferencesKey("front_screen_flash_enabled")
+        val KEY_ZSL_ENABLED = booleanPreferencesKey("zsl_enabled")
+        val KEY_AEB_BRACKET_COUNT = intPreferencesKey("aeb_bracket_count")
+        val KEY_AEB_EV_STEP = floatPreferencesKey("aeb_ev_step")
+        val KEY_CAPTURE_FORMAT = stringPreferencesKey("capture_format")
+        val KEY_WATERMARK_ENABLED = booleanPreferencesKey("watermark_enabled")
+        val KEY_WATERMARK_TYPE = stringPreferencesKey("watermark_type")
+        val KEY_WATERMARK_TEXT = stringPreferencesKey("watermark_text")
+        val KEY_EXIF_PRIVACY_ENABLED = booleanPreferencesKey("exif_privacy_enabled")
+        val KEY_STRIP_GPS_LOCATION = booleanPreferencesKey("strip_gps_location")
+        val KEY_STRIP_DEVICE_MODEL = booleanPreferencesKey("strip_device_model")
     }
 
     override val preferencesFlow: Flow<CameraPreferences> = context.dataStore.data
@@ -76,6 +97,16 @@ class CameraPreferencesRepositoryImpl(
             val floatingShutterX = preferences[PreferencesKeys.KEY_FLOATING_SHUTTER_X] ?: 0.82f
             val floatingShutterY = preferences[PreferencesKeys.KEY_FLOATING_SHUTTER_Y] ?: 0.65f
             val isFrontScreenFlashEnabled = preferences[PreferencesKeys.KEY_FRONT_SCREEN_FLASH_ENABLED] ?: true
+            val isZslEnabled = preferences[PreferencesKeys.KEY_ZSL_ENABLED] ?: true
+            val aebBracketCount = preferences[PreferencesKeys.KEY_AEB_BRACKET_COUNT] ?: 3
+            val aebEvStep = preferences[PreferencesKeys.KEY_AEB_EV_STEP] ?: 1.0f
+            val captureFormat = preferences[PreferencesKeys.KEY_CAPTURE_FORMAT] ?: "JPEG"
+            val isWatermarkEnabled = preferences[PreferencesKeys.KEY_WATERMARK_ENABLED] ?: false
+            val watermarkType = preferences[PreferencesKeys.KEY_WATERMARK_TYPE] ?: "TEXT"
+            val watermarkText = preferences[PreferencesKeys.KEY_WATERMARK_TEXT] ?: "Xamera Professional"
+            val isExifPrivacyEnabled = preferences[PreferencesKeys.KEY_EXIF_PRIVACY_ENABLED] ?: false
+            val stripGpsLocation = preferences[PreferencesKeys.KEY_STRIP_GPS_LOCATION] ?: true
+            val stripDeviceModel = preferences[PreferencesKeys.KEY_STRIP_DEVICE_MODEL] ?: true
 
             CameraPreferences(
                 gridType = gridType,
@@ -85,7 +116,17 @@ class CameraPreferencesRepositoryImpl(
                 isFloatingShutterEnabled = isFloatingShutterEnabled,
                 floatingShutterX = floatingShutterX,
                 floatingShutterY = floatingShutterY,
-                isFrontScreenFlashEnabled = isFrontScreenFlashEnabled
+                isFrontScreenFlashEnabled = isFrontScreenFlashEnabled,
+                isZslEnabled = isZslEnabled,
+                aebBracketCount = aebBracketCount,
+                aebEvStep = aebEvStep,
+                captureFormat = captureFormat,
+                isWatermarkEnabled = isWatermarkEnabled,
+                watermarkType = watermarkType,
+                watermarkText = watermarkText,
+                isExifPrivacyEnabled = isExifPrivacyEnabled,
+                stripGpsLocation = stripGpsLocation,
+                stripDeviceModel = stripDeviceModel
             )
         }
 
@@ -136,6 +177,66 @@ class CameraPreferencesRepositoryImpl(
     override suspend fun updateFrontScreenFlashEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.KEY_FRONT_SCREEN_FLASH_ENABLED] = enabled
+        }
+    }
+
+    override suspend fun updateZslEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.KEY_ZSL_ENABLED] = enabled
+        }
+    }
+
+    override suspend fun updateAebBracketCount(count: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.KEY_AEB_BRACKET_COUNT] = count
+        }
+    }
+
+    override suspend fun updateAebEvStep(step: Float) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.KEY_AEB_EV_STEP] = step
+        }
+    }
+
+    override suspend fun updateCaptureFormat(format: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.KEY_CAPTURE_FORMAT] = format
+        }
+    }
+
+    override suspend fun updateWatermarkEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.KEY_WATERMARK_ENABLED] = enabled
+        }
+    }
+
+    override suspend fun updateWatermarkType(type: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.KEY_WATERMARK_TYPE] = type
+        }
+    }
+
+    override suspend fun updateWatermarkText(text: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.KEY_WATERMARK_TEXT] = text
+        }
+    }
+
+    override suspend fun updateExifPrivacyEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.KEY_EXIF_PRIVACY_ENABLED] = enabled
+        }
+    }
+
+    override suspend fun updateStripGpsLocation(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.KEY_STRIP_GPS_LOCATION] = enabled
+        }
+    }
+
+    override suspend fun updateStripDeviceModel(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.KEY_STRIP_DEVICE_MODEL] = enabled
         }
     }
 }

@@ -26,13 +26,15 @@ import com.bishal.adaptivecamera.ui.diagnostics.DiagnosticsScreen
 import com.bishal.adaptivecamera.ui.diagnostics.DiagnosticsViewModel
 import com.bishal.adaptivecamera.ui.settings.SettingsScreen
 import com.bishal.adaptivecamera.ui.theme.AdaptiveCameraTheme
+import com.bishal.adaptivecamera.ui.vault.RawVaultScreen
 
 enum class AppDestination {
     CAMERA,
     GALLERY,
     MEDIA_VIEWER,
     SETTINGS,
-    DIAGNOSTICS
+    DIAGNOSTICS,
+    RAW_VAULT
 }
 
 class MainActivity : ComponentActivity() {
@@ -100,6 +102,9 @@ fun MainAppNavHost(
                 viewingItem = null
                 currentDestination = AppDestination.GALLERY
             }
+            AppDestination.RAW_VAULT -> {
+                currentDestination = AppDestination.SETTINGS
+            }
             AppDestination.GALLERY, AppDestination.SETTINGS, AppDestination.DIAGNOSTICS -> {
                 currentDestination = AppDestination.CAMERA
                 cameraViewModel.refreshLatestThumbnail()
@@ -160,6 +165,16 @@ fun MainAppNavHost(
                 onNavigateBack = {
                     currentDestination = AppDestination.CAMERA
                     cameraViewModel.refreshLatestThumbnail()
+                },
+                onNavigateToRawVault = {
+                    currentDestination = AppDestination.RAW_VAULT
+                }
+            )
+        }
+        AppDestination.RAW_VAULT -> {
+            RawVaultScreen(
+                onNavigateBack = {
+                    currentDestination = AppDestination.SETTINGS
                 }
             )
         }

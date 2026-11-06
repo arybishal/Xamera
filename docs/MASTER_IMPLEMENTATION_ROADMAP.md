@@ -42,7 +42,7 @@ Xamera expands from its solid Phase 0–4 baseline into a complete professional 
 flowchart TD
     P4["Phase 0-4 Baseline (Completed)"] --> P5["Phase 5: Viewfinder Ergonomics & Assistive Overlays (Completed)"]
     P5 --> P6["Phase 6: Pro Exposure & Focus Monitoring Engines (Completed)"]
-    P6 --> P7["Phase 7: Advanced Capture Pipelines (ZSL, AEB, EXIF)"]
+    P6 --> P7["Phase 7: Advanced Capture Pipelines (Completed)"]
     P7 --> P8["Phase 8: LUT Library & Color Science Engine"]
     P8 --> P9["Phase 9: GPU Color Pipeline & Creative Shaders"]
     P9 --> P10["Phase 10: Professional Video Engine"]
@@ -146,7 +146,7 @@ flowchart TD
 
 ---
 
-### Phase 7: Advanced Capture Pipelines (ZSL, AEB, RAW+HEIC & EXIF Engine)
+### Phase 7: Advanced Capture Pipelines (ZSL, AEB, RAW+HEIC & EXIF Engine) [COMPLETED]
 
 - **Exact Scope:**
   Implement high-reliability still capture workflows: Zero Shutter Lag (ZSL) circular buffer, Auto Exposure Bracketing (AEB), dual-format saving (RAW+JPEG and RAW+HEIC), watermarking compositor, full EXIF metadata authoring with privacy strip mode, and custom storage destinations including a secure RAW vault.

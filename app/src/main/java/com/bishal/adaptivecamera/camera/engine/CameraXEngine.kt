@@ -141,7 +141,10 @@ class CameraXEngine(
 
             // 3. ImageCapture
             val newImageCapture = ImageCapture.Builder()
-                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                .setCaptureMode(
+                    if (_configuration.value.isZslEnabled) ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG
+                    else ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
+                )
                 .setFlashMode(_configuration.value.flashMode.imageCaptureFlashMode)
                 .build()
 
@@ -344,6 +347,27 @@ class CameraXEngine(
 
     override fun resetExposureCompensation() {
         setExposureCompensation(0)
+    }
+
+    override fun setZslEnabled(enabled: Boolean) {
+        _configuration.update { it.copy(isZslEnabled = enabled) }
+        val owner = currentLifecycleOwner
+        val view = currentPreviewView
+        if (owner != null && view != null) {
+            bindCamera(owner, view)
+        }
+    }
+
+    override fun setAebBracketCount(count: Int) {
+        _configuration.update { it.copy(aebBracketCount = count) }
+    }
+
+    override fun setAebEvStep(step: Float) {
+        _configuration.update { it.copy(aebEvStep = step) }
+    }
+
+    override fun setCaptureFormat(format: com.bishal.adaptivecamera.photography.capture.CaptureFormat) {
+        // CameraX engine records format preference; RAW modes are served via Pro Camera2ManualEngine
     }
 
     override fun focusAndMeter(xNorm: Float, yNorm: Float) {

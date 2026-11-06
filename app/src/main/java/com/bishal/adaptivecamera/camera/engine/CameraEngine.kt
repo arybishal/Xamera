@@ -25,6 +25,10 @@ interface CameraEngine {
     fun setFlashMode(flashMode: FlashMode)
     fun setTimer(timer: PhotoTimer)
     fun setAspectRatio(aspectRatio: com.bishal.adaptivecamera.camera.config.AspectRatioConfig) {}
+    fun setZslEnabled(enabled: Boolean) {}
+    fun setAebBracketCount(count: Int) {}
+    fun setAebEvStep(step: Float) {}
+    fun setCaptureFormat(format: com.bishal.adaptivecamera.photography.capture.CaptureFormat) {}
 
     fun setZoomRatio(ratio: Float)
     fun setLinearZoom(percentage: Float)

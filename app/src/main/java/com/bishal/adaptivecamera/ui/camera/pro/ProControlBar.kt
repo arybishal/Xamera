@@ -36,6 +36,7 @@ import com.bishal.adaptivecamera.photography.pro.KelvinConverter
 import com.bishal.adaptivecamera.photography.pro.ProConfiguration
 import com.bishal.adaptivecamera.photography.pro.ProWhiteBalance
 import com.bishal.adaptivecamera.photography.pro.ShutterSpeedHelper
+import com.bishal.adaptivecamera.photography.capture.CaptureFormat
 import com.bishal.adaptivecamera.ui.theme.AccentAmber
 import com.bishal.adaptivecamera.ui.theme.DarkBackground
 import com.bishal.adaptivecamera.ui.theme.DarkSurface
@@ -78,6 +79,9 @@ fun ProControlBar(
     onToggleFalseColor: (Boolean) -> Unit = {},
     onToggleFocusMagnifier: (Boolean) -> Unit = {},
     onSetFocusMagnifierScale: (Float) -> Unit = {},
+    onSetCaptureFormat: (CaptureFormat) -> Unit = {},
+    onSetAebBracketCount: (Int) -> Unit = {},
+    onSetAebEvStep: (Float) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var activeTab by remember { mutableStateOf(ProControlTab.NONE) }
@@ -190,9 +194,13 @@ fun ProControlBar(
 
                     ProControlTab.RAW -> {
                         RawControlRow(
-                            isEnabled = proConfig.isRawCaptureEnabled,
+                            currentFormat = proConfig.captureFormat,
                             supportsRaw = supportsRaw,
-                            onToggleRaw = onToggleRaw
+                            currentBracketCount = proConfig.aebBracketCount,
+                            currentEvStep = proConfig.aebEvStep,
+                            onFormatSelected = onSetCaptureFormat,
+                            onBracketCountSelected = onSetAebBracketCount,
+                            onEvStepSelected = onSetAebEvStep
                         )
                     }
 
@@ -228,7 +236,7 @@ fun ProControlBar(
             ProTabChip("MONITOR", activeTab == ProControlTab.MONITOR, proConfig.isZebraEnabled || proConfig.isFalseColorEnabled || proConfig.isFocusPeakingEnabled) {
                 activeTab = if (activeTab == ProControlTab.MONITOR) ProControlTab.NONE else ProControlTab.MONITOR
             }
-            ProTabChip("RAW", activeTab == ProControlTab.RAW, proConfig.isRawCaptureEnabled) {
+            ProTabChip("RAW/AEB", activeTab == ProControlTab.RAW, proConfig.isRawCaptureEnabled || proConfig.aebBracketCount > 0) {
                 activeTab = if (activeTab == ProControlTab.RAW) ProControlTab.NONE else ProControlTab.RAW
             }
         }
@@ -689,37 +697,112 @@ private fun MonitorControlRow(
 
 @Composable
 private fun RawControlRow(
-    isEnabled: Boolean,
+    currentFormat: CaptureFormat,
     supportsRaw: Boolean,
-    onToggleRaw: (Boolean) -> Unit
+    currentBracketCount: Int,
+    currentEvStep: Float,
+    onFormatSelected: (CaptureFormat) -> Unit,
+    onBracketCountSelected: (Int) -> Unit,
+    onEvStepSelected: (Float) -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Column {
-            Text("Adobe DNG RAW Capture", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            Text(
-                text = if (supportsRaw) "Saves 10-bit/12-bit RAW_SENSOR + matching JPEG" else "Camera sensor does not support RAW_SENSOR output",
-                color = if (supportsRaw) TextSecondary else Color(0xFFFF5252),
-                fontSize = 10.sp
-            )
+        // 1. Capture Format Selector
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Capture Format", color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            if (!supportsRaw) {
+                Text("Sensor RAW unsupported", color = Color(0xFFFF5252), fontSize = 10.sp)
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            CaptureFormat.values().forEach { fmt ->
+                val isSelected = currentFormat == fmt
+                val isEnabled = !fmt.isRaw || supportsRaw
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (isSelected) PrimaryCyan else DarkSurface)
+                        .clickable(enabled = isEnabled) { onFormatSelected(fmt) }
+                        .padding(vertical = 6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = fmt.shortLabel,
+                        color = if (!isEnabled) TextMuted else if (isSelected) Color.Black else TextPrimary,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
 
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(6.dp))
-                .background(if (!supportsRaw) DarkSurface else if (isEnabled) SuccessGreen else DarkSurface)
-                .clickable(enabled = supportsRaw) { onToggleRaw(!isEnabled) }
-                .padding(horizontal = 12.dp, vertical = 6.dp)
+        // 2. Auto Exposure Bracketing (AEB)
+        Text("AEB Brackets", color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Text(
-                text = if (!supportsRaw) "UNAVAILABLE" else if (isEnabled) "RAW ACTIVE" else "ENABLE RAW",
-                color = if (!supportsRaw) TextMuted else if (isEnabled) Color.Black else TextPrimary,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold
-            )
+            val bracketOptions = listOf(0 to "OFF", 3 to "3 F", 5 to "5 F", 7 to "7 F")
+            bracketOptions.forEach { (count, label) ->
+                val isSelected = currentBracketCount == count
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (isSelected) AccentAmber else DarkSurface)
+                        .clickable { onBracketCountSelected(count) }
+                        .padding(vertical = 6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = label,
+                        color = if (isSelected) Color.Black else TextPrimary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        // 3. EV Step selector if AEB active
+        if (currentBracketCount > 0) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                val stepOptions = listOf(0.5f, 1.0f, 1.5f, 2.0f)
+                stepOptions.forEach { step ->
+                    val isSelected = currentEvStep == step
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (isSelected) AccentAmber.copy(alpha = 0.8f) else DarkSurface)
+                            .clickable { onEvStepSelected(step) }
+                            .padding(vertical = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "±${step}",
+                            color = if (isSelected) Color.Black else TextPrimary,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
         }
     }
 }

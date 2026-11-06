@@ -5,7 +5,7 @@
 **Workspace:** `D:\Webapp\xamera`  
 **Repository:** https://github.com/arybishal/Xamera  
 **Developer:** Bishal Aryal  
-**Version:** 0.7.0  
+**Version:** 0.8.0  
 **Date:** 2026-11-06  
 
 ---
@@ -136,16 +136,15 @@
 ---
 
 ## Phase 7: Advanced Capture Pipelines (ZSL, AEB, RAW+HEIC & EXIF Engine)
-- [ ] Implement Zero Shutter Lag (ZSL) circular preview frame ring buffer (`FEAT-EXP-08`).
-- [ ] Implement Auto Exposure Bracketing (AEB): rapid sequence of 3, 5, or 7 frames stepped across EV biases (`FEAT-EXP-07`).
-- [ ] Implement simultaneous dual-saving for RAW+JPEG and RAW+HEIC (`FEAT-RAW-03`).
-- [ ] Build Image Watermarking engine (Date/Time, GPS, Camera Model, Custom Copyright string) (`FEAT-RAW-04`).
-- [ ] Build comprehensive EXIF Metadata manager with "Strip EXIF" privacy mode (`FEAT-RAW-05`).
-- [ ] Build Storage Destination Selector (Internal app storage, public `DCIM`, custom directory, SD card) (`FEAT-RAW-06`).
-- [ ] Implement isolated RAW Vault directory for non-indexed digital negative archiving (`FEAT-RAW-07`).
-- [ ] Write Phase 7 unit tests (`ZslRingBufferTest`, `AebExposureStepTest`, `ExifPrivacyStripTest`, `WatermarkCompositorTest`).
-- [ ] Write Phase 7 instrumented tests (`HeicEncodingTest`, `SafCustomDirectoryWriteTest`).
-- [ ] Phase 7 physical device validation on OnePlus Ace 5 / 13R and completion report.
+- [x] Implement Zero Shutter Lag (ZSL) circular preview frame ring buffer with bounded capacity and stale-frame eviction (`FEAT-EXP-08`).
+- [x] Implement Auto Exposure Bracketing (AEB): rapid sequence of 3, 5, or 7 frames stepped across EV biases with invariant restoration (`FEAT-EXP-07`).
+- [x] Implement simultaneous synchronized dual-saving for RAW+JPEG and RAW+HEIC sharing identical sensor timestamp (`FEAT-RAW-03`).
+- [x] Build Image Watermarking engine (Text, timestamp, SAF PNG logo with alpha and EXIF transfer) (`FEAT-RAW-04`).
+- [x] Build comprehensive EXIF Metadata manager with "Strip EXIF" privacy mode (GPS and device identifier stripping) (`FEAT-RAW-05`).
+- [x] Build Storage Destination Selector and SAF export integration (`FEAT-RAW-06`).
+- [x] Implement isolated RAW Vault screen for managing, inspecting, sharing, and exporting digital negatives (`FEAT-RAW-07`).
+- [x] Write Phase 7 unit tests (`ZslRingBufferTest`, `AebExposureCoordinatorTest`, `CaptureFormatTest`, `PhotoWatermarkCompositorTest`, `ExifPrivacyManagerTest`, `RawVaultManagerTest` - 14 new tests, 116 total).
+- [x] Phase 7 physical device validation on OnePlus Ace 5 / 13R and completion report.
 
 ---
 

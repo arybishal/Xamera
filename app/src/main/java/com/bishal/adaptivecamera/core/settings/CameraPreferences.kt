@@ -14,5 +14,15 @@ data class CameraPreferences(
     val isFloatingShutterEnabled: Boolean = false,
     val floatingShutterX: Float = 0.82f,
     val floatingShutterY: Float = 0.65f,
-    val isFrontScreenFlashEnabled: Boolean = true
+    val isFrontScreenFlashEnabled: Boolean = true,
+    val isZslEnabled: Boolean = true,
+    val aebBracketCount: Int = 3,
+    val aebEvStep: Float = 1.0f,
+    val captureFormat: String = "JPEG",
+    val isWatermarkEnabled: Boolean = false,
+    val watermarkType: String = "TEXT",
+    val watermarkText: String = "Xamera Professional",
+    val isExifPrivacyEnabled: Boolean = false,
+    val stripGpsLocation: Boolean = true,
+    val stripDeviceModel: Boolean = true
 )

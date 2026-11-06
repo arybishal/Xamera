@@ -21,6 +21,14 @@ class CameraPreferencesTest {
         assertEquals(0.82f, prefs.floatingShutterX, 0.001f)
         assertEquals(0.65f, prefs.floatingShutterY, 0.001f)
         assertTrue(prefs.isFrontScreenFlashEnabled)
+        assertTrue(prefs.isZslEnabled)
+        assertEquals(3, prefs.aebBracketCount)
+        assertEquals(1.0f, prefs.aebEvStep, 0.001f)
+        assertEquals("JPEG", prefs.captureFormat)
+        assertFalse(prefs.isWatermarkEnabled)
+        assertFalse(prefs.isExifPrivacyEnabled)
+        assertTrue(prefs.stripGpsLocation)
+        assertTrue(prefs.stripDeviceModel)
     }
 
     @Test

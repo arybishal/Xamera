@@ -1,5 +1,7 @@
 package com.bishal.adaptivecamera.photography.pro
 
+import com.bishal.adaptivecamera.photography.capture.CaptureFormat
+
 data class ProConfiguration(
     val isManualIso: Boolean = false,
     val requestedIso: Int = 100,
@@ -16,6 +18,12 @@ data class ProConfiguration(
     val isAwbLocked: Boolean = false,
     val exposureCompensationIndex: Int = 0,
     val isRawCaptureEnabled: Boolean = false,
+    val captureFormat: CaptureFormat = CaptureFormat.JPEG,
+    val aebBracketCount: Int = 0, // 0 = OFF, 3, 5, 7
+    val aebEvStep: Float = 1.0f,
+    val isZslEnabled: Boolean = true,
+    val isWatermarkEnabled: Boolean = false,
+    val isExifPrivacyEnabled: Boolean = false,
     val isHistogramVisible: Boolean = true,
     val isHistogramExpanded: Boolean = false,
     val isFocusPeakingEnabled: Boolean = false,
@@ -25,7 +33,10 @@ data class ProConfiguration(
     val isFalseColorEnabled: Boolean = false,
     val isFocusMagnifierEnabled: Boolean = false,
     val focusMagnifierScale: Float = 2.0f
-)
+) {
+    val isRawOutputActive: Boolean
+        get() = isRawCaptureEnabled || captureFormat.isRaw
+}
 
 data class ProAppliedState(
     val appliedIso: Int? = null,

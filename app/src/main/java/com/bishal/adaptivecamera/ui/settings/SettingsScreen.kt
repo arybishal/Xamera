@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
@@ -97,6 +98,7 @@ import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.TouchApp
 import com.bishal.adaptivecamera.ui.theme.TextPrimary
 import com.bishal.adaptivecamera.ui.theme.TextSecondary
+import com.bishal.adaptivecamera.photography.capture.CaptureFormat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,7 +106,8 @@ fun SettingsScreen(
     diagnosticsViewModel: DiagnosticsViewModel,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
-    cameraViewModel: CameraViewModel? = null
+    cameraViewModel: CameraViewModel? = null,
+    onNavigateToRawVault: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val diagState by diagnosticsViewModel.uiState.collectAsState()
@@ -186,7 +189,7 @@ fun SettingsScreen(
                         SettingRow(
                             icon = Icons.Default.Info,
                             title = "Application Version",
-                            subtitle = "v0.6.0 · Phase 5 Viewfinder Ergonomics & Overlays"
+                            subtitle = "v0.8.0 · Phase 7 Advanced Capture & RAW"
                         )
                     }
                 }
@@ -365,7 +368,233 @@ fun SettingsScreen(
                 }
             }
 
-            // Section 3: Prominent "Check Hardware Capability" Section
+            // Section 3: Advanced Capture & RAW (Phase 7)
+            item {
+                SettingsSectionHeader("Advanced Capture & RAW", Icons.Default.PhotoCamera)
+            }
+
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, DividerColor, RoundedCornerShape(14.dp))
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        // 1. Zero Shutter Lag (ZSL)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Zero Shutter Lag (ZSL)", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                Text("Bounded rolling buffer for instantaneous shutter response", color = TextSecondary, fontSize = 11.sp)
+                            }
+                            Switch(
+                                checked = camUiState?.configuration?.isZslEnabled ?: true,
+                                onCheckedChange = { cameraViewModel?.toggleZsl() },
+                                colors = SwitchDefaults.colors(checkedThumbColor = PrimaryCyan)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // 2. Capture Format
+                        Text("Capture Format", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text("Select image capture output stream and RAW negative format", color = TextSecondary, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            val activeFormat = camUiState?.proConfig?.captureFormat ?: CaptureFormat.JPEG
+                            CaptureFormat.values().forEach { fmt ->
+                                val isSelected = activeFormat == fmt
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) PrimaryCyan else DarkSurfaceVariant)
+                                        .border(1.dp, if (isSelected) PrimaryCyan else DividerColor, RoundedCornerShape(8.dp))
+                                        .clickable { cameraViewModel?.setCaptureFormat(fmt) }
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = fmt.shortLabel,
+                                        color = if (isSelected) Color.Black else TextPrimary,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // 3. Auto Exposure Bracketing (AEB)
+                        Text("Auto Exposure Bracketing (AEB)", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text("Burst exposure sequence with calibrated EV offsets", color = TextSecondary, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            val currentBrackets = camUiState?.proConfig?.aebBracketCount ?: 0
+                            val bracketOptions = listOf(0 to "OFF", 3 to "3 Frames", 5 to "5 Frames", 7 to "7 Frames")
+                            bracketOptions.forEach { (count, label) ->
+                                val isSelected = currentBrackets == count
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) AccentAmber else DarkSurfaceVariant)
+                                        .border(1.dp, if (isSelected) AccentAmber else DividerColor, RoundedCornerShape(8.dp))
+                                        .clickable { cameraViewModel?.setAebBracketCount(count) }
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = label,
+                                        color = if (isSelected) Color.Black else TextPrimary,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+
+                        if ((camUiState?.proConfig?.aebBracketCount ?: 0) > 0) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Bracket Step Size (ΔEV)", color = TextSecondary, fontSize = 11.sp, modifier = Modifier.padding(bottom = 6.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                val currentStep = camUiState?.proConfig?.aebEvStep ?: 1.0f
+                                val stepOptions = listOf(0.5f, 1.0f, 1.5f, 2.0f)
+                                stepOptions.forEach { step ->
+                                    val isSelected = currentStep == step
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(if (isSelected) AccentAmber.copy(alpha = 0.8f) else DarkSurfaceVariant)
+                                            .border(1.dp, if (isSelected) AccentAmber else DividerColor, RoundedCornerShape(8.dp))
+                                            .clickable { cameraViewModel?.setAebEvStep(step) }
+                                            .padding(vertical = 6.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "±${step} EV",
+                                            color = if (isSelected) Color.Black else TextPrimary,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // 4. Photo Watermark System
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Photo Watermark", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                Text("Burn subtle metadata into exported JPEG/HEIC", color = TextSecondary, fontSize = 11.sp)
+                            }
+                            Switch(
+                                checked = camUiState?.proConfig?.isWatermarkEnabled ?: false,
+                                onCheckedChange = { cameraViewModel?.toggleWatermark() },
+                                colors = SwitchDefaults.colors(checkedThumbColor = PrimaryCyan)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // 5. EXIF Privacy Controls
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("EXIF Privacy Mode", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                Text("Strip GPS location and camera hardware serial from exported photos", color = TextSecondary, fontSize = 11.sp)
+                            }
+                            Switch(
+                                checked = camUiState?.proConfig?.isExifPrivacyEnabled ?: false,
+                                onCheckedChange = { cameraViewModel?.toggleExifPrivacy() },
+                                colors = SwitchDefaults.colors(checkedThumbColor = PrimaryCyan)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // 6. RAW Vault Navigation Card
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = DarkSurfaceVariant),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onNavigateToRawVault() }
+                                .border(1.dp, AccentAmber.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(AccentAmber.copy(alpha = 0.15f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Folder,
+                                            contentDescription = null,
+                                            tint = AccentAmber,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text(
+                                            text = "Open RAW Vault",
+                                            color = TextPrimary,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "Manage, inspect, share, and export local DNGs",
+                                            color = TextSecondary,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                }
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = "Open",
+                                    tint = AccentAmber,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Section 4: Prominent "Check Hardware Capability" Section
             item {
                 SettingsSectionHeader("Hardware Intelligence", Icons.Default.Memory)
             }

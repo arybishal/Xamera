@@ -223,6 +223,11 @@ class CameraViewModel @JvmOverloads constructor(
         // Persisted Preferences Collector
         viewModelScope.launch {
             preferencesRepository.preferencesFlow.collect { prefs ->
+                val capFormat = try {
+                    com.bishal.adaptivecamera.photography.capture.CaptureFormat.valueOf(prefs.captureFormat)
+                } catch (_: Exception) {
+                    com.bishal.adaptivecamera.photography.capture.CaptureFormat.JPEG
+                }
                 _uiState.update { current ->
                     current.copy(
                         configuration = current.configuration.copy(
@@ -232,12 +237,33 @@ class CameraViewModel @JvmOverloads constructor(
                             isHapticsEnabled = prefs.isHapticsEnabled,
                             isFloatingShutterEnabled = prefs.isFloatingShutterEnabled,
                             floatingShutterX = prefs.floatingShutterX,
-                            floatingShutterY = prefs.floatingShutterY
+                            floatingShutterY = prefs.floatingShutterY,
+                            isZslEnabled = prefs.isZslEnabled,
+                            aebBracketCount = prefs.aebBracketCount,
+                            aebEvStep = prefs.aebEvStep
+                        ),
+                        proConfig = current.proConfig.copy(
+                            isZslEnabled = prefs.isZslEnabled,
+                            aebBracketCount = prefs.aebBracketCount,
+                            aebEvStep = prefs.aebEvStep,
+                            captureFormat = capFormat,
+                            isRawCaptureEnabled = capFormat.isRaw,
+                            isWatermarkEnabled = prefs.isWatermarkEnabled,
+                            isExifPrivacyEnabled = prefs.isExifPrivacyEnabled
                         )
                     )
                 }
                 cameraEngine.setAspectRatio(prefs.aspectRatio)
                 camera2ProEngine.setAspectRatio(prefs.aspectRatio)
+                cameraEngine.setZslEnabled(prefs.isZslEnabled)
+                camera2ProEngine.setZslEnabled(prefs.isZslEnabled)
+                cameraEngine.setAebBracketCount(prefs.aebBracketCount)
+                camera2ProEngine.setAebBracketCount(prefs.aebBracketCount)
+                cameraEngine.setAebEvStep(prefs.aebEvStep)
+                camera2ProEngine.setAebEvStep(prefs.aebEvStep)
+                camera2ProEngine.setCaptureFormat(capFormat)
+                camera2ProEngine.setWatermarkEnabled(prefs.isWatermarkEnabled)
+                camera2ProEngine.setExifPrivacyEnabled(prefs.isExifPrivacyEnabled)
             }
         }
 
@@ -718,6 +744,101 @@ class CameraViewModel @JvmOverloads constructor(
 
     fun resetSuggestionDismissal() {
         _uiState.update { it.copy(isSuggestionDismissed = false) }
+    }
+
+    // Phase 7 Advanced Capture & RAW Methods
+    fun setCaptureFormat(format: com.bishal.adaptivecamera.photography.capture.CaptureFormat) {
+        viewModelScope.launch {
+            preferencesRepository.updateCaptureFormat(format.name)
+            camera2ProEngine.setCaptureFormat(format)
+            cameraEngine.setCaptureFormat(format)
+            _uiState.update { it.copy(proConfig = it.proConfig.copy(captureFormat = format, isRawCaptureEnabled = format.isRaw)) }
+            hapticEngine.performClick()
+        }
+    }
+
+    fun toggleZsl() {
+        val next = !_uiState.value.configuration.isZslEnabled
+        viewModelScope.launch {
+            preferencesRepository.updateZslEnabled(next)
+            cameraEngine.setZslEnabled(next)
+            camera2ProEngine.setZslEnabled(next)
+            _uiState.update {
+                it.copy(
+                    configuration = it.configuration.copy(isZslEnabled = next),
+                    proConfig = it.proConfig.copy(isZslEnabled = next)
+                )
+            }
+            hapticEngine.performClick()
+        }
+    }
+
+    fun setAebBracketCount(count: Int) {
+        viewModelScope.launch {
+            preferencesRepository.updateAebBracketCount(count)
+            cameraEngine.setAebBracketCount(count)
+            camera2ProEngine.setAebBracketCount(count)
+            _uiState.update {
+                it.copy(
+                    configuration = it.configuration.copy(aebBracketCount = count),
+                    proConfig = it.proConfig.copy(aebBracketCount = count)
+                )
+            }
+            hapticEngine.performClick()
+        }
+    }
+
+    fun setAebEvStep(step: Float) {
+        viewModelScope.launch {
+            preferencesRepository.updateAebEvStep(step)
+            cameraEngine.setAebEvStep(step)
+            camera2ProEngine.setAebEvStep(step)
+            _uiState.update {
+                it.copy(
+                    configuration = it.configuration.copy(aebEvStep = step),
+                    proConfig = it.proConfig.copy(aebEvStep = step)
+                )
+            }
+            hapticEngine.performClick()
+        }
+    }
+
+    fun toggleWatermark() {
+        val next = !_uiState.value.proConfig.isWatermarkEnabled
+        viewModelScope.launch {
+            preferencesRepository.updateWatermarkEnabled(next)
+            camera2ProEngine.setWatermarkEnabled(next)
+            _uiState.update { it.copy(proConfig = it.proConfig.copy(isWatermarkEnabled = next)) }
+            hapticEngine.performClick()
+        }
+    }
+
+    fun setWatermarkText(text: String) {
+        viewModelScope.launch {
+            preferencesRepository.updateWatermarkText(text)
+        }
+    }
+
+    fun toggleExifPrivacy() {
+        val next = !_uiState.value.proConfig.isExifPrivacyEnabled
+        viewModelScope.launch {
+            preferencesRepository.updateExifPrivacyEnabled(next)
+            camera2ProEngine.setExifPrivacyEnabled(next)
+            _uiState.update { it.copy(proConfig = it.proConfig.copy(isExifPrivacyEnabled = next)) }
+            hapticEngine.performClick()
+        }
+    }
+
+    fun toggleStripGps(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.updateStripGpsLocation(enabled)
+        }
+    }
+
+    fun toggleStripDeviceModel(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.updateStripDeviceModel(enabled)
+        }
     }
 
     fun clearToastMessage() {
