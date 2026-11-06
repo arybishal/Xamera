@@ -129,7 +129,11 @@ class Camera2ManualEngine(
         }
     }
 
-    override fun bindCamera(lifecycleOwner: LifecycleOwner, previewView: PreviewView) {
+    override fun bindCamera(
+        lifecycleOwner: LifecycleOwner,
+        previewView: PreviewView,
+        surfaceProvider: androidx.camera.core.Preview.SurfaceProvider?
+    ) {
         currentPreviewView = previewView
         startBackgroundThread()
         openActiveCamera()

@@ -77,6 +77,13 @@ vec3 applyInputTransfer(vec3 color, int mode) {
     return linearizeSRGB(color); // Default Rec.709 / sRGB
 }
 
+// High-precision Interleaved Gradient Noise for film grain
+float interleavedGradientNoise(vec2 screenPos, float timeOffset) {
+    vec3 magic = vec3(0.06711056, 0.00583715, 52.9829189);
+    vec2 p = screenPos + fract(vec2(timeOffset * 0.61803398875, timeOffset * 0.38196601125)) * 1000.0;
+    return fract(magic.z * fract(dot(p, magic.xy))) - 0.5;
+}
+
 // Pseudo-random white noise generator
 float hash(vec2 p) {
     p = fract(p * vec2(123.34, 456.21));
@@ -90,8 +97,8 @@ float hash(vec2 p) {
      */
     const val PREVIEW_FRAGMENT_SHADER = """#version 300 es
 #extension GL_OES_EGL_image_external_essl3 : require
-precision mediump float;
-precision mediump sampler3D;
+precision highp float;
+precision highp sampler3D;
 
 in vec2 vTexCoord;
 out vec4 fragColor;
@@ -136,13 +143,32 @@ void main() {
         color = mix(color, graded, uLutIntensity);
     }
 
-    // 3. Photochemical Halation (Specular highlight edge bleed)
+    // 3. Photochemical Halation (Specular highlight edge bleed with radial spread)
     if (uHalationEnabled == 1 && uHalationIntensity > 0.0) {
-        float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
-        float excess = clamp((luma - uHalationThreshold) / max(1.0 - uHalationThreshold, 0.001), 0.0, 1.0);
-        if (excess > 0.0) {
-            vec3 halationTint = vec3(1.0, 0.35, 0.05); // Classic photographic warm red-amber
-            color += halationTint * (excess * excess) * uHalationIntensity;
+        vec2 texel = (uHalationRadius * 1.5) / max(uResolution, vec2(1.0));
+        float totalExcess = 0.0;
+
+        float centerLuma = dot(color, vec3(0.2126, 0.7152, 0.0722));
+        totalExcess += max(0.0, centerLuma - uHalationThreshold) * 0.35;
+
+        vec2 taps[8] = vec2[](
+            vec2( 1.0,  0.0), vec2(-1.0,  0.0),
+            vec2( 0.0,  1.0), vec2( 0.0, -1.0),
+            vec2( 0.707,  0.707), vec2(-0.707,  0.707),
+            vec2( 0.707, -0.707), vec2(-0.707, -0.707)
+        );
+
+        for (int i = 0; i < 8; i++) {
+            vec2 tapCoord = vTexCoord + taps[i] * texel;
+            vec3 tapColor = texture(uCameraTexture, tapCoord).rgb;
+            float tapLuma = dot(tapColor, vec3(0.2126, 0.7152, 0.0722));
+            totalExcess += max(0.0, tapLuma - uHalationThreshold) * 0.08125;
+        }
+
+        if (totalExcess > 0.0) {
+            float normExcess = totalExcess / max(1.0 - uHalationThreshold, 0.001);
+            vec3 halationTint = vec3(1.0, 0.32, 0.08); // Classic photographic warm red-amber
+            color += halationTint * (normExcess * normExcess) * uHalationIntensity;
         }
     }
 
@@ -152,8 +178,7 @@ void main() {
         // Luma weighting: strongest in midtones, soft in highlights/shadows
         float lumaWeight = clamp(1.0 - abs(2.0 * luma - 1.0), 0.25, 1.0);
         vec2 grainCoord = (vTexCoord * uResolution) / max(uGrainSize, 0.5);
-        vec2 seed = grainCoord + vec2(uTime * 17.3, uTime * 43.7);
-        float noise = hash(seed);
+        float noise = interleavedGradientNoise(grainCoord, uTime);
         color += vec3(noise * uGrainIntensity * lumaWeight);
     }
 
@@ -167,8 +192,8 @@ void main() {
      * Fragment shader for still photos and standard 2D textures (FBO offscreen rendering).
      */
     const val PHOTO_FRAGMENT_SHADER = """#version 300 es
-precision mediump float;
-precision mediump sampler3D;
+precision highp float;
+precision highp sampler3D;
 
 in vec2 vTexCoord;
 out vec4 fragColor;
@@ -214,11 +239,30 @@ void main() {
 
     // 3. Photochemical Halation
     if (uHalationEnabled == 1 && uHalationIntensity > 0.0) {
-        float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
-        float excess = clamp((luma - uHalationThreshold) / max(1.0 - uHalationThreshold, 0.001), 0.0, 1.0);
-        if (excess > 0.0) {
-            vec3 halationTint = vec3(1.0, 0.35, 0.05);
-            color += halationTint * (excess * excess) * uHalationIntensity;
+        vec2 texel = (uHalationRadius * 1.5) / max(uResolution, vec2(1.0));
+        float totalExcess = 0.0;
+
+        float centerLuma = dot(color, vec3(0.2126, 0.7152, 0.0722));
+        totalExcess += max(0.0, centerLuma - uHalationThreshold) * 0.35;
+
+        vec2 taps[8] = vec2[](
+            vec2( 1.0,  0.0), vec2(-1.0,  0.0),
+            vec2( 0.0,  1.0), vec2( 0.0, -1.0),
+            vec2( 0.707,  0.707), vec2(-0.707,  0.707),
+            vec2( 0.707, -0.707), vec2(-0.707, -0.707)
+        );
+
+        for (int i = 0; i < 8; i++) {
+            vec2 tapCoord = vTexCoord + taps[i] * texel;
+            vec3 tapColor = texture(uImageTexture, tapCoord).rgb;
+            float tapLuma = dot(tapColor, vec3(0.2126, 0.7152, 0.0722));
+            totalExcess += max(0.0, tapLuma - uHalationThreshold) * 0.08125;
+        }
+
+        if (totalExcess > 0.0) {
+            float normExcess = totalExcess / max(1.0 - uHalationThreshold, 0.001);
+            vec3 halationTint = vec3(1.0, 0.32, 0.08);
+            color += halationTint * (normExcess * normExcess) * uHalationIntensity;
         }
     }
 
@@ -227,7 +271,7 @@ void main() {
         float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
         float lumaWeight = clamp(1.0 - abs(2.0 * luma - 1.0), 0.25, 1.0);
         vec2 grainCoord = (vTexCoord * uResolution) / max(uGrainSize, 0.5);
-        float noise = hash(grainCoord + vec2(133.7, 89.1));
+        float noise = interleavedGradientNoise(grainCoord, 0.0);
         color += vec3(noise * uGrainIntensity * lumaWeight);
     }
 

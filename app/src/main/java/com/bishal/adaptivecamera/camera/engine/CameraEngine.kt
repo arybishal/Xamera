@@ -16,7 +16,11 @@ interface CameraEngine {
     val configuration: StateFlow<CameraConfiguration>
     val recordingDurationSec: StateFlow<Long>
 
-    fun bindCamera(lifecycleOwner: LifecycleOwner, previewView: PreviewView)
+    fun bindCamera(
+        lifecycleOwner: LifecycleOwner,
+        previewView: PreviewView,
+        surfaceProvider: androidx.camera.core.Preview.SurfaceProvider? = null
+    )
     fun unbindCamera()
 
     fun switchFacing()

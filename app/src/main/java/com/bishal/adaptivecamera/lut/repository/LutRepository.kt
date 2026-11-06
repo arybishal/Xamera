@@ -95,8 +95,7 @@ class LutRepositoryImpl(
     private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO)
 ) : LutRepository {
 
-    private val _selectedLutIdFlow = MutableStateFlow<String?>(null)
-    override val selectedLutIdFlow: StateFlow<String?> = _selectedLutIdFlow.asStateFlow()
+    override val selectedLutIdFlow: StateFlow<String?> = sharedSelectedLutId.asStateFlow()
 
     init {
         coroutineScope.launch {
@@ -222,8 +221,8 @@ class LutRepositoryImpl(
         entity.storagePath?.let { storageManager.deleteLutFile(it) }
         val rows = lutDao.deleteImportedLut(id)
 
-        if (_selectedLutIdFlow.value == id) {
-            _selectedLutIdFlow.value = null
+        if (sharedSelectedLutId.value == id) {
+            sharedSelectedLutId.value = null
         }
 
         if (rows > 0) {
@@ -234,7 +233,19 @@ class LutRepositoryImpl(
     }
 
     override suspend fun selectLut(id: String?) {
-        _selectedLutIdFlow.value = id
+        sharedSelectedLutId.value = id
+    }
+
+    companion object {
+        private val sharedSelectedLutId = MutableStateFlow<String?>(null)
+        @Volatile
+        private var instance: LutRepositoryImpl? = null
+
+        fun getInstance(context: Context): LutRepositoryImpl {
+            return instance ?: synchronized(this) {
+                instance ?: LutRepositoryImpl(context.applicationContext).also { instance = it }
+            }
+        }
     }
 
     private fun LutEntity.toLutItem(): LutItem {

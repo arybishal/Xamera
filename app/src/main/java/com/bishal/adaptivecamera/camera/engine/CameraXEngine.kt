@@ -84,6 +84,7 @@ class CameraXEngine(
 
     private var currentLifecycleOwner: LifecycleOwner? = null
     private var currentPreviewView: PreviewView? = null
+    private var currentSurfaceProvider: Preview.SurfaceProvider? = null
 
     init {
         val future = ProcessCameraProvider.getInstance(context)
@@ -97,9 +98,14 @@ class CameraXEngine(
         }, ContextCompat.getMainExecutor(context))
     }
 
-    override fun bindCamera(lifecycleOwner: LifecycleOwner, previewView: PreviewView) {
+    override fun bindCamera(
+        lifecycleOwner: LifecycleOwner,
+        previewView: PreviewView,
+        surfaceProvider: Preview.SurfaceProvider?
+    ) {
         currentLifecycleOwner = lifecycleOwner
         currentPreviewView = previewView
+        currentSurfaceProvider = surfaceProvider
 
         val provider = cameraProvider
         if (provider == null) {
@@ -141,7 +147,7 @@ class CameraXEngine(
 
             // 2. Preview
             val newPreview = Preview.Builder().build().also {
-                it.surfaceProvider = previewView.surfaceProvider
+                it.surfaceProvider = currentSurfaceProvider ?: previewView.surfaceProvider
             }
 
             // 3. ImageCapture

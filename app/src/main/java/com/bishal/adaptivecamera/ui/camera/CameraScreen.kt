@@ -14,17 +14,20 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
@@ -32,6 +35,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -100,6 +104,7 @@ fun CameraScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val uiState by viewModel.uiState.collectAsState()
     val audioVuState by viewModel.audioVuState.collectAsState()
+    val allLuts by viewModel.allLutsFlow.collectAsState(initial = emptyList())
 
     var hasCameraPermission by remember {
         mutableStateOf(
@@ -154,6 +159,7 @@ fun CameraScreen(
                 onCycleGrid = { viewModel.cycleGridType() },
                 isLookActive = uiState.gpuColorConfig.lutEnabled || uiState.gpuColorConfig.grainEnabled || uiState.gpuColorConfig.halationEnabled,
                 onToggleColorLooks = { viewModel.toggleLookControlPanel() },
+                onToggleHdrPlus = { viewModel.toggleHdrPlusMode() },
                 onOpenSettings = onOpenSettings
             )
         },
@@ -460,6 +466,34 @@ fun CameraScreen(
                     modifier = Modifier.align(Alignment.Center)
                 )
 
+                // 8b. HDR+ Processing Non-blocking Indicator
+                if (uiState.isHdrPlusProcessing) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 64.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color.Black.copy(alpha = 0.65f))
+                            .border(1.dp, PrimaryCyan.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(12.dp),
+                                strokeWidth = 2.dp,
+                                color = PrimaryCyan
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "HDR+ Processing...",
+                                color = PrimaryCyan,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
                 // 9. Rotary Zoom Dial and Step Pills (Photo & Video mode)
                 if (uiState.configuration.mode != CameraMode.PRO) {
                     RotaryZoomDial(
@@ -525,6 +559,7 @@ fun CameraScreen(
                     onUpdateConfig = { viewModel.updateGpuColorConfig(it) },
                     onOpenLutLibrary = onOpenLutLibrary,
                     onClose = { viewModel.toggleLookControlPanel(false) },
+                    allLuts = allLuts,
                     modifier = Modifier.align(Alignment.BottomCenter)
                 )
 

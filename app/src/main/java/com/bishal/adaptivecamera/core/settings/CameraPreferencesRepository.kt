@@ -12,6 +12,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.bishal.adaptivecamera.camera.config.AspectRatioConfig
 import com.bishal.adaptivecamera.camera.config.CompositionGridType
+import com.bishal.adaptivecamera.camera.config.HdrPlusMode
 import com.bishal.adaptivecamera.photography.computational.ImageStackingFrameCount
 import com.bishal.adaptivecamera.photography.computational.ImageStackingMode
 import com.bishal.adaptivecamera.photography.portrait.PortraitAperture
@@ -46,12 +47,22 @@ interface CameraPreferencesRepository {
     suspend fun updateStripGpsLocation(enabled: Boolean)
     suspend fun updateStripDeviceModel(enabled: Boolean)
     suspend fun updateThemeMode(themeMode: AppThemeMode)
+    suspend fun updateHdrPlusMode(mode: HdrPlusMode)
     suspend fun updateImageStackingEnabled(enabled: Boolean)
     suspend fun updateImageStackingMode(mode: ImageStackingMode)
     suspend fun updateImageStackingFrameCount(count: ImageStackingFrameCount)
     suspend fun updateRetainOriginalFrames(retain: Boolean)
     suspend fun updatePortraitAperture(aperture: PortraitAperture)
     suspend fun updatePortraitLightingStyle(style: PortraitLightingStyle)
+    suspend fun updateColorConfig(
+        selectedLutId: String?,
+        isLutEnabled: Boolean,
+        lutIntensity: Float,
+        isGrainEnabled: Boolean,
+        grainIntensity: Float,
+        isHalationEnabled: Boolean,
+        halationIntensity: Float
+    )
 }
 
 class CameraPreferencesRepositoryImpl(
@@ -84,6 +95,14 @@ class CameraPreferencesRepositoryImpl(
         val KEY_RETAIN_ORIGINAL_FRAMES = booleanPreferencesKey("retain_original_frames")
         val KEY_PORTRAIT_APERTURE = stringPreferencesKey("portrait_aperture")
         val KEY_PORTRAIT_LIGHTING_STYLE = stringPreferencesKey("portrait_lighting_style")
+        val KEY_HDR_PLUS_MODE = stringPreferencesKey("hdr_plus_mode")
+        val KEY_SELECTED_LUT_ID = stringPreferencesKey("selected_lut_id")
+        val KEY_LUT_ENABLED = booleanPreferencesKey("lut_enabled")
+        val KEY_LUT_INTENSITY = floatPreferencesKey("lut_intensity")
+        val KEY_GRAIN_ENABLED = booleanPreferencesKey("grain_enabled")
+        val KEY_GRAIN_INTENSITY = floatPreferencesKey("grain_intensity")
+        val KEY_HALATION_ENABLED = booleanPreferencesKey("halation_enabled")
+        val KEY_HALATION_INTENSITY = floatPreferencesKey("halation_intensity")
     }
 
     override val preferencesFlow: Flow<CameraPreferences> = context.dataStore.data
@@ -164,6 +183,21 @@ class CameraPreferencesRepositoryImpl(
                 PortraitLightingStyle.NATURAL
             }
 
+            val hdrPlusModeName = preferences[PreferencesKeys.KEY_HDR_PLUS_MODE] ?: HdrPlusMode.OFF.name
+            val hdrPlusMode = try {
+                HdrPlusMode.valueOf(hdrPlusModeName)
+            } catch (_: Exception) {
+                HdrPlusMode.OFF
+            }
+
+            val selectedLutId = preferences[PreferencesKeys.KEY_SELECTED_LUT_ID]
+            val isLutEnabled = preferences[PreferencesKeys.KEY_LUT_ENABLED] ?: false
+            val lutIntensity = preferences[PreferencesKeys.KEY_LUT_INTENSITY] ?: 1.0f
+            val isGrainEnabled = preferences[PreferencesKeys.KEY_GRAIN_ENABLED] ?: false
+            val grainIntensity = preferences[PreferencesKeys.KEY_GRAIN_INTENSITY] ?: 0.0f
+            val isHalationEnabled = preferences[PreferencesKeys.KEY_HALATION_ENABLED] ?: false
+            val halationIntensity = preferences[PreferencesKeys.KEY_HALATION_INTENSITY] ?: 0.0f
+
             CameraPreferences(
                 gridType = gridType,
                 isVirtualHorizonEnabled = isVirtualHorizonEnabled,
@@ -184,12 +218,20 @@ class CameraPreferencesRepositoryImpl(
                 stripGpsLocation = stripGpsLocation,
                 stripDeviceModel = stripDeviceModel,
                 themeMode = themeMode,
+                hdrPlusMode = hdrPlusMode,
                 imageStackingEnabled = imageStackingEnabled,
                 imageStackingMode = imageStackingMode,
                 imageStackingFrameCount = imageStackingFrameCount,
                 retainOriginalFrames = retainOriginalFrames,
                 portraitAperture = portraitAperture,
-                portraitLightingStyle = portraitLightingStyle
+                portraitLightingStyle = portraitLightingStyle,
+                selectedLutId = selectedLutId,
+                isLutEnabled = isLutEnabled,
+                lutIntensity = lutIntensity,
+                isGrainEnabled = isGrainEnabled,
+                grainIntensity = grainIntensity,
+                isHalationEnabled = isHalationEnabled,
+                halationIntensity = halationIntensity
             )
         }
 
@@ -342,6 +384,36 @@ class CameraPreferencesRepositoryImpl(
     override suspend fun updatePortraitLightingStyle(style: PortraitLightingStyle) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.KEY_PORTRAIT_LIGHTING_STYLE] = style.name
+        }
+    }
+
+    override suspend fun updateHdrPlusMode(mode: HdrPlusMode) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.KEY_HDR_PLUS_MODE] = mode.name
+        }
+    }
+
+    override suspend fun updateColorConfig(
+        selectedLutId: String?,
+        isLutEnabled: Boolean,
+        lutIntensity: Float,
+        isGrainEnabled: Boolean,
+        grainIntensity: Float,
+        isHalationEnabled: Boolean,
+        halationIntensity: Float
+    ) {
+        context.dataStore.edit { preferences ->
+            if (selectedLutId != null) {
+                preferences[PreferencesKeys.KEY_SELECTED_LUT_ID] = selectedLutId
+            } else {
+                preferences.remove(PreferencesKeys.KEY_SELECTED_LUT_ID)
+            }
+            preferences[PreferencesKeys.KEY_LUT_ENABLED] = isLutEnabled
+            preferences[PreferencesKeys.KEY_LUT_INTENSITY] = lutIntensity
+            preferences[PreferencesKeys.KEY_GRAIN_ENABLED] = isGrainEnabled
+            preferences[PreferencesKeys.KEY_GRAIN_INTENSITY] = grainIntensity
+            preferences[PreferencesKeys.KEY_HALATION_ENABLED] = isHalationEnabled
+            preferences[PreferencesKeys.KEY_HALATION_INTENSITY] = halationIntensity
         }
     }
 }

@@ -43,6 +43,18 @@ enum class PhotoTimer(val seconds: Int, val displayName: String) {
     }
 }
 
+enum class HdrPlusMode(val displayName: String, val shortLabel: String) {
+    OFF("HDR+ Off", "OFF"),
+    AUTO("HDR+ Auto", "AUTO"),
+    ON("HDR+ On", "ON");
+
+    fun next(): HdrPlusMode = when (this) {
+        OFF -> AUTO
+        AUTO -> ON
+        ON -> OFF
+    }
+}
+
 enum class CameraMode(val displayName: String) {
     PORTRAIT("PORTRAIT"),
     PHOTO("PHOTO"),
@@ -61,6 +73,7 @@ data class CameraConfiguration(
     val mode: CameraMode = CameraMode.PHOTO,
     val flashMode: FlashMode = FlashMode.OFF,
     val timer: PhotoTimer = PhotoTimer.OFF,
+    val hdrPlusMode: HdrPlusMode = HdrPlusMode.OFF,
     val zoomRatio: Float = 1.0f,
     val minZoomRatio: Float = 1.0f,
     val maxZoomRatio: Float = 10.0f,

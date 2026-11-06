@@ -36,8 +36,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bishal.adaptivecamera.camera.config.CameraConfiguration
+import com.bishal.adaptivecamera.camera.config.CameraMode
 import com.bishal.adaptivecamera.camera.config.CompositionGridType
 import com.bishal.adaptivecamera.camera.config.FlashMode
+import com.bishal.adaptivecamera.camera.config.HdrPlusMode
 import com.bishal.adaptivecamera.camera.config.PhotoTimer
 import com.bishal.adaptivecamera.ui.theme.AccentAmber
 import com.bishal.adaptivecamera.ui.theme.PrimaryCyan
@@ -55,7 +57,8 @@ fun TopBarControls(
     onCycleAspectRatio: () -> Unit = {},
     onCycleGrid: () -> Unit = {},
     isLookActive: Boolean = false,
-    onToggleColorLooks: () -> Unit = {}
+    onToggleColorLooks: () -> Unit = {},
+    onToggleHdrPlus: () -> Unit = {}
 ) {
     Row(
         modifier = modifier
@@ -77,6 +80,40 @@ fun TopBarControls(
                 FlashMode.AUTO -> Icon(Icons.Default.FlashAuto, contentDescription = "Flash Auto", tint = AccentAmber)
                 FlashMode.ON -> Icon(Icons.Default.FlashOn, contentDescription = "Flash On", tint = AccentAmber)
                 FlashMode.TORCH -> Icon(Icons.Default.Highlight, contentDescription = "Torch", tint = PrimaryCyan)
+            }
+        }
+
+        // 1b. HDR+ Quick Toggle (Photo mode only)
+        if (config.mode == CameraMode.PHOTO) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color.Black.copy(alpha = 0.45f))
+                    .border(
+                        1.dp,
+                        if (config.hdrPlusMode == HdrPlusMode.ON) PrimaryCyan
+                        else if (config.hdrPlusMode == HdrPlusMode.AUTO) AccentAmber.copy(alpha = 0.6f)
+                        else Color.Transparent,
+                        RoundedCornerShape(16.dp)
+                    )
+                    .clickable(onClick = onToggleHdrPlus)
+                    .padding(horizontal = 8.dp, vertical = 5.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = when (config.hdrPlusMode) {
+                        HdrPlusMode.OFF -> "HDR+"
+                        HdrPlusMode.AUTO -> "HDR+ A"
+                        HdrPlusMode.ON -> "HDR+ ON"
+                    },
+                    color = when (config.hdrPlusMode) {
+                        HdrPlusMode.OFF -> TextSecondary
+                        HdrPlusMode.AUTO -> AccentAmber
+                        HdrPlusMode.ON -> PrimaryCyan
+                    },
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
 

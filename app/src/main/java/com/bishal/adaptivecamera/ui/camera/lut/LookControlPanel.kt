@@ -64,7 +64,8 @@ fun LookControlPanel(
     onUpdateConfig: (GpuColorConfig) -> Unit,
     onOpenLutLibrary: () -> Unit,
     onClose: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    allLuts: List<com.bishal.adaptivecamera.lut.repository.LutItem> = emptyList()
 ) {
     AnimatedVisibility(
         visible = isVisible,
@@ -103,7 +104,12 @@ fun LookControlPanel(
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(text = "Color Look & Film Effects", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                            val lookName = BuiltInLutPresets.PRESET_INFOS.firstOrNull { it.id == config.selectedLutId }?.title ?: "Original"
+                            val activeLut = allLuts.firstOrNull { it.id == config.selectedLutId }
+                            val lookName = if (config.lutEnabled) {
+                                activeLut?.name ?: BuiltInLutPresets.PRESET_INFOS.firstOrNull { it.id == config.selectedLutId }?.title ?: "Custom Look"
+                            } else {
+                                "Off (Natural)"
+                            }
                             Text(text = "Active: $lookName (${(config.lutIntensity * 100).roundToInt()}%)", color = PrimaryCyan, fontSize = 11.sp)
                         }
                     }
@@ -141,6 +147,20 @@ fun LookControlPanel(
                             colorDot = Color(preset.previewColorArgb),
                             onClick = {
                                 onUpdateConfig(config.copy(lutEnabled = true, selectedLutId = preset.id))
+                            }
+                        )
+                    }
+
+                    // User Imported LUTs
+                    val importedLuts = allLuts.filter { !it.isBuiltIn }
+                    importedLuts.forEach { item ->
+                        val isSelected = config.lutEnabled && config.selectedLutId == item.id
+                        LookChip(
+                            title = item.name,
+                            isSelected = isSelected,
+                            colorDot = Color(item.previewColorArgb ?: 0xFF00BCD4.toInt()),
+                            onClick = {
+                                onUpdateConfig(config.copy(lutEnabled = true, selectedLutId = item.id))
                             }
                         )
                     }

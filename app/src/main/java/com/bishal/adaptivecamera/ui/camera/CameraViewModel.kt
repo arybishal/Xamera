@@ -39,8 +39,11 @@ import com.bishal.adaptivecamera.photography.pro.Camera2ManualEngine
 import com.bishal.adaptivecamera.photography.pro.FalseColorMap
 import com.bishal.adaptivecamera.photography.pro.FocusPeakingMap
 import com.bishal.adaptivecamera.photography.pro.HistogramData
+import android.graphics.SurfaceTexture
+import com.bishal.adaptivecamera.camera.config.HdrPlusMode
 import com.bishal.adaptivecamera.graphics.pipeline.GpuColorConfig
 import com.bishal.adaptivecamera.graphics.pipeline.GpuPhotoProcessor
+import com.bishal.adaptivecamera.graphics.pipeline.GpuPreviewRenderer
 import com.bishal.adaptivecamera.lut.model.LutDefinition
 import com.bishal.adaptivecamera.lut.repository.LutRepository
 import com.bishal.adaptivecamera.lut.repository.LutRepositoryImpl
@@ -95,6 +98,7 @@ data class CameraUiState(
     val isScreenFlashActive: Boolean = false,
     val gpuColorConfig: GpuColorConfig = GpuColorConfig.DEFAULT,
     val isLookControlPanelVisible: Boolean = false,
+    val isHdrPlusProcessing: Boolean = false,
     val videoConfig: VideoConfig = VideoConfig(),
     val videoRecordingState: VideoRecordingState = VideoRecordingState(),
     val isVideoQuickSettingsVisible: Boolean = false,
@@ -114,12 +118,15 @@ class CameraViewModel @JvmOverloads constructor(
     val hapticEngine: HapticEngine = HapticEngineImpl(application.applicationContext) { true },
     val virtualHorizonSensor: VirtualHorizonSensor = VirtualHorizonSensorImpl(application.applicationContext),
     private val lutRepository: LutRepository = LutRepositoryImpl(application.applicationContext),
+    val gpuPreviewRenderer: GpuPreviewRenderer = GpuPreviewRenderer(),
     private val gpuPhotoProcessor: GpuPhotoProcessor = GpuPhotoProcessor(),
     private val computationalCoordinator: ComputationalPhotographyCoordinator = ComputationalPhotographyCoordinator(application.applicationContext, mediaStoreManager)
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(CameraUiState())
     val uiState: StateFlow<CameraUiState> = _uiState.asStateFlow()
+
+    val allLutsFlow: kotlinx.coroutines.flow.Flow<List<com.bishal.adaptivecamera.lut.repository.LutItem>> = lutRepository.allLutsFlow
 
     val audioRecordingManager = AudioRecordingManager(application.applicationContext, viewModelScope)
     val audioVuState: StateFlow<AudioVuState> = audioRecordingManager.vuState
@@ -297,7 +304,17 @@ class CameraViewModel @JvmOverloads constructor(
                             floatingShutterY = prefs.floatingShutterY,
                             isZslEnabled = prefs.isZslEnabled,
                             aebBracketCount = prefs.aebBracketCount,
-                            aebEvStep = prefs.aebEvStep
+                            aebEvStep = prefs.aebEvStep,
+                            hdrPlusMode = prefs.hdrPlusMode
+                        ),
+                        gpuColorConfig = current.gpuColorConfig.copy(
+                            selectedLutId = prefs.selectedLutId,
+                            lutEnabled = prefs.isLutEnabled,
+                            lutIntensity = prefs.lutIntensity,
+                            grainEnabled = prefs.isGrainEnabled,
+                            grainIntensity = prefs.grainIntensity,
+                            halationEnabled = prefs.isHalationEnabled,
+                            halationIntensity = prefs.halationIntensity
                         ),
                         proConfig = current.proConfig.copy(
                             isZslEnabled = prefs.isZslEnabled,
@@ -511,6 +528,15 @@ class CameraViewModel @JvmOverloads constructor(
             return
         }
 
+        val hdrPlusMode = _uiState.value.configuration.hdrPlusMode
+        val shouldExecuteHdrPlus = (currentMode == CameraMode.PHOTO) && (
+            hdrPlusMode == HdrPlusMode.ON || (hdrPlusMode == HdrPlusMode.AUTO && _uiState.value.smartAutoState.sceneResult != null)
+        )
+        if (shouldExecuteHdrPlus) {
+            executeHdrPlusCapture()
+            return
+        }
+
         triggerFlashAnimation()
         cameraEngine.capturePhoto(
             onSuccess = { item ->
@@ -669,6 +695,173 @@ class CameraViewModel @JvmOverloads constructor(
         captureNext(1)
     }
 
+    private fun executeHdrPlusCapture() {
+        triggerFlashAnimation()
+        _uiState.update { it.copy(isHdrPlusProcessing = true, toastMessage = "Capturing HDR+ sequence (1/5)...") }
+
+        val targetCount = 5
+        val capturedItems = mutableListOf<MediaItem>()
+        val capturedBitmaps = mutableListOf<Bitmap>()
+
+        fun captureNext(index: Int) {
+            cameraEngine.capturePhoto(
+                onSuccess = { item ->
+                    capturedItems.add(item)
+                    val uri = item.uri
+                    if (uri != null) {
+                        try {
+                            val ctx = getApplication<Application>().applicationContext
+                            val inputStream = ctx.contentResolver.openInputStream(uri)
+                            val bmp = android.graphics.BitmapFactory.decodeStream(inputStream)
+                            inputStream?.close()
+                            if (bmp != null) capturedBitmaps.add(bmp)
+                        } catch (e: Exception) {
+                            android.util.Log.e("CameraViewModel", "Failed to decode frame for HDR+", e)
+                        }
+                    }
+
+                    if (capturedBitmaps.size >= targetCount || index >= targetCount) {
+                        _uiState.update { it.copy(toastMessage = "Aligning & fusing HDR+ frames...") }
+                        viewModelScope.launch(Dispatchers.Default) {
+                            try {
+                                val refFrame = capturedBitmaps[0]
+                                val alignedFrames = mutableListOf<Bitmap>()
+                                alignedFrames.add(refFrame)
+
+                                for (i in 1 until capturedBitmaps.size) {
+                                    val disp = com.bishal.adaptivecamera.photography.computational.FrameAlignmentEngine.estimateDisplacement(
+                                        reference = refFrame,
+                                        target = capturedBitmaps[i],
+                                        maxShiftPx = 32
+                                    )
+                                    val aligned = com.bishal.adaptivecamera.photography.computational.FrameAlignmentEngine.alignBitmap(
+                                        capturedBitmaps[i], disp.dx, disp.dy
+                                    )
+                                    alignedFrames.add(aligned)
+                                }
+
+                                val motionMasks = mutableListOf<com.bishal.adaptivecamera.photography.computational.MotionMask>()
+                                for (i in alignedFrames.indices) {
+                                    if (i == 0) {
+                                        motionMasks.add(com.bishal.adaptivecamera.photography.computational.MotionMask(1, 1, floatArrayOf(0f), 0f))
+                                    } else {
+                                        motionMasks.add(
+                                            com.bishal.adaptivecamera.photography.computational.MotionEstimationEngine.estimateMotion(
+                                                reference = refFrame,
+                                                alignedTarget = alignedFrames[i],
+                                                motionThreshold = 0.08f
+                                            )
+                                        )
+                                    }
+                                }
+
+                                val fusedBitmap = com.bishal.adaptivecamera.photography.computational.ImageFusionEngine.fuseFrames(
+                                    alignedFrames = alignedFrames,
+                                    motionMasks = motionMasks,
+                                    mode = com.bishal.adaptivecamera.photography.computational.ImageStackingMode.HDR,
+                                    referenceIndex = 0
+                                )
+
+                                for (i in 1 until alignedFrames.size) {
+                                    if (alignedFrames[i] !== capturedBitmaps[i]) {
+                                        alignedFrames[i].recycle()
+                                    }
+                                }
+
+                                // Apply active GPU color config to fused result if enabled
+                                val gpuConfig = _uiState.value.gpuColorConfig
+                                val finalBitmap = if (gpuConfig.lutEnabled || gpuConfig.grainEnabled || gpuConfig.halationEnabled) {
+                                    val activeLut = if (gpuConfig.lutEnabled && gpuConfig.selectedLutId != null) {
+                                        lutRepository.loadLutDefinition(gpuConfig.selectedLutId)
+                                    } else null
+                                    gpuPhotoProcessor.processPhoto(fusedBitmap, gpuConfig, activeLut)
+                                } else {
+                                    fusedBitmap
+                                }
+
+                                val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(java.util.Date())
+                                val savedItem = computationalCoordinator.saveBitmapToMediaStore(
+                                    finalBitmap,
+                                    "IMG_HDRPLUS_$timestamp"
+                                )
+
+                                if (finalBitmap !== fusedBitmap) finalBitmap.recycle()
+                                fusedBitmap.recycle()
+
+                                // Clean up individual burst frames
+                                for (ci in capturedItems) {
+                                    mediaStoreManager.deleteMedia(ci)
+                                }
+
+                                withContext(Dispatchers.Main) {
+                                    _uiState.update {
+                                        it.copy(
+                                            isHdrPlusProcessing = false,
+                                            latestMedia = savedItem ?: capturedItems.firstOrNull(),
+                                            toastMessage = "HDR+ Photo saved (${capturedBitmaps.size} frames fused)",
+                                            isScreenFlashActive = false
+                                        )
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e("CameraViewModel", "HDR+ processing failed, falling back", e)
+                                withContext(Dispatchers.Main) {
+                                    _uiState.update {
+                                        it.copy(
+                                            isHdrPlusProcessing = false,
+                                            latestMedia = capturedItems.firstOrNull(),
+                                            toastMessage = "HDR+ fusion fallback: saved standard capture",
+                                            isScreenFlashActive = false
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        _uiState.update { it.copy(toastMessage = "Capturing HDR+ frame ${capturedBitmaps.size + 1}/$targetCount...") }
+                        captureNext(index + 1)
+                    }
+                },
+                onError = { error ->
+                    android.util.Log.e("CameraViewModel", "HDR+ burst capture error: ${error.message}")
+                    if (capturedBitmaps.isNotEmpty()) {
+                        _uiState.update {
+                            it.copy(
+                                isHdrPlusProcessing = false,
+                                latestMedia = capturedItems.firstOrNull(),
+                                toastMessage = "HDR+ capture completed with ${capturedBitmaps.size} frames",
+                                isScreenFlashActive = false
+                            )
+                        }
+                    } else {
+                        _uiState.update {
+                            it.copy(
+                                isHdrPlusProcessing = false,
+                                toastMessage = "HDR+ capture failed: ${error.message}",
+                                isScreenFlashActive = false
+                            )
+                        }
+                    }
+                }
+            )
+        }
+
+        captureNext(1)
+    }
+
+    fun toggleHdrPlusMode() {
+        val nextMode = _uiState.value.configuration.hdrPlusMode.next()
+        updateHdrPlusMode(nextMode)
+    }
+
+    fun updateHdrPlusMode(mode: HdrPlusMode) {
+        _uiState.update { it.copy(configuration = it.configuration.copy(hdrPlusMode = mode)) }
+        viewModelScope.launch {
+            preferencesRepository.updateHdrPlusMode(mode)
+            hapticEngine.performClick()
+        }
+    }
+
     private fun executeProCapture() {
         camera2ProEngine.capturePhoto(
             onSuccess = { item ->
@@ -742,11 +935,45 @@ class CameraViewModel @JvmOverloads constructor(
 
     fun updateGpuColorConfig(newConfig: GpuColorConfig) {
         _uiState.update { it.copy(gpuColorConfig = newConfig) }
+        gpuPreviewRenderer.updateConfig(newConfig)
         if (newConfig.lutEnabled && newConfig.selectedLutId != null) {
             viewModelScope.launch {
                 lutRepository.selectLut(newConfig.selectedLutId)
+                val lutDef = lutRepository.loadLutDefinition(newConfig.selectedLutId)
+                if (lutDef != null) {
+                    gpuPreviewRenderer.loadLutDefinition(lutDef)
+                }
             }
         }
+        viewModelScope.launch {
+            preferencesRepository.updateColorConfig(
+                selectedLutId = newConfig.selectedLutId,
+                isLutEnabled = newConfig.lutEnabled,
+                lutIntensity = newConfig.lutIntensity,
+                isGrainEnabled = newConfig.grainEnabled,
+                grainIntensity = newConfig.grainIntensity,
+                isHalationEnabled = newConfig.halationEnabled,
+                halationIntensity = newConfig.halationIntensity
+            )
+        }
+    }
+
+    fun bindPreviewSurface(surfaceTexture: SurfaceTexture, width: Int, height: Int) {
+        gpuPreviewRenderer.start(surfaceTexture, width, height)
+        val currentGpu = _uiState.value.gpuColorConfig
+        gpuPreviewRenderer.updateConfig(currentGpu)
+        if (currentGpu.lutEnabled && currentGpu.selectedLutId != null) {
+            viewModelScope.launch {
+                val lutDef = lutRepository.loadLutDefinition(currentGpu.selectedLutId)
+                if (lutDef != null) {
+                    gpuPreviewRenderer.loadLutDefinition(lutDef)
+                }
+            }
+        }
+    }
+
+    fun unbindPreviewSurface() {
+        gpuPreviewRenderer.stop()
     }
 
     private fun triggerFlashAnimation() {
@@ -1252,6 +1479,7 @@ class CameraViewModel @JvmOverloads constructor(
 
     override fun onCleared() {
         super.onCleared()
+        gpuPreviewRenderer.stop()
         audioRecordingManager.stopVuMonitoring()
         cameraEngine.unbindCamera()
         camera2ProEngine.unbindCamera()
