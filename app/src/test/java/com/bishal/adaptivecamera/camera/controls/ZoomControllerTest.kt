@@ -95,8 +95,13 @@ class ZoomControllerTest {
             initialMax = 10.0f
         ) {}
 
+        // For hardware with 0.6x minimum (e.g. OnePlus 13R / Ace 5)
         val steps = controller.getAvailableSteps()
         assertEquals(listOf(0.6f, 1.0f, 2.0f, 3.0f, 5.0f, 10.0f), steps)
+
+        // For hardware supporting 0.5x minimum
+        controller.updateRange(0.5f, 10.0f)
+        assertEquals(listOf(0.5f, 1.0f, 2.0f, 3.0f, 5.0f, 10.0f), controller.getAvailableSteps())
 
         // Limited sensor range (e.g. 1.0x to 3.0x)
         controller.updateRange(1.0f, 3.0f)

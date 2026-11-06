@@ -225,7 +225,7 @@ fun RotaryZoomDial(
             availableSteps.forEach { step ->
                 val isSelected = abs(currentZoom - step) < 0.15f
 
-                val label = if (step == 0.6f) "0.6" else if (step == 1.0f) "1" else if (step == 2.0f) "2" else if (step == 3.0f) "3" else if (step == 5.0f) "5" else "${step.toInt()}"
+                val label = if (step < 1.0f) String.format(java.util.Locale.US, "%.1f", step) else "${step.toInt()}"
 
                 Box(
                     modifier = Modifier

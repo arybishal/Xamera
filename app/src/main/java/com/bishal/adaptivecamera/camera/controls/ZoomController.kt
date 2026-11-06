@@ -71,7 +71,15 @@ class ZoomControllerImpl(
     override fun getAvailableSteps(): List<Float> {
         val min = _minZoomRatio.value
         val max = _maxZoomRatio.value
-        val candidateSteps = listOf(0.6f, 1.0f, 2.0f, 3.0f, 5.0f, 10.0f)
+        // Include 0.5x if hardware supports it (min <= 0.55f),
+        // or 0.6x if min is ~0.6x (e.g. OnePlus 13R / Ace 5 physical hardware minimum)
+        val candidateSteps = if (min <= 0.55f) {
+            listOf(0.5f, 1.0f, 2.0f, 3.0f, 5.0f, 10.0f)
+        } else if (min <= 0.65f) {
+            listOf(0.6f, 1.0f, 2.0f, 3.0f, 5.0f, 10.0f)
+        } else {
+            listOf(1.0f, 2.0f, 3.0f, 5.0f, 10.0f)
+        }
         val valid = candidateSteps.filter { it in min..max }
         return if (valid.isEmpty()) listOf(min) else valid
     }

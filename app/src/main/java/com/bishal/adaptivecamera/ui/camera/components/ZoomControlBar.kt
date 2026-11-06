@@ -30,7 +30,13 @@ fun ZoomControlBar(
     modifier: Modifier = Modifier
 ) {
     // Generate logical zoom steps within hardware boundaries
-    val candidateSteps = listOf(0.6f, 1.0f, 2.0f, 3.0f, 5.0f, 10.0f)
+    val candidateSteps = if (minZoom <= 0.55f) {
+        listOf(0.5f, 1.0f, 2.0f, 3.0f, 5.0f, 10.0f)
+    } else if (minZoom <= 0.65f) {
+        listOf(0.6f, 1.0f, 2.0f, 3.0f, 5.0f, 10.0f)
+    } else {
+        listOf(1.0f, 2.0f, 3.0f, 5.0f, 10.0f)
+    }
     val validSteps = candidateSteps.filter { it in minZoom..maxZoom }
     val displaySteps = if (validSteps.isEmpty()) listOf(1.0f) else validSteps
 
@@ -44,6 +50,7 @@ fun ZoomControlBar(
     ) {
         displaySteps.forEach { step ->
             val isSelected = abs(currentZoom - step) < 0.15f
+            val label = if (step < 1.0f) String.format(java.util.Locale.US, "%.1f", step) else step.toInt().toString()
             Box(
                 modifier = Modifier
                     .clip(CircleShape)
@@ -53,7 +60,7 @@ fun ZoomControlBar(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "${if (step == 0.6f) "0.6" else step.toInt().toString()}x",
+                    text = "${label}x",
                     color = if (isSelected) Color.Black else TextPrimary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
