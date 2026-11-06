@@ -122,20 +122,38 @@ class ComputationalPhotographyCoordinator(
         val savedItem = saveBitmapToMediaStore(fusedBitmap, filename)
 
         fusedBitmap.recycle()
+
+        // 7. Recycle original input burst frames to prevent native memory exhaustion
+        for (f in frames) {
+            if (!f.isRecycled) {
+                f.recycle()
+            }
+        }
+
         Log.d(TAG, "Computational stacking complete. Saved item: ${savedItem?.uri}")
         savedItem
     }
 
     /**
-     * Encodes [bitmap] to JPEG and persists to MediaStore.
+     * Encodes [bitmap] to JPEG, optionally injects [exifAttributes], and persists to MediaStore.
      */
-    suspend fun saveBitmapToMediaStore(bitmap: Bitmap, baseFilename: String): MediaItem? = withContext(Dispatchers.IO) {
+    suspend fun saveBitmapToMediaStore(
+        bitmap: Bitmap,
+        baseFilename: String,
+        exifAttributes: Map<String, String>? = null
+    ): MediaItem? = withContext(Dispatchers.IO) {
         val tempFile = File(context.cacheDir, "${baseFilename}_temp.jpg")
         try {
             val fos = FileOutputStream(tempFile)
             bitmap.compress(Bitmap.CompressFormat.JPEG, 95, fos)
             fos.flush()
             fos.close()
+
+            if (exifAttributes != null && exifAttributes.isNotEmpty()) {
+                com.bishal.adaptivecamera.photography.exif.ExifMetadataHelper.writeExifMetadata(tempFile, exifAttributes)
+            } else {
+                com.bishal.adaptivecamera.photography.exif.ExifMetadataHelper.stampDefaultCameraMetadata(tempFile)
+            }
 
             val mediaItem = mediaStoreManager.savePhoto(tempFile, "$baseFilename.jpg")
             mediaItem

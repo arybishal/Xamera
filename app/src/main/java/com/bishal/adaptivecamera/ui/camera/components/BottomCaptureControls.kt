@@ -58,7 +58,8 @@ fun BottomCaptureControls(
     onShutterPressed: () -> Unit,
     onSwitchCamera: () -> Unit,
     onOpenGallery: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isLeftHanded: Boolean = false
 ) {
     val isRecording = sessionState == CameraSessionState.RECORDING
 
@@ -122,6 +123,7 @@ fun BottomCaptureControls(
         }
 
         // Primary Buttons Row: Gallery Thumbnail | Shutter Button | Camera Flip
+        // (Mirrored in Left-Handed UI mode for ergonomic left thumb reach)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -129,53 +131,66 @@ fun BottomCaptureControls(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Gallery Thumbnail
-            Box(
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(DarkSurfaceVariant)
-                    .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
-                    .clickable(onClick = onOpenGallery),
-                contentAlignment = Alignment.Center
-            ) {
-                if (latestMedia?.uri != null) {
-                    MediaThumbnail(
-                        uri = latestMedia.uri,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else {
+            val galleryButton: @Composable () -> Unit = {
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(DarkSurfaceVariant)
+                        .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
+                        .clickable(onClick = onOpenGallery),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (latestMedia?.uri != null) {
+                        MediaThumbnail(
+                            uri = latestMedia.uri,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.PhotoLibrary,
+                            contentDescription = "Gallery",
+                            tint = TextMuted,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
+
+            val switchCameraButton: @Composable () -> Unit = {
+                IconButton(
+                    onClick = onSwitchCamera,
+                    enabled = sessionState.canSwitchCamera,
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .background(DarkSurfaceVariant)
+                ) {
                     Icon(
-                        imageVector = Icons.Default.PhotoLibrary,
-                        contentDescription = "Gallery",
-                        tint = TextMuted,
-                        modifier = Modifier.size(24.dp)
+                        imageVector = Icons.Default.Cameraswitch,
+                        contentDescription = "Switch Camera",
+                        tint = TextPrimary,
+                        modifier = Modifier.size(26.dp)
                     )
                 }
             }
 
-            // Shutter / Record Button
-            ShutterButton(
-                mode = mode,
-                isRecording = isRecording,
-                onClick = onShutterPressed
-            )
-
-            // Camera Switch Button
-            IconButton(
-                onClick = onSwitchCamera,
-                enabled = sessionState.canSwitchCamera,
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(CircleShape)
-                    .background(DarkSurfaceVariant)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Cameraswitch,
-                    contentDescription = "Switch Camera",
-                    tint = TextPrimary,
-                    modifier = Modifier.size(26.dp)
+            if (isLeftHanded) {
+                switchCameraButton()
+                ShutterButton(
+                    mode = mode,
+                    isRecording = isRecording,
+                    onClick = onShutterPressed
                 )
+                galleryButton()
+            } else {
+                galleryButton()
+                ShutterButton(
+                    mode = mode,
+                    isRecording = isRecording,
+                    onClick = onShutterPressed
+                )
+                switchCameraButton()
             }
         }
     }

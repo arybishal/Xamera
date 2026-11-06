@@ -430,6 +430,25 @@ fun SettingsScreen(
                                 Text("Reset Shutter Position", fontSize = 11.sp, color = PrimaryCyan)
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Left-Handed UI Mode Toggle (FEAT-VIEW-07)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Left-Handed UI Mode", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                Text("Mirrors capture controls and flip button for ergonomic left-thumb operation", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                            }
+                            Switch(
+                                checked = camUiState?.isLeftHandedModeEnabled ?: false,
+                                onCheckedChange = { cameraViewModel?.updateLeftHandedModeEnabled(it) },
+                                colors = SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.primary, checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+                            )
+                        }
                     }
                 }
             }
@@ -1064,6 +1083,26 @@ fun SettingsScreen(
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text("Re-scan", fontSize = 10.sp, color = PrimaryCyan)
                                 }
+                            }
+                        }
+
+                        // Real-time Thermal Status Telemetry (FEAT-THRM-01)
+                        val thermalStatus = camUiState?.thermalMitigationPolicy?.thermalStatus
+                        if (thermalStatus != null) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Thermal Health", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    text = thermalStatus.label,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (thermalStatus.isThrottling) ErrorRed else SuccessGreen
+                                )
                             }
                         }
 

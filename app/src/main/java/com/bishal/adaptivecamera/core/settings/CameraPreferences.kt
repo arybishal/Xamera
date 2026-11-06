@@ -45,5 +45,6 @@ data class CameraPreferences(
     val isGrainEnabled: Boolean = false,
     val grainIntensity: Float = 0.0f,
     val isHalationEnabled: Boolean = false,
-    val halationIntensity: Float = 0.0f
+    val halationIntensity: Float = 0.0f,
+    val isLeftHandedModeEnabled: Boolean = false
 )

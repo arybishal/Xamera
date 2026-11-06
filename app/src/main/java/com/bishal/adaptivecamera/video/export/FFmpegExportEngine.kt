@@ -104,6 +104,23 @@ class FFmpegExportEngine(
         return@withContext nativeExportEngine.exportVideo(fallbackConfig)
     }
 
+    fun isFFmpegBinaryAvailable(): Boolean {
+        return findFFmpegBinary() != null
+    }
+
+    fun inspectExecutionPlan(options: FFmpegVideoOptions): FFmpegExecutionPlan {
+        val cmd = FFmpegCommandBuilder.buildCommandLineString(options)
+        val binary = findFFmpegBinary()
+        val method = if (binary != null) FFmpegExecutionMethod.FFMPEG_CLI_BINARY else FFmpegExecutionMethod.MEDIA_CODEC_HARDWARE_FALLBACK
+        return FFmpegExecutionPlan(
+            commandConstructed = cmd.isNotBlank(),
+            commandLine = cmd,
+            binaryAvailable = binary != null,
+            executionMethod = method,
+            binaryPath = binary?.absolutePath
+        )
+    }
+
     private fun findFFmpegBinary(): File? {
         val candidates = listOf(
             File(context.applicationInfo.nativeLibraryDir, "libffmpeg.so"),
@@ -117,3 +134,22 @@ class FFmpegExportEngine(
         private const val TAG = "FFmpegExportEngine"
     }
 }
+
+/**
+ * Execution method classification for video export and transcoding jobs.
+ */
+enum class FFmpegExecutionMethod(val displayName: String) {
+    FFMPEG_CLI_BINARY("FFmpeg CLI Native Binary"),
+    MEDIA_CODEC_HARDWARE_FALLBACK("Android Native MediaCodec Hardware Pipeline")
+}
+
+/**
+ * Diagnostic record detailing execution prerequisites for a transcode job.
+ */
+data class FFmpegExecutionPlan(
+    val commandConstructed: Boolean,
+    val commandLine: String,
+    val binaryAvailable: Boolean,
+    val executionMethod: FFmpegExecutionMethod,
+    val binaryPath: String? = null
+)

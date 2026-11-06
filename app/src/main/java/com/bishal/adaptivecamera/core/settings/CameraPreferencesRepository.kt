@@ -63,6 +63,7 @@ interface CameraPreferencesRepository {
         isHalationEnabled: Boolean,
         halationIntensity: Float
     )
+    suspend fun updateLeftHandedModeEnabled(enabled: Boolean)
 }
 
 class CameraPreferencesRepositoryImpl(
@@ -103,6 +104,7 @@ class CameraPreferencesRepositoryImpl(
         val KEY_GRAIN_INTENSITY = floatPreferencesKey("grain_intensity")
         val KEY_HALATION_ENABLED = booleanPreferencesKey("halation_enabled")
         val KEY_HALATION_INTENSITY = floatPreferencesKey("halation_intensity")
+        val KEY_LEFT_HANDED_MODE_ENABLED = booleanPreferencesKey("left_handed_mode_enabled")
     }
 
     override val preferencesFlow: Flow<CameraPreferences> = context.dataStore.data
@@ -197,6 +199,7 @@ class CameraPreferencesRepositoryImpl(
             val grainIntensity = preferences[PreferencesKeys.KEY_GRAIN_INTENSITY] ?: 0.0f
             val isHalationEnabled = preferences[PreferencesKeys.KEY_HALATION_ENABLED] ?: false
             val halationIntensity = preferences[PreferencesKeys.KEY_HALATION_INTENSITY] ?: 0.0f
+            val isLeftHandedModeEnabled = preferences[PreferencesKeys.KEY_LEFT_HANDED_MODE_ENABLED] ?: false
 
             CameraPreferences(
                 gridType = gridType,
@@ -231,7 +234,8 @@ class CameraPreferencesRepositoryImpl(
                 isGrainEnabled = isGrainEnabled,
                 grainIntensity = grainIntensity,
                 isHalationEnabled = isHalationEnabled,
-                halationIntensity = halationIntensity
+                halationIntensity = halationIntensity,
+                isLeftHandedModeEnabled = isLeftHandedModeEnabled
             )
         }
 
@@ -414,6 +418,12 @@ class CameraPreferencesRepositoryImpl(
             preferences[PreferencesKeys.KEY_GRAIN_INTENSITY] = grainIntensity
             preferences[PreferencesKeys.KEY_HALATION_ENABLED] = isHalationEnabled
             preferences[PreferencesKeys.KEY_HALATION_INTENSITY] = halationIntensity
+        }
+    }
+
+    override suspend fun updateLeftHandedModeEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.KEY_LEFT_HANDED_MODE_ENABLED] = enabled
         }
     }
 }

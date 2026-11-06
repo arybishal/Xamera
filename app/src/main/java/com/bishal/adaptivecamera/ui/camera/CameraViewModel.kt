@@ -58,6 +58,9 @@ import com.bishal.adaptivecamera.photography.portrait.PortraitLightingStyle
 import com.bishal.adaptivecamera.photography.pro.KelvinConverter
 import com.bishal.adaptivecamera.photography.pro.ProAppliedState
 import com.bishal.adaptivecamera.photography.pro.ProConfiguration
+import com.bishal.adaptivecamera.core.diagnostics.ThermalMitigationPolicy
+import com.bishal.adaptivecamera.core.diagnostics.ThermalMonitor
+import com.bishal.adaptivecamera.photography.exif.ExifMetadataHelper
 import com.bishal.adaptivecamera.photography.pro.ProWhiteBalance
 import com.bishal.adaptivecamera.photography.pro.ZebraStripingMap
 import com.bishal.adaptivecamera.video.audio.AudioRecordingManager
@@ -104,7 +107,9 @@ data class CameraUiState(
     val isVideoQuickSettingsVisible: Boolean = false,
     val themeMode: AppThemeMode = AppThemeMode.DARK,
     val portraitConfig: PortraitConfig = PortraitConfig(),
-    val imageStackingConfig: ImageStackingConfig = ImageStackingConfig()
+    val imageStackingConfig: ImageStackingConfig = ImageStackingConfig(),
+    val isLeftHandedModeEnabled: Boolean = false,
+    val thermalMitigationPolicy: ThermalMitigationPolicy = ThermalMitigationPolicy()
 )
 
 class CameraViewModel @JvmOverloads constructor(
@@ -122,6 +127,8 @@ class CameraViewModel @JvmOverloads constructor(
     private val gpuPhotoProcessor: GpuPhotoProcessor = GpuPhotoProcessor(),
     private val computationalCoordinator: ComputationalPhotographyCoordinator = ComputationalPhotographyCoordinator(application.applicationContext, mediaStoreManager)
 ) : AndroidViewModel(application) {
+
+    val thermalMonitor = ThermalMonitor(application.applicationContext, viewModelScope)
 
     private val _uiState = MutableStateFlow(CameraUiState())
     val uiState: StateFlow<CameraUiState> = _uiState.asStateFlow()
@@ -360,7 +367,8 @@ class CameraViewModel @JvmOverloads constructor(
                             mode = prefs.imageStackingMode,
                             frameCount = prefs.imageStackingFrameCount,
                             retainOriginalFrames = prefs.retainOriginalFrames
-                        )
+                        ),
+                        isLeftHandedModeEnabled = prefs.isLeftHandedModeEnabled
                     )
                 }
                 cameraEngine.setAspectRatio(prefs.aspectRatio)
@@ -374,6 +382,25 @@ class CameraViewModel @JvmOverloads constructor(
                 camera2ProEngine.setCaptureFormat(capFormat)
                 camera2ProEngine.setWatermarkEnabled(prefs.isWatermarkEnabled)
                 camera2ProEngine.setExifPrivacyEnabled(prefs.isExifPrivacyEnabled)
+            }
+        }
+
+        // Thermal mitigation listener
+        viewModelScope.launch {
+            thermalMonitor.mitigationPolicy.collect { policy ->
+                _uiState.update { it.copy(thermalMitigationPolicy = policy) }
+                if (policy.isThrottlingActive) {
+                    // Automatically disable intensive analytical overlays if throttling
+                    _uiState.update { current ->
+                        current.copy(
+                            proConfig = current.proConfig.copy(
+                                isZebraEnabled = false,
+                                isFalseColorEnabled = false,
+                                isFocusPeakingEnabled = false
+                            )
+                        )
+                    }
+                }
             }
         }
 
@@ -583,18 +610,25 @@ class CameraViewModel @JvmOverloads constructor(
         val uri = item.uri
         if (uri != null) {
             viewModelScope.launch(Dispatchers.IO) {
+                var originalBitmap: Bitmap? = null
+                var renderedBitmap: Bitmap? = null
+                var finalBitmap: Bitmap? = null
                 try {
                     val context = getApplication<Application>().applicationContext
+                    val exifMetadata = context.contentResolver.openInputStream(uri)?.use { stream ->
+                        ExifMetadataHelper.extractExifMetadata(stream)
+                    } ?: emptyMap()
+
                     val inputStream = context.contentResolver.openInputStream(uri)
-                    val originalBitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+                    originalBitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
                     inputStream?.close()
 
                     if (originalBitmap != null) {
-                        val renderedBitmap = PortraitBokehRenderer.renderPortrait(originalBitmap, portraitConfig)
+                        renderedBitmap = PortraitBokehRenderer.renderPortrait(originalBitmap, portraitConfig)
 
                         // Also apply GPU color look if active
                         val gpuConfig = _uiState.value.gpuColorConfig
-                        val finalBitmap = if (gpuConfig.lutEnabled || gpuConfig.grainEnabled || gpuConfig.halationEnabled) {
+                        finalBitmap = if (gpuConfig.lutEnabled || gpuConfig.grainEnabled || gpuConfig.halationEnabled) {
                             val activeLut = if (gpuConfig.lutEnabled && gpuConfig.selectedLutId != null) {
                                 lutRepository.loadLutDefinition(gpuConfig.selectedLutId)
                             } else null
@@ -603,20 +637,36 @@ class CameraViewModel @JvmOverloads constructor(
                             renderedBitmap
                         }
 
-                        val outputStream = context.contentResolver.openOutputStream(uri, "wt")
-                        if (outputStream != null) {
-                            finalBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, outputStream)
-                            outputStream.flush()
-                            outputStream.close()
-                        }
+                        val tempFile = java.io.File(context.cacheDir, "temp_portrait_${System.currentTimeMillis()}.jpg")
+                        try {
+                            java.io.FileOutputStream(tempFile).use { fos ->
+                                finalBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, fos)
+                                fos.flush()
+                            }
+                            ExifMetadataHelper.writeExifMetadata(tempFile, exifMetadata)
 
-                        if (finalBitmap !== originalBitmap) finalBitmap.recycle()
-                        if (renderedBitmap !== originalBitmap && renderedBitmap !== finalBitmap) renderedBitmap.recycle()
-                        originalBitmap.recycle()
+                            context.contentResolver.openOutputStream(uri, "wt")?.use { outStream ->
+                                tempFile.inputStream().use { inStream ->
+                                    inStream.copyTo(outStream)
+                                }
+                                outStream.flush()
+                            }
+                        } finally {
+                            if (tempFile.exists()) tempFile.delete()
+                        }
                     }
                 } catch (e: Exception) {
                     android.util.Log.e("CameraViewModel", "Error rendering portrait bokeh: ${e.message}", e)
                 } finally {
+                    if (finalBitmap != null && finalBitmap !== originalBitmap && finalBitmap !== renderedBitmap && !finalBitmap.isRecycled) {
+                        finalBitmap.recycle()
+                    }
+                    if (renderedBitmap != null && renderedBitmap !== originalBitmap && !renderedBitmap.isRecycled) {
+                        renderedBitmap.recycle()
+                    }
+                    if (originalBitmap != null && !originalBitmap.isRecycled) {
+                        originalBitmap.recycle()
+                    }
                     withContext(Dispatchers.Main) {
                         _uiState.update {
                             it.copy(
@@ -727,6 +777,7 @@ class CameraViewModel @JvmOverloads constructor(
         val targetCount = 5
         val capturedItems = mutableListOf<MediaItem>()
         val capturedBitmaps = mutableListOf<Bitmap>()
+        var refExifMetadata: Map<String, String>? = null
 
         fun captureNext(index: Int) {
             cameraEngine.capturePhoto(
@@ -736,6 +787,11 @@ class CameraViewModel @JvmOverloads constructor(
                     if (uri != null) {
                         try {
                             val ctx = getApplication<Application>().applicationContext
+                            if (refExifMetadata == null) {
+                                refExifMetadata = ctx.contentResolver.openInputStream(uri)?.use { stream ->
+                                    ExifMetadataHelper.extractExifMetadata(stream)
+                                }
+                            }
                             val inputStream = ctx.contentResolver.openInputStream(uri)
                             val bmp = android.graphics.BitmapFactory.decodeStream(inputStream)
                             inputStream?.close()
@@ -806,8 +862,9 @@ class CameraViewModel @JvmOverloads constructor(
 
                                 val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(java.util.Date())
                                 val savedItem = computationalCoordinator.saveBitmapToMediaStore(
-                                    finalBitmap,
-                                    "IMG_HDRPLUS_$timestamp"
+                                    bitmap = finalBitmap,
+                                    baseFilename = "IMG_HDRPLUS_$timestamp",
+                                    exifAttributes = refExifMetadata
                                 )
 
                                 if (finalBitmap !== fusedBitmap) finalBitmap.recycle()
@@ -840,6 +897,12 @@ class CameraViewModel @JvmOverloads constructor(
                                         )
                                     }
                                 }
+                            } finally {
+                                for (bmp in capturedBitmaps) {
+                                    if (!bmp.isRecycled) {
+                                        bmp.recycle()
+                                    }
+                                }
                             }
                         }
                     } else {
@@ -849,6 +912,11 @@ class CameraViewModel @JvmOverloads constructor(
                 },
                 onError = { error ->
                     android.util.Log.e("CameraViewModel", "HDR+ burst capture error: ${error.message}")
+                    for (bmp in capturedBitmaps) {
+                        if (!bmp.isRecycled) {
+                            bmp.recycle()
+                        }
+                    }
                     if (capturedBitmaps.isNotEmpty()) {
                         _uiState.update {
                             it.copy(
@@ -910,10 +978,16 @@ class CameraViewModel @JvmOverloads constructor(
         val uri = item.uri
         if (uri != null && (config.lutEnabled || config.grainEnabled || config.halationEnabled)) {
             viewModelScope.launch(Dispatchers.IO) {
+                var originalBitmap: Bitmap? = null
+                var gradedBitmap: Bitmap? = null
                 try {
                     val context = getApplication<Application>().applicationContext
+                    val exifMetadata = context.contentResolver.openInputStream(uri)?.use { stream ->
+                        ExifMetadataHelper.extractExifMetadata(stream)
+                    } ?: emptyMap()
+
                     val inputStream = context.contentResolver.openInputStream(uri)
-                    val originalBitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+                    originalBitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
                     inputStream?.close()
 
                     if (originalBitmap != null) {
@@ -921,25 +995,44 @@ class CameraViewModel @JvmOverloads constructor(
                             lutRepository.loadLutDefinition(config.selectedLutId)
                         } else null
 
-                        val gradedBitmap = gpuPhotoProcessor.processPhoto(originalBitmap, config, activeLut)
+                        gradedBitmap = gpuPhotoProcessor.processPhoto(originalBitmap, config, activeLut)
 
-                        val outputStream = context.contentResolver.openOutputStream(uri, "wt")
-                        if (outputStream != null) {
-                            gradedBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, outputStream)
-                            outputStream.flush()
-                            outputStream.close()
+                        val tempFile = java.io.File(context.cacheDir, "temp_gpu_photo_${System.currentTimeMillis()}.jpg")
+                        try {
+                            java.io.FileOutputStream(tempFile).use { fos ->
+                                gradedBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, fos)
+                                fos.flush()
+                            }
+                            ExifMetadataHelper.writeExifMetadata(tempFile, exifMetadata)
+
+                            context.contentResolver.openOutputStream(uri, "wt")?.use { outStream ->
+                                tempFile.inputStream().use { inStream ->
+                                    inStream.copyTo(outStream)
+                                }
+                                outStream.flush()
+                            }
+                        } finally {
+                            if (tempFile.exists()) tempFile.delete()
                         }
                     }
                 } catch (e: Exception) {
-                    android.util.Log.e("CameraViewModel", "Error applying GPU look to photo: ${e.message}")
+                    android.util.Log.e("CameraViewModel", "Error applying GPU look to photo: ${e.message}", e)
                 } finally {
+                    if (originalBitmap != null && !originalBitmap.isRecycled) {
+                        originalBitmap.recycle()
+                    }
+                    if (gradedBitmap != null && gradedBitmap !== originalBitmap && !gradedBitmap.isRecycled) {
+                        gradedBitmap.recycle()
+                    }
                     val msg = customSuccessMsg ?: if (config.lutEnabled) "Graded Photo saved!" else "Photo saved!"
-                    _uiState.update {
-                        it.copy(
-                            latestMedia = item,
-                            toastMessage = msg,
-                            isScreenFlashActive = false
-                        )
+                    withContext(Dispatchers.Main) {
+                        _uiState.update {
+                            it.copy(
+                                latestMedia = item,
+                                toastMessage = msg,
+                                isScreenFlashActive = false
+                            )
+                        }
                     }
                 }
             }
@@ -1523,6 +1616,15 @@ class CameraViewModel @JvmOverloads constructor(
         cameraEngine.unbindCamera()
         camera2ProEngine.unbindCamera()
         virtualHorizonSensor.stopListening()
+        thermalMonitor.release()
+    }
+
+    fun updateLeftHandedModeEnabled(enabled: Boolean) {
+        _uiState.update { it.copy(isLeftHandedModeEnabled = enabled) }
+        viewModelScope.launch {
+            preferencesRepository.updateLeftHandedModeEnabled(enabled)
+            hapticEngine.performClick()
+        }
     }
 
     fun clearToastMessage() {

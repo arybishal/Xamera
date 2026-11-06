@@ -210,7 +210,8 @@ fun CameraScreen(
                     onModeChanged = { viewModel.setCameraMode(it) },
                     onShutterPressed = { viewModel.onShutterPressed() },
                     onSwitchCamera = { viewModel.switchCamera() },
-                    onOpenGallery = onOpenGallery
+                    onOpenGallery = onOpenGallery,
+                    isLeftHanded = uiState.isLeftHandedModeEnabled
                 )
             }
         }
@@ -496,6 +497,25 @@ fun CameraScreen(
                                 fontWeight = FontWeight.Bold
                             )
                         }
+                    }
+                }
+
+                // 8c. Thermal Mitigation Advisory Badge
+                if (uiState.thermalMitigationPolicy.isThrottlingActive) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 96.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(AccentAmber.copy(alpha = 0.85f))
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "⚡ Thermal Throttle: Overlays Paused",
+                            color = Color.Black,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
 
