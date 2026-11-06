@@ -200,18 +200,17 @@
 
 ---
 
-## Phase 12: Specialized Shooting Modes (Night, Astro, Portrait, Burst, Panorama, Macro, Document/QR)
-- [ ] Build handheld multi-frame Night mode with motion de-ghosting and temporal noise reduction (`FEAT-CMP-03`).
-- [ ] Build Astrophotography mode with celestial star-motion tracking and sky de-noising (`FEAT-CMP-04`).
-- [ ] Build Portrait mode with synthetic depth-of-field extraction and variable bokeh simulation (f/1.4–f/16) (`FEAT-CMP-05`).
-- [ ] Build high-speed Burst mode (15–30 fps) with AI-powered best-shot selector (`FEAT-CMP-06`).
-- [ ] Build Sweep Panorama mode with real-time gyroscope guidance and cylindrical stitching (`FEAT-CMP-07`).
-- [ ] Build dedicated Macro mode locking minimum focus distance or routing to physical macro lens (`FEAT-FOC-07`).
-- [ ] Implement real-time Document Scanner with automatic edge detection and quadrilateral rectification (`FEAT-INT-04`).
-- [ ] Implement real-time QR / Barcode Scanner with sub-frame recognition and action sheet (`FEAT-INT-05`).
-- [ ] Write Phase 12 unit tests (`NightFrameAlignmentTest`, `AstrophotographyStackingTest`, `BurstBestShotScorerTest`, `BarcodeParsingTest`, `DocumentQuadRectificationTest`).
-- [ ] Write Phase 12 instrumented tests (`PortraitSegmentationTest`, `PanoramaSensorTrackerTest`).
-- [ ] Phase 12 physical device validation on OnePlus Ace 5 / 13R and completion report.
+## Phase 12: Video Processing & Export (Trimming, Transcoding, Social Presets & Audio Extraction)
+- [x] Build on-device video processing pipeline using native `MediaExtractor` and `MediaMuxer` (`FEAT-VID-12`).
+- [x] Implement sub-second trimming with monotonic presentation timestamp (PTS) rebasing starting at zero.
+- [x] Implement hardware video codec discovery and transcoding (H.264, H.265, AV1) (`FEAT-VID-13`).
+- [x] Implement audio routing: Keep audio, Mute audio (video-only MP4), and Extract Audio Only (.m4a container) (`FEAT-VID-14`).
+- [x] Implement Social Media Export Presets (Instagram Reels, Instagram Story, YouTube, YouTube Shorts, TikTok, WhatsApp, Custom) (`FEAT-VID-15`).
+- [x] Build `VideoExportEstimator` calculating target bitrates, estimated file sizes, and duration metrics.
+- [x] Build `VideoExportSheet` Jetpack Compose UI integrated directly into Media Viewer (`FEAT-VID-16`).
+- [x] Write Phase 12 automated unit tests (`VideoExportConfigTest`, `SocialExportPresetTest`, `VideoExportEstimatorTest`, `VideoExportStateTest`, `VideoExportAudioActionTest` — 20 new tests, 233 total unit tests passing).
+- [x] Write and verify on-device connected tests (`VideoExportDeviceTest` — 4/4 passing on OnePlus Ace 5 / 13R).
+- [x] Physical device validation on OnePlus Ace 5 / 13R (trimmed 3.03s 1080p clip `xamera_export_445911020848475683.mp4`, verified with `ffprobe` and frame extraction) and completion report.
 
 ---
 

@@ -5,7 +5,7 @@
 **Workspace:** `D:\Webapp\xamera`  
 **Repository:** https://github.com/arybishal/Xamera  
 **Developer:** Bishal Aryal  
-**Version:** 0.12.0  
+**Version:** 0.13.0  
 **Date:** 2026-11-06  
 
 > [!NOTE]
@@ -72,7 +72,7 @@ com.bishal.adaptivecamera
 │   ├── encoder/             # MediaCodec video pipeline & GPU video encoder
 │   ├── audio/               # Audio routing manager & real-time VU meter processor
 │   ├── stabilization/       # OIS, EIS, and Super Steady coordinator
-│   └── export/              # Embedded FFmpeg transcoding and export engine
+│   └── export/              # VideoExportEngine, SocialExportPreset, VideoExportViewModel, VideoExportSheet
 │
 ├── lut/
 │   ├── library/             # LUT repository and cache

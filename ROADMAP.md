@@ -5,7 +5,7 @@
 **Workspace:** `D:\Webapp\xamera`  
 **Repository:** https://github.com/arybishal/Xamera  
 **Developer:** Bishal Aryal  
-**Version:** 0.12.0  
+**Version:** 0.13.0  
 **Date:** 2026-11-06  
 
 > [!NOTE]
@@ -30,7 +30,7 @@
 | **9** | **GPU Color Pipeline & Creative Shaders** | OpenGL ES 3.0 shader graph, live viewfinder grading, graded photo capture with original preservation, procedural film grain shader, photochemical halation glow shader. | **COMPLETED** |
 | **10**| **Professional Video Engine** | Capability-verified resolution & FPS matrix (4K 24/30/60, 1080p 120), bitrate selection (up to 100 Mbps All-I), cinematic 180° shutter angle, stabilization coordinator, audio routing & VU meters. | **COMPLETED** |
 | **11**| **Real-Time Video GPU Pipeline & Modes** | Direct GPU-to-Encoder video pipeline, live LUT switching in video, time-lapse intervalometer, high-speed slow motion, dual-camera hardware fallback, dark & signature light theme, 120Hz display refresh rate. | **COMPLETED** |
-| **12**| **Specialized Shooting Modes** | Handheld multi-frame Night mode, Astrophotography star-stacking, Portrait mode synthetic bokeh, high-speed burst mode with best-shot selector, panorama sweep, macro mode, document & QR scanner. | *QUEUED* |
+| **12**| **Video Processing & Export** | On-device trimming & PTS rebasing, H.264/H.265 transcoding, social media presets (Reels, Story, YouTube, Shorts, TikTok, WhatsApp), audio extraction/muting, file size estimation, export sheet UI. | **COMPLETED** |
 | **13**| **Multi-Frame Computational Photography** | Multi-frame HDR fusion, Macro/Landscape Focus Stacking, sub-pixel Super-Resolution, Action Stroboscopic merge, variable aperture fallback controller. | *QUEUED* |
 | **14**| **Peripherals, Media Processing & Gallery** | Bluetooth HID remote shutter, DJI / Zhiyun gimbal protocol integration, embedded on-device FFmpeg export engine, in-app gallery with DNG inspection and sharing. | *QUEUED* |
 | **15**| **UI Polish, Benchmarking & Hardening** | Dark-first UI consistency, 120Hz smooth animations, latency tuning (< 500ms startup), GPU memory recycling, battery profiling, thermal mitigation policies. | *QUEUED* |
