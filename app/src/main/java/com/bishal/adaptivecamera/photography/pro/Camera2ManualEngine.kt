@@ -145,6 +145,20 @@ class Camera2ManualEngine(
         openActiveCamera()
     }
 
+    private var explicitPhysicalCameraId: String? = null
+
+    /**
+     * Directly switches the underlying sensor to a specific physical camera ID (FEAT-FOC-06).
+     */
+    fun selectDirectCameraId(cameraId: String?) {
+        if (explicitPhysicalCameraId == cameraId) return
+        explicitPhysicalCameraId = cameraId
+        if (cameraDevice != null) {
+            unbindCamera()
+            openActiveCamera()
+        }
+    }
+
     @SuppressLint("MissingPermission")
     private fun openActiveCamera() {
         _sessionState.value = CameraSessionState.OPENING
@@ -156,16 +170,22 @@ class Camera2ManualEngine(
                 CameraMetadata.LENS_FACING_BACK
             }
 
-            // Find matching camera ID
-            val cameraIdList = cameraManager.cameraIdList
-            var selectedId = cameraIdList.firstOrNull() ?: "0"
-            for (id in cameraIdList) {
-                val chars = cameraManager.getCameraCharacteristics(id)
-                val f = chars.get(CameraCharacteristics.LENS_FACING)
-                if (f == targetFacing) {
-                    selectedId = id
-                    break
+            // Find matching camera ID or use explicit physical sub-camera
+            val explicitId = explicitPhysicalCameraId
+            val selectedId = if (!explicitId.isNullOrEmpty()) {
+                explicitId
+            } else {
+                val cameraIdList = cameraManager.cameraIdList
+                var foundId = cameraIdList.firstOrNull() ?: "0"
+                for (id in cameraIdList) {
+                    val chars = cameraManager.getCameraCharacteristics(id)
+                    val f = chars.get(CameraCharacteristics.LENS_FACING)
+                    if (f == targetFacing) {
+                        foundId = id
+                        break
+                    }
                 }
+                foundId
             }
 
             activeCameraId = selectedId

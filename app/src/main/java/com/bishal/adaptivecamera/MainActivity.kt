@@ -53,6 +53,35 @@ class MainActivity : ComponentActivity() {
 
     private var activeDestination = AppDestination.CAMERA
 
+    private val bluetoothRemoteCoordinator by lazy {
+        com.bishal.adaptivecamera.core.peripherals.BluetoothRemoteCoordinator(
+            onTriggerShutter = {
+                if (activeDestination == AppDestination.CAMERA) {
+                    cameraViewModel.onShutterPressed()
+                }
+            },
+            onZoomIn = {
+                if (activeDestination == AppDestination.CAMERA) {
+                    cameraViewModel.zoomIn()
+                }
+            },
+            onZoomOut = {
+                if (activeDestination == AppDestination.CAMERA) {
+                    cameraViewModel.zoomOut()
+                }
+            }
+        )
+    }
+
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        if (activeDestination == AppDestination.CAMERA) {
+            if (bluetoothRemoteCoordinator.onKeyEvent(event.keyCode, event)) {
+                return true
+            }
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

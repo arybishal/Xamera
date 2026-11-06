@@ -130,6 +130,27 @@ class CameraViewModel @JvmOverloads constructor(
 
     val audioRecordingManager = AudioRecordingManager(application.applicationContext, viewModelScope)
     val audioVuState: StateFlow<AudioVuState> = audioRecordingManager.vuState
+    val availableAudioInputs: StateFlow<List<com.bishal.adaptivecamera.video.audio.AudioInputDevice>> = audioRecordingManager.availableAudioInputs
+    val selectedAudioInput: StateFlow<com.bishal.adaptivecamera.video.audio.AudioInputDevice?> = audioRecordingManager.selectedAudioInput
+
+    private val directLensSelector = com.bishal.adaptivecamera.camera.lens.DirectLensSelector(application.applicationContext)
+    val availableLenses = MutableStateFlow<List<com.bishal.adaptivecamera.camera.lens.DirectPhysicalLens>>(emptyList())
+    val selectedLensId = MutableStateFlow<String?>(null)
+
+    fun selectAudioInput(device: com.bishal.adaptivecamera.video.audio.AudioInputDevice?) {
+        audioRecordingManager.selectAudioDevice(device)
+    }
+
+    fun selectDirectLens(lens: com.bishal.adaptivecamera.camera.lens.DirectPhysicalLens) {
+        val targetId = if (lens.isPhysicalSubCamera) lens.cameraId else null
+        selectedLensId.value = targetId
+        camera2ProEngine.selectDirectCameraId(targetId)
+        if (lens.type == com.bishal.adaptivecamera.camera.lens.PhysicalLensType.ULTRA_WIDE) {
+            setZoomRatio(_uiState.value.configuration.minZoomRatio)
+        } else if (lens.type == com.bishal.adaptivecamera.camera.lens.PhysicalLensType.WIDE_MAIN) {
+            setZoomRatio(1.0f)
+        }
+    }
 
     private var countdownJob: Job? = null
     private var focusTimeoutJob: Job? = null
@@ -149,6 +170,10 @@ class CameraViewModel @JvmOverloads constructor(
     }
 
     init {
+        viewModelScope.launch(Dispatchers.IO) {
+            availableLenses.value = directLensSelector.discoverAvailableLenses()
+        }
+
         // Connect frame analyzer to camera engine
         cameraEngine.setImageAnalyzer(smartAutoOrchestrator.frameAnalyzer)
 
@@ -1165,6 +1190,20 @@ class CameraViewModel @JvmOverloads constructor(
     fun applyZoomScaleFactor(factor: Float) {
         val newRatio = zoomController.applyScaleFactor(factor)
         _uiState.update { it.copy(configuration = it.configuration.copy(zoomRatio = newRatio)) }
+    }
+
+    fun zoomIn() {
+        val current = _uiState.value.configuration.zoomRatio
+        val max = _uiState.value.configuration.maxZoomRatio
+        val next = (current * 1.2f).coerceAtMost(max)
+        setZoomRatio(next)
+    }
+
+    fun zoomOut() {
+        val current = _uiState.value.configuration.zoomRatio
+        val min = _uiState.value.configuration.minZoomRatio
+        val next = (current / 1.2f).coerceAtLeast(min)
+        setZoomRatio(next)
     }
 
     fun setExposureIndex(index: Int) {

@@ -168,6 +168,29 @@ fun GalleryTile(
             )
         }
 
+        val isRaw = item.displayName.endsWith(".dng", ignoreCase = true) ||
+                item.mimeType.contains("dng", ignoreCase = true) ||
+                item.mimeType.contains("raw", ignoreCase = true)
+
+        if (isRaw) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(4.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(PrimaryCyan.copy(alpha = 0.9f))
+                    .padding(horizontal = 4.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = "RAW",
+                    color = Color.Black,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 0.5.sp
+                )
+            }
+        }
+
         if (item.mediaType == MediaType.VIDEO) {
             Row(
                 modifier = Modifier

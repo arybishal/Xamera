@@ -4,9 +4,13 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
+import android.media.AudioDeviceCallback
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
@@ -21,8 +25,8 @@ import kotlin.math.log10
 import kotlin.math.max
 
 /**
- * Manages audio recording prerequisites, microphone permissions,
- * and background real-time audio VU amplitude metering.
+ * Manages audio recording prerequisites, external microphone routing (FEAT-VID-05),
+ * microphone permissions, and background real-time audio VU amplitude metering.
  */
 class AudioRecordingManager(
     private val context: Context,
@@ -31,9 +35,73 @@ class AudioRecordingManager(
     private val _vuState = MutableStateFlow(AudioVuState.SILENCE)
     val vuState: StateFlow<AudioVuState> = _vuState.asStateFlow()
 
+    private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+
+    private val _availableAudioInputs = MutableStateFlow<List<AudioInputDevice>>(emptyList())
+    val availableAudioInputs: StateFlow<List<AudioInputDevice>> = _availableAudioInputs.asStateFlow()
+
+    private val _selectedAudioInput = MutableStateFlow<AudioInputDevice?>(null)
+    val selectedAudioInput: StateFlow<AudioInputDevice?> = _selectedAudioInput.asStateFlow()
+
     private var audioRecord: AudioRecord? = null
     private var meterJob: Job? = null
     private var isMonitoring = false
+    private var deviceCallback: AudioDeviceCallback? = null
+
+    init {
+        initDeviceDiscovery()
+    }
+
+    private fun initDeviceDiscovery() {
+        refreshAudioInputs()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && audioManager != null) {
+            val callback = object : AudioDeviceCallback() {
+                override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>?) {
+                    refreshAudioInputs()
+                }
+
+                override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>?) {
+                    refreshAudioInputs()
+                    val currentSelected = _selectedAudioInput.value
+                    if (currentSelected != null && removedDevices?.any { it.id == currentSelected.id } == true) {
+                        Log.w(TAG, "Selected audio device was disconnected. Falling back to default.")
+                        selectAudioDevice(null)
+                    }
+                }
+            }
+            audioManager.registerAudioDeviceCallback(callback, null)
+            deviceCallback = callback
+        }
+    }
+
+    fun refreshAudioInputs() {
+        val manager = audioManager ?: return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val devices = manager.getDevices(AudioManager.GET_DEVICES_INPUTS)
+            val currentSelectedId = _selectedAudioInput.value?.id
+            val mapped = devices.map { device ->
+                AudioInputDevice.fromDeviceInfo(device, isSelected = device.id == currentSelectedId)
+            }
+            _availableAudioInputs.value = mapped
+        }
+    }
+
+    fun selectAudioDevice(device: AudioInputDevice?) {
+        _selectedAudioInput.value = device
+        refreshAudioInputs()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && audioRecord != null) {
+            val manager = audioManager ?: return
+            val devices = manager.getDevices(AudioManager.GET_DEVICES_INPUTS)
+            val targetDeviceInfo = if (device != null) {
+                devices.firstOrNull { it.id == device.id }
+            } else {
+                null
+            }
+            val success = audioRecord?.setPreferredDevice(targetDeviceInfo)
+            Log.d(TAG, "AudioRecord setPreferredDevice '${device?.name}': $success")
+        }
+    }
 
     fun hasRecordAudioPermission(): Boolean {
         return ContextCompat.checkSelfPermission(
@@ -69,6 +137,15 @@ class AudioRecordingManager(
                 audioRecord?.release()
                 audioRecord = null
                 return
+            }
+
+            // Route to selected external audio device if configured
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && _selectedAudioInput.value != null) {
+                val targetId = _selectedAudioInput.value?.id
+                val dev = audioManager?.getDevices(AudioManager.GET_DEVICES_INPUTS)?.firstOrNull { it.id == targetId }
+                if (dev != null) {
+                    audioRecord?.setPreferredDevice(dev)
+                }
             }
 
             audioRecord?.startRecording()
@@ -137,6 +214,17 @@ class AudioRecordingManager(
         }
         audioRecord = null
         _vuState.value = AudioVuState.SILENCE
+    }
+
+    /**
+     * Cleans up device listeners and resources.
+     */
+    fun release() {
+        stopVuMonitoring()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && deviceCallback != null) {
+            audioManager?.unregisterAudioDeviceCallback(deviceCallback)
+            deviceCallback = null
+        }
     }
 
     companion object {

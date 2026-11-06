@@ -66,6 +66,7 @@ import com.bishal.adaptivecamera.camera.config.CameraMode
 import com.bishal.adaptivecamera.ui.camera.components.BottomCaptureControls
 import com.bishal.adaptivecamera.ui.camera.components.CompositionGridOverlay
 import com.bishal.adaptivecamera.ui.camera.components.CountdownOverlay
+import com.bishal.adaptivecamera.ui.camera.components.DirectLensSelectorBar
 import com.bishal.adaptivecamera.ui.camera.components.ExposureSlider
 import com.bishal.adaptivecamera.ui.camera.components.FloatingShutterButton
 import com.bishal.adaptivecamera.ui.camera.components.FocusRingOverlay
@@ -105,6 +106,10 @@ fun CameraScreen(
     val uiState by viewModel.uiState.collectAsState()
     val audioVuState by viewModel.audioVuState.collectAsState()
     val allLuts by viewModel.allLutsFlow.collectAsState(initial = emptyList())
+    val availableLenses by viewModel.availableLenses.collectAsState()
+    val selectedLensId by viewModel.selectedLensId.collectAsState()
+    val availableAudioInputs by viewModel.availableAudioInputs.collectAsState()
+    val selectedAudioInput by viewModel.selectedAudioInput.collectAsState()
 
     var hasCameraPermission by remember {
         mutableStateOf(
@@ -494,7 +499,7 @@ fun CameraScreen(
                     }
                 }
 
-                // 9. Rotary Zoom Dial and Step Pills (Photo & Video mode)
+                // 9. Rotary Zoom Dial and Step Pills (Photo & Video mode) / Direct Lens Selector (Pro mode)
                 if (uiState.configuration.mode != CameraMode.PRO) {
                     RotaryZoomDial(
                         currentZoom = uiState.configuration.zoomRatio,
@@ -503,6 +508,15 @@ fun CameraScreen(
                         availableSteps = viewModel.zoomController.getAvailableSteps(),
                         onZoomChanged = { viewModel.setZoomRatio(it) },
                         onHapticTick = { viewModel.hapticEngine.performTick() },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 12.dp)
+                    )
+                } else if (availableLenses.isNotEmpty()) {
+                    DirectLensSelectorBar(
+                        lenses = availableLenses,
+                        selectedCameraId = selectedLensId,
+                        onSelectLens = { viewModel.selectDirectLens(it) },
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .padding(bottom = 12.dp)
