@@ -175,9 +175,9 @@
 - **Mitigation:** The application never claims confirmed physical identity solely based on software properties. It reports `firmwareIdentity` separately from `probableHardwareFamily`, sets `physicalIdentityConfidence` to `UNCONFIRMED`, and presents explainable identity evidence factors.
 
 ### Issue 5: Auxiliary Physical Camera Access in Standard CameraX Engine
-- **Status:** Documented / Handled via Direct Camera2 Engine
-- **Detail:** On devices with logical multi-camera HALs (such as Camera 0 on the Ace 5 / 13R), CameraX binds to the logical camera ID, allowing Qualcomm's multi-camera compositor to dynamically switch between physical sub-lenses (IDs 2 and 3) during optical and digital zoom. Direct uncomposited streaming from individual physical sub-cameras is not exposed by standard CameraX selectors.
-- **Mitigation:** Physical IDs are accurately discovered, audited, and displayed in Diagnostics. Advanced direct physical sensor binding is architected for Phase 4 (PRO mode) and Phase 14 via Camera2 physical stream mapping.
+- **Status:** Resolved via Phase 14 Multi-Lens Direct Selector (`FEAT-FOC-06`)
+- **Detail:** On devices with logical multi-camera HALs (such as Camera 0 on the Ace 5 / 13R), CameraX binds to the logical camera ID, allowing Qualcomm's multi-camera compositor to dynamically switch between physical sub-lenses (IDs 2 and 3) during optical and digital zoom.
+- **Resolution:** In Phase 14, `DirectLensSelector` and `Camera2ManualEngine.selectDirectCameraId` allow photographers in Pro mode to bypass the logical compositor and bind directly to physical Camera 2 (Main 50MP Sony IMX890, 5.59mm) or physical Camera 3 (Ultra-Wide 8MP, 1.68mm) with distinct focal length telemetry.
 
 ### Issue 6: Fixed Focus on Front Camera
 - **Status:** Documented / Handled via UI Guards
@@ -206,3 +206,8 @@
 - **Status:** Handled per Photographic Standards
 - **Detail:** When manual ISO sensitivity or manual shutter speed is requested, `CONTROL_AE_MODE` must be set to `CONTROL_AE_MODE_OFF`. In this state, hardware AE compensation (`CONTROL_AE_EXPOSURE_COMPENSATION`) is ignored by the camera HAL.
 - **Mitigation:** The application clearly displays whether manual sensor control is active via `ProAppliedTelemetryBadge` and disables the AE compensation slider during manual exposure to prevent conflicting requests.
+
+### Issue 11: Ultra-Wide Minimum Optical Zoom Ratio Bound (0.6x vs 0.5x)
+- **Status:** Resolved / Honestly Handled via Dynamic Zoom Controller
+- **Detail:** On the reference device (OnePlus 13R / Ace 5), the Main lens focal length is 5.59mm and the Ultra-wide lens focal length is 1.68mm. The Camera2 HAL reports `CONTROL_ZOOM_RATIO_RANGE = [0.6, 10.0]`. The hardware minimum is physically 0.6x.
+- **Resolution:** In Phase 14, `ZoomControllerImpl` dynamically queries the hardware zoom ratio range. If the lower bound is 0.6x, the UI presents 0.6x honestly without faking 0.5x through digital stretching or distortion. On devices where the HAL reports `<= 0.55f`, `0.5x` is automatically presented.

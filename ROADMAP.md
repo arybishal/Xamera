@@ -5,7 +5,7 @@
 **Workspace:** `D:\Webapp\xamera`  
 **Repository:** https://github.com/arybishal/Xamera  
 **Developer:** Bishal Aryal  
-**Version:** 0.14.0  
+**Version:** 0.15.0  
 **Date:** 2026-11-06  
 
 > [!NOTE]
@@ -32,6 +32,6 @@
 | **11**| **Real-Time Video GPU Pipeline & Modes** | Direct GPU-to-Encoder video pipeline, live LUT switching in video, time-lapse intervalometer, high-speed slow motion, dual-camera hardware fallback, dark & signature light theme, 120Hz display refresh rate. | **COMPLETED** |
 | **12**| **Video Processing & Export** | On-device trimming & PTS rebasing, H.264/H.265 transcoding, social media presets (Reels, Story, YouTube, Shorts, TikTok, WhatsApp), audio extraction/muting, file size estimation, export sheet UI. | **COMPLETED** |
 | **13**| **Computational Photography & Portrait Mode** | Multi-frame Image Stacking (Smart Auto, Low-Light NR, HDR Fusion, Detail Enhancement), dual-axis luminance projection frame alignment, motion ghost rejection, dedicated Portrait mode (`CameraMode.PORTRAIT`), f/1.4–f/5.6 aperture bokeh simulation, 4 studio lighting styles. | **COMPLETED** |
-| **14**| **Peripherals, Media Processing & Gallery** | Bluetooth HID remote shutter, DJI / Zhiyun gimbal protocol integration, embedded on-device FFmpeg export engine, in-app gallery with DNG inspection and sharing. | *QUEUED* |
+| **14**| **Peripherals, Media Processing & Gallery** | Multi-lens direct sensor selection (`FEAT-FOC-06`), external audio routing (`FEAT-VID-05`), Bluetooth remote & gimbal protocol (`FEAT-INT-06`), embedded FFmpeg transcoder (`FEAT-INT-07`), in-app gallery with DNG inspection, EXIF inspector, and Safe Sharing (`FEAT-INT-08`). | **COMPLETED** |
 | **15**| **UI Polish, Benchmarking & Hardening** | Dark-first UI consistency, 120Hz smooth animations, latency tuning (< 500ms startup), GPU memory recycling, battery profiling, thermal mitigation policies. | *QUEUED* |
 | **16**| **Final Release & Publishing** | Full test suite regression (unit, instrumented, device), ProGuard/R8 optimization, Release APK signing, license audits, GitHub repository push (`Xamera`), and GitHub Release packaging. | *QUEUED* |
