@@ -64,7 +64,15 @@ data class CameraConfiguration(
     val isExposureCompensationSupported: Boolean = false,
     val isExposureStateReady: Boolean = false,
     val isTorchActive: Boolean = false,
-    val isAudioEnabled: Boolean = true
+    val isAudioEnabled: Boolean = true,
+    val aspectRatio: AspectRatioConfig = AspectRatioConfig.RATIO_4_3,
+    val gridType: CompositionGridType = CompositionGridType.OFF,
+    val isVirtualHorizonEnabled: Boolean = true,
+    val isHapticsEnabled: Boolean = true,
+    val isFloatingShutterEnabled: Boolean = false,
+    val floatingShutterX: Float = 0.82f,
+    val floatingShutterY: Float = 0.65f,
+    val isFrontScreenFlashActive: Boolean = false
 ) {
     val isExposureControlAvailable: Boolean
         get() = isExposureStateReady && isExposureCompensationSupported && minExposureIndex < maxExposureIndex

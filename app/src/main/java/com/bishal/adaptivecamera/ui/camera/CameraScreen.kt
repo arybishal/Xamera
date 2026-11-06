@@ -15,6 +15,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,12 +58,17 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.bishal.adaptivecamera.camera.config.CameraMode
 import com.bishal.adaptivecamera.ui.camera.components.BottomCaptureControls
+import com.bishal.adaptivecamera.ui.camera.components.CompositionGridOverlay
 import com.bishal.adaptivecamera.ui.camera.components.CountdownOverlay
 import com.bishal.adaptivecamera.ui.camera.components.ExposureSlider
+import com.bishal.adaptivecamera.ui.camera.components.FloatingShutterButton
 import com.bishal.adaptivecamera.ui.camera.components.FocusRingOverlay
+import com.bishal.adaptivecamera.ui.camera.components.RotaryZoomDial
 import com.bishal.adaptivecamera.ui.camera.components.SceneSuggestionChip
+import com.bishal.adaptivecamera.ui.camera.components.ScreenFlashOverlay
 import com.bishal.adaptivecamera.ui.camera.components.TopBarControls
-import com.bishal.adaptivecamera.ui.camera.components.ZoomControlBar
+import com.bishal.adaptivecamera.ui.camera.components.ViewfinderFramingMask
+import com.bishal.adaptivecamera.ui.camera.components.VirtualHorizonOverlay
 import com.bishal.adaptivecamera.ui.camera.pro.FocusPeakingOverlay
 import com.bishal.adaptivecamera.ui.camera.pro.HistogramView
 import com.bishal.adaptivecamera.ui.camera.pro.ProAppliedTelemetryBadge
@@ -120,6 +126,11 @@ fun CameraScreen(
     var previewWidthPx by remember { mutableFloatStateOf(0f) }
     var previewHeightPx by remember { mutableFloatStateOf(0f) }
 
+    val isPortrait = previewHeightPx >= previewWidthPx
+    val framingBounds = remember(previewWidthPx, previewHeightPx, uiState.configuration.aspectRatio, isPortrait) {
+        uiState.configuration.aspectRatio.calculateFramingBounds(previewWidthPx, previewHeightPx, isPortrait)
+    }
+
     Scaffold(
         containerColor = DarkBackground,
         topBar = {
@@ -128,6 +139,8 @@ fun CameraScreen(
                 onToggleFlash = { viewModel.toggleFlash() },
                 onToggleTimer = { viewModel.toggleTimer() },
                 onToggleExposure = { viewModel.toggleExposureSlider() },
+                onCycleAspectRatio = { viewModel.cycleAspectRatio() },
+                onCycleGrid = { viewModel.cycleGridType() },
                 onOpenSettings = onOpenSettings
             )
         },
@@ -203,7 +216,14 @@ fun CameraScreen(
                                 previewWidthPx = size.width.toFloat()
                                 previewHeightPx = size.height.toFloat()
                             }
-                            .pointerInput(Unit) {
+                            .pointerInput(previewWidthPx, previewHeightPx) {
+                                detectTransformGestures { _, _, zoomChange, _ ->
+                                    if (zoomChange != 1f) {
+                                        viewModel.applyZoomScaleFactor(zoomChange)
+                                    }
+                                }
+                            }
+                            .pointerInput(previewWidthPx, previewHeightPx) {
                                 detectTapGestures { offset ->
                                     if (previewWidthPx > 0f && previewHeightPx > 0f) {
                                         val xNorm = offset.x / previewWidthPx
@@ -232,7 +252,27 @@ fun CameraScreen(
                     }
                 }
 
-                // Focus Peaking Overlay (Pro Mode)
+                // 1. Aspect Ratio Viewfinder Framing Mask (Darkened Letterbox/Pillarbox)
+                ViewfinderFramingMask(
+                    aspectRatio = uiState.configuration.aspectRatio,
+                    framingBounds = framingBounds
+                )
+
+                // 2. Composition Grid Overlay (Rule of Thirds, Golden Ratio, Golden Spiral, Center Crosshairs)
+                CompositionGridOverlay(
+                    gridType = uiState.configuration.gridType,
+                    framingBounds = framingBounds
+                )
+
+                // 3. Gyroscope Virtual Horizon Overlay
+                if (uiState.configuration.isVirtualHorizonEnabled) {
+                    VirtualHorizonOverlay(
+                        horizonState = uiState.virtualHorizonState,
+                        framingBounds = framingBounds
+                    )
+                }
+
+                // 4. Focus Peaking Overlay (Pro Mode)
                 if (uiState.configuration.mode == CameraMode.PRO && uiState.proConfig.isFocusPeakingEnabled) {
                     FocusPeakingOverlay(
                         peakingMap = uiState.focusPeakingMap,
@@ -240,7 +280,7 @@ fun CameraScreen(
                     )
                 }
 
-                // Focus Ring Overlay
+                // 5. Focus Ring Overlay (Tap to focus)
                 uiState.focusPoint?.let { point ->
                     FocusRingOverlay(
                         focusPointNorm = point,
@@ -249,7 +289,7 @@ fun CameraScreen(
                     )
                 }
 
-                // Pro Applied Telemetry Badge (Pro Mode)
+                // 6. Pro Applied Telemetry Badge (Pro Mode)
                 if (uiState.configuration.mode == CameraMode.PRO) {
                     ProAppliedTelemetryBadge(
                         appliedState = uiState.proAppliedState,
@@ -271,7 +311,7 @@ fun CameraScreen(
                     )
                 }
 
-                // Live Histogram View (Pro Mode)
+                // 7. Live Histogram View (Pro Mode)
                 if (uiState.configuration.mode == CameraMode.PRO && uiState.proConfig.isHistogramVisible) {
                     HistogramView(
                         data = uiState.histogramData,
@@ -283,26 +323,28 @@ fun CameraScreen(
                     )
                 }
 
-                // Countdown Timer Overlay
+                // 8. Countdown Timer Overlay
                 CountdownOverlay(
                     secondsRemaining = uiState.countdownRemaining,
                     modifier = Modifier.align(Alignment.Center)
                 )
 
-                // Zoom Level Bar (Photo & Video mode)
+                // 9. Rotary Zoom Dial and Step Pills (Photo & Video mode)
                 if (uiState.configuration.mode != CameraMode.PRO) {
-                    ZoomControlBar(
+                    RotaryZoomDial(
                         currentZoom = uiState.configuration.zoomRatio,
                         minZoom = uiState.configuration.minZoomRatio,
                         maxZoom = uiState.configuration.maxZoomRatio,
-                        onZoomSelected = { viewModel.setZoomRatio(it) },
+                        availableSteps = viewModel.zoomController.getAvailableSteps(),
+                        onZoomChanged = { viewModel.setZoomRatio(it) },
+                        onHapticTick = { viewModel.hapticEngine.performTick() },
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .padding(bottom = 12.dp)
                     )
                 }
 
-                // Exposure Slider Overlay (Side)
+                // 10. Exposure Slider Overlay (Side)
                 if (uiState.isExposureSliderVisible && uiState.configuration.mode != CameraMode.PRO) {
                     ExposureSlider(
                         currentIndex = uiState.configuration.exposureCompensationIndex,
@@ -320,7 +362,19 @@ fun CameraScreen(
                     )
                 }
 
-                // Shutter Flash Animation Overlay
+                // 11. Movable Floating Shutter Button
+                if (uiState.configuration.isFloatingShutterEnabled) {
+                    FloatingShutterButton(
+                        containerWidthPx = previewWidthPx,
+                        containerHeightPx = previewHeightPx,
+                        initialNormX = uiState.configuration.floatingShutterX,
+                        initialNormY = uiState.configuration.floatingShutterY,
+                        onShutterPressed = { viewModel.onShutterPressed() },
+                        onPositionChanged = { normX, normY -> viewModel.updateFloatingShutterPosition(normX, normY) }
+                    )
+                }
+
+                // 12. Shutter Flash Animation Overlay
                 AnimatedVisibility(
                     visible = uiState.captureFlashAnimation,
                     enter = fadeIn(),
@@ -329,6 +383,9 @@ fun CameraScreen(
                 ) {
                     Box(modifier = Modifier.fillMaxSize().background(Color.White))
                 }
+
+                // 13. Front Screen Flash Overlay
+                ScreenFlashOverlay(isActive = uiState.isScreenFlashActive)
 
             } else {
                 // Permission Denied Card

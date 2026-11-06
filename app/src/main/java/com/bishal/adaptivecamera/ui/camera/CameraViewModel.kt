@@ -10,14 +10,25 @@ import androidx.lifecycle.viewModelScope
 import com.bishal.adaptivecamera.camera.capability.CameraCapabilityProfile
 import com.bishal.adaptivecamera.camera.capability.CameraCapabilityRepository
 import com.bishal.adaptivecamera.camera.capability.CameraCapabilityRepositoryImpl
+import com.bishal.adaptivecamera.camera.config.AspectRatioConfig
 import com.bishal.adaptivecamera.camera.config.CameraConfiguration
 import com.bishal.adaptivecamera.camera.config.CameraFacing
 import com.bishal.adaptivecamera.camera.config.CameraMode
+import com.bishal.adaptivecamera.camera.config.CompositionGridType
 import com.bishal.adaptivecamera.camera.config.FlashMode
 import com.bishal.adaptivecamera.camera.config.PhotoTimer
+import com.bishal.adaptivecamera.camera.controls.ZoomController
+import com.bishal.adaptivecamera.camera.controls.ZoomControllerImpl
 import com.bishal.adaptivecamera.camera.engine.CameraEngine
 import com.bishal.adaptivecamera.camera.engine.CameraXEngine
 import com.bishal.adaptivecamera.camera.session.CameraSessionState
+import com.bishal.adaptivecamera.core.haptics.HapticEngine
+import com.bishal.adaptivecamera.core.haptics.HapticEngineImpl
+import com.bishal.adaptivecamera.core.sensors.VirtualHorizonSensor
+import com.bishal.adaptivecamera.core.sensors.VirtualHorizonSensorImpl
+import com.bishal.adaptivecamera.core.sensors.VirtualHorizonState
+import com.bishal.adaptivecamera.core.settings.CameraPreferencesRepository
+import com.bishal.adaptivecamera.core.settings.CameraPreferencesRepositoryImpl
 import com.bishal.adaptivecamera.core.storage.MediaItem
 import com.bishal.adaptivecamera.core.storage.MediaStoreManager
 import com.bishal.adaptivecamera.photography.auto.SmartAutoOrchestrator
@@ -52,7 +63,9 @@ data class CameraUiState(
     val proAppliedState: ProAppliedState = ProAppliedState(),
     val histogramData: HistogramData = HistogramData(),
     val focusPeakingMap: FocusPeakingMap = FocusPeakingMap(),
-    val activeProfile: CameraCapabilityProfile? = null
+    val activeProfile: CameraCapabilityProfile? = null,
+    val virtualHorizonState: VirtualHorizonState = VirtualHorizonState(),
+    val isScreenFlashActive: Boolean = false
 )
 
 class CameraViewModel @JvmOverloads constructor(
@@ -61,7 +74,10 @@ class CameraViewModel @JvmOverloads constructor(
     private val camera2ProEngine: Camera2ManualEngine = Camera2ManualEngine(application.applicationContext),
     private val mediaStoreManager: MediaStoreManager = MediaStoreManager(application.applicationContext),
     private val capabilityRepository: CameraCapabilityRepository = CameraCapabilityRepositoryImpl(application.applicationContext),
-    val smartAutoOrchestrator: SmartAutoOrchestrator = SmartAutoOrchestrator()
+    val smartAutoOrchestrator: SmartAutoOrchestrator = SmartAutoOrchestrator(),
+    private val preferencesRepository: CameraPreferencesRepository = CameraPreferencesRepositoryImpl(application.applicationContext),
+    val hapticEngine: HapticEngine = HapticEngineImpl(application.applicationContext) { true },
+    val virtualHorizonSensor: VirtualHorizonSensor = VirtualHorizonSensorImpl(application.applicationContext)
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(CameraUiState())
@@ -72,10 +88,23 @@ class CameraViewModel @JvmOverloads constructor(
     private var lastLifecycleOwner: LifecycleOwner? = null
     private var lastPreviewView: PreviewView? = null
 
+    val zoomController: ZoomController = ZoomControllerImpl(
+        initialZoom = 1.0f,
+        initialMin = 1.0f,
+        initialMax = 10.0f
+    ) { ratio ->
+        if (_uiState.value.configuration.mode == CameraMode.PRO) {
+            camera2ProEngine.setZoomRatio(ratio)
+        } else {
+            cameraEngine.setZoomRatio(ratio)
+        }
+    }
+
     init {
         // Connect frame analyzer to camera engine
         cameraEngine.setImageAnalyzer(smartAutoOrchestrator.frameAnalyzer)
 
+        // Session state listeners
         viewModelScope.launch {
             cameraEngine.sessionState.collect { state ->
                 if (_uiState.value.configuration.mode != CameraMode.PRO) {
@@ -90,14 +119,39 @@ class CameraViewModel @JvmOverloads constructor(
                 }
             }
         }
+
+        // CameraX configuration listener
         viewModelScope.launch {
             cameraEngine.configuration.collect { config ->
                 if (_uiState.value.configuration.mode != CameraMode.PRO) {
-                    _uiState.update { it.copy(configuration = config) }
+                    _uiState.update { current ->
+                        current.copy(
+                            configuration = current.configuration.copy(
+                                facing = config.facing,
+                                mode = config.mode,
+                                flashMode = config.flashMode,
+                                timer = config.timer,
+                                zoomRatio = config.zoomRatio,
+                                minZoomRatio = config.minZoomRatio,
+                                maxZoomRatio = config.maxZoomRatio,
+                                exposureCompensationIndex = config.exposureCompensationIndex,
+                                minExposureIndex = config.minExposureIndex,
+                                maxExposureIndex = config.maxExposureIndex,
+                                exposureStepEv = config.exposureStepEv,
+                                isExposureCompensationSupported = config.isExposureCompensationSupported,
+                                isExposureStateReady = config.isExposureStateReady,
+                                isTorchActive = config.isTorchActive,
+                                isAudioEnabled = config.isAudioEnabled
+                            )
+                        )
+                    }
+                    zoomController.updateRange(config.minZoomRatio, config.maxZoomRatio)
                     smartAutoOrchestrator.updateCameraControls(zoomRatio = config.zoomRatio)
                 }
             }
         }
+
+        // Pro configurations
         viewModelScope.launch {
             camera2ProEngine.proConfig.collect { proConfig ->
                 _uiState.update { it.copy(proConfig = proConfig) }
@@ -128,6 +182,20 @@ class CameraViewModel @JvmOverloads constructor(
                 _uiState.update { it.copy(smartAutoState = autoState) }
             }
         }
+
+        // Virtual Horizon Listener
+        viewModelScope.launch {
+            var previousIsLevel = false
+            virtualHorizonSensor.horizonState.collect { horizon ->
+                _uiState.update { it.copy(virtualHorizonState = horizon) }
+                if (horizon.isLevel && !previousIsLevel && _uiState.value.configuration.isVirtualHorizonEnabled) {
+                    hapticEngine.performLevelLock()
+                }
+                previousIsLevel = horizon.isLevel
+            }
+        }
+
+        // Hardware profile discovery
         viewModelScope.launch {
             try {
                 val report = capabilityRepository.getDeviceReport()
@@ -136,6 +204,28 @@ class CameraViewModel @JvmOverloads constructor(
                 smartAutoOrchestrator.updateProfiles(activeProfile, report.cameraProfiles)
             } catch (_: Exception) {}
         }
+
+        // Persisted Preferences Collector
+        viewModelScope.launch {
+            preferencesRepository.preferencesFlow.collect { prefs ->
+                _uiState.update { current ->
+                    current.copy(
+                        configuration = current.configuration.copy(
+                            gridType = prefs.gridType,
+                            isVirtualHorizonEnabled = prefs.isVirtualHorizonEnabled,
+                            aspectRatio = prefs.aspectRatio,
+                            isHapticsEnabled = prefs.isHapticsEnabled,
+                            isFloatingShutterEnabled = prefs.isFloatingShutterEnabled,
+                            floatingShutterX = prefs.floatingShutterX,
+                            floatingShutterY = prefs.floatingShutterY
+                        )
+                    )
+                }
+                cameraEngine.setAspectRatio(prefs.aspectRatio)
+                camera2ProEngine.setAspectRatio(prefs.aspectRatio)
+            }
+        }
+
         refreshLatestThumbnail()
     }
 
@@ -145,9 +235,11 @@ class CameraViewModel @JvmOverloads constructor(
         if (_uiState.value.configuration.mode != CameraMode.PRO) {
             cameraEngine.bindCamera(lifecycleOwner, previewView)
         }
+        startVirtualHorizon()
     }
 
     fun unbindCamera() {
+        stopVirtualHorizon()
         if (_uiState.value.configuration.mode == CameraMode.PRO) {
             camera2ProEngine.unbindCamera()
         } else {
@@ -157,10 +249,12 @@ class CameraViewModel @JvmOverloads constructor(
 
     fun bindProSurface(surface: Surface) {
         camera2ProEngine.bindSurface(surface)
+        startVirtualHorizon()
     }
 
     fun unbindProSurface() {
         camera2ProEngine.unbindCamera()
+        stopVirtualHorizon()
     }
 
     fun refreshLatestThumbnail() {
@@ -172,15 +266,15 @@ class CameraViewModel @JvmOverloads constructor(
 
     fun onShutterPressed() {
         val state = _uiState.value
+        hapticEngine.performShutter()
+
         if (state.configuration.mode == CameraMode.VIDEO) {
             if (state.sessionState == CameraSessionState.RECORDING) {
                 cameraEngine.stopVideoRecording()
             } else if (state.sessionState.canStartRecording) {
                 cameraEngine.startVideoRecording(
                     withAudio = state.configuration.isAudioEnabled,
-                    onStarted = {
-                        // Handled via engine recording state
-                    },
+                    onStarted = {},
                     onFinalized = { media ->
                         _uiState.update {
                             it.copy(
@@ -197,29 +291,28 @@ class CameraViewModel @JvmOverloads constructor(
             return
         }
 
+        val isFront = state.configuration.facing == CameraFacing.FRONT
+        val isScreenFlashActive = isFront && state.configuration.flashMode != FlashMode.OFF
+
         if (state.configuration.mode == CameraMode.PRO) {
-            triggerFlashAnimation()
-            camera2ProEngine.capturePhoto(
-                onSuccess = { item ->
-                    val isRaw = _uiState.value.proConfig.isRawCaptureEnabled
-                    val msg = if (isRaw) "RAW DNG + JPEG saved!" else "Pro Photo saved!"
-                    _uiState.update {
-                        it.copy(
-                            latestMedia = item,
-                            toastMessage = msg
-                        )
-                    }
-                },
-                onError = { error ->
-                    _uiState.update { it.copy(toastMessage = "Capture failed: ${error.message}") }
+            if (isScreenFlashActive) {
+                viewModelScope.launch {
+                    _uiState.update { it.copy(isScreenFlashActive = true) }
+                    delay(180)
+                    triggerFlashAnimation()
+                    executeProCapture()
+                    delay(120)
+                    _uiState.update { it.copy(isScreenFlashActive = false) }
                 }
-            )
+            } else {
+                triggerFlashAnimation()
+                executeProCapture()
+            }
             return
         }
 
         // Photo Mode
         if (countdownJob != null) {
-            // Cancel active countdown
             countdownJob?.cancel()
             countdownJob = null
             _uiState.update { it.copy(countdownRemaining = null) }
@@ -231,11 +324,26 @@ class CameraViewModel @JvmOverloads constructor(
             countdownJob = viewModelScope.launch {
                 for (remaining in timerSeconds downTo 1) {
                     _uiState.update { it.copy(countdownRemaining = remaining) }
+                    hapticEngine.performTick()
                     delay(1000)
                 }
                 _uiState.update { it.copy(countdownRemaining = null) }
                 countdownJob = null
+                triggerPhotoCaptureWithOptionalScreenFlash(isScreenFlashActive)
+            }
+        } else {
+            triggerPhotoCaptureWithOptionalScreenFlash(isScreenFlashActive)
+        }
+    }
+
+    private fun triggerPhotoCaptureWithOptionalScreenFlash(isScreenFlashActive: Boolean) {
+        if (isScreenFlashActive) {
+            viewModelScope.launch {
+                _uiState.update { it.copy(isScreenFlashActive = true) }
+                delay(180)
                 executePhotoCapture()
+                delay(120)
+                _uiState.update { it.copy(isScreenFlashActive = false) }
             }
         } else {
             executePhotoCapture()
@@ -249,12 +357,42 @@ class CameraViewModel @JvmOverloads constructor(
                 _uiState.update {
                     it.copy(
                         latestMedia = item,
-                        toastMessage = "Photo saved!"
+                        toastMessage = "Photo saved!",
+                        isScreenFlashActive = false
                     )
                 }
             },
             onError = { error ->
-                _uiState.update { it.copy(toastMessage = "Capture failed: ${error.message}") }
+                _uiState.update {
+                    it.copy(
+                        toastMessage = "Capture failed: ${error.message}",
+                        isScreenFlashActive = false
+                    )
+                }
+            }
+        )
+    }
+
+    private fun executeProCapture() {
+        camera2ProEngine.capturePhoto(
+            onSuccess = { item ->
+                val isRaw = _uiState.value.proConfig.isRawCaptureEnabled
+                val msg = if (isRaw) "RAW DNG + JPEG saved!" else "Pro Photo saved!"
+                _uiState.update {
+                    it.copy(
+                        latestMedia = item,
+                        toastMessage = msg,
+                        isScreenFlashActive = false
+                    )
+                }
+            },
+            onError = { error ->
+                _uiState.update {
+                    it.copy(
+                        toastMessage = "Capture failed: ${error.message}",
+                        isScreenFlashActive = false
+                    )
+                }
             }
         )
     }
@@ -269,6 +407,7 @@ class CameraViewModel @JvmOverloads constructor(
 
     fun onFocusTap(xNorm: Float, yNorm: Float) {
         cameraEngine.focusAndMeter(xNorm, yNorm)
+        hapticEngine.performClick()
         _uiState.update { it.copy(focusPoint = Pair(xNorm, yNorm)) }
         focusTimeoutJob?.cancel()
         focusTimeoutJob = viewModelScope.launch {
@@ -278,6 +417,7 @@ class CameraViewModel @JvmOverloads constructor(
     }
 
     fun switchCamera() {
+        hapticEngine.performClick()
         if (_uiState.value.configuration.mode == CameraMode.PRO) {
             camera2ProEngine.switchFacing()
             _uiState.update { it.copy(configuration = it.configuration.copy(facing = it.configuration.facing.toggle())) }
@@ -288,6 +428,7 @@ class CameraViewModel @JvmOverloads constructor(
 
     fun setCameraMode(mode: CameraMode) {
         if (_uiState.value.configuration.mode == mode) return
+        hapticEngine.performModeSwitch()
         val previousMode = _uiState.value.configuration.mode
         if (mode == CameraMode.PRO) {
             cameraEngine.unbindCamera()
@@ -359,17 +500,25 @@ class CameraViewModel @JvmOverloads constructor(
     }
 
     fun toggleFlash() {
+        hapticEngine.performClick()
         val next = _uiState.value.configuration.flashMode.next()
         cameraEngine.setFlashMode(next)
     }
 
     fun toggleTimer() {
+        hapticEngine.performClick()
         val next = _uiState.value.configuration.timer.next()
         cameraEngine.setTimer(next)
     }
 
     fun setZoomRatio(ratio: Float) {
-        cameraEngine.setZoomRatio(ratio)
+        zoomController.setZoomRatio(ratio)
+        _uiState.update { it.copy(configuration = it.configuration.copy(zoomRatio = ratio)) }
+    }
+
+    fun applyZoomScaleFactor(factor: Float) {
+        val newRatio = zoomController.applyScaleFactor(factor)
+        _uiState.update { it.copy(configuration = it.configuration.copy(zoomRatio = newRatio)) }
     }
 
     fun setExposureIndex(index: Int) {
@@ -386,6 +535,7 @@ class CameraViewModel @JvmOverloads constructor(
             _uiState.update { it.copy(toastMessage = "Exposure compensation not supported on this camera") }
             return
         }
+        hapticEngine.performClick()
         _uiState.update { it.copy(isExposureSliderVisible = !it.isExposureSliderVisible) }
     }
 
@@ -395,6 +545,99 @@ class CameraViewModel @JvmOverloads constructor(
 
     fun resetExposure() {
         cameraEngine.resetExposureCompensation()
+    }
+
+    // Phase 5 Viewfinder Ergonomics & Controls
+    fun setGridType(gridType: CompositionGridType) {
+        viewModelScope.launch {
+            preferencesRepository.updateGridType(gridType)
+            _uiState.update { it.copy(configuration = it.configuration.copy(gridType = gridType)) }
+            hapticEngine.performClick()
+        }
+    }
+
+    fun cycleGridType() {
+        val next = _uiState.value.configuration.gridType.next()
+        setGridType(next)
+    }
+
+    fun setAspectRatio(ratio: AspectRatioConfig) {
+        viewModelScope.launch {
+            preferencesRepository.updateAspectRatio(ratio)
+            cameraEngine.setAspectRatio(ratio)
+            camera2ProEngine.setAspectRatio(ratio)
+            _uiState.update { it.copy(configuration = it.configuration.copy(aspectRatio = ratio)) }
+            hapticEngine.performClick()
+        }
+    }
+
+    fun cycleAspectRatio() {
+        val next = _uiState.value.configuration.aspectRatio.next()
+        setAspectRatio(next)
+    }
+
+    fun toggleVirtualHorizon() {
+        val next = !_uiState.value.configuration.isVirtualHorizonEnabled
+        viewModelScope.launch {
+            preferencesRepository.updateVirtualHorizonEnabled(next)
+            _uiState.update { it.copy(configuration = it.configuration.copy(isVirtualHorizonEnabled = next)) }
+            hapticEngine.performClick()
+        }
+    }
+
+    fun toggleHaptics() {
+        val next = !_uiState.value.configuration.isHapticsEnabled
+        viewModelScope.launch {
+            preferencesRepository.updateHapticsEnabled(next)
+            _uiState.update { it.copy(configuration = it.configuration.copy(isHapticsEnabled = next)) }
+            if (next) hapticEngine.performClick()
+        }
+    }
+
+    fun toggleFloatingShutter() {
+        val next = !_uiState.value.configuration.isFloatingShutterEnabled
+        viewModelScope.launch {
+            preferencesRepository.updateFloatingShutterEnabled(next)
+            _uiState.update { it.copy(configuration = it.configuration.copy(isFloatingShutterEnabled = next)) }
+            hapticEngine.performClick()
+        }
+    }
+
+    fun updateFloatingShutterPosition(normX: Float, normY: Float) {
+        viewModelScope.launch {
+            preferencesRepository.updateFloatingShutterPosition(normX, normY)
+            _uiState.update {
+                it.copy(
+                    configuration = it.configuration.copy(
+                        floatingShutterX = normX,
+                        floatingShutterY = normY
+                    )
+                )
+            }
+        }
+    }
+
+    fun resetFloatingShutterPosition() {
+        viewModelScope.launch {
+            preferencesRepository.resetFloatingShutterPosition()
+            _uiState.update {
+                it.copy(
+                    configuration = it.configuration.copy(
+                        floatingShutterX = 0.82f,
+                        floatingShutterY = 0.65f
+                    )
+                )
+            }
+            hapticEngine.performClick()
+        }
+    }
+
+    fun startVirtualHorizon() {
+        virtualHorizonSensor.startListening()
+    }
+
+    fun stopVirtualHorizon() {
+        virtualHorizonSensor.stopListening()
     }
 
     fun applySmartAutoSuggestion() {

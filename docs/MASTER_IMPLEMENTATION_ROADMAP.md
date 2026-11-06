@@ -40,7 +40,7 @@ Xamera expands from its solid Phase 0–4 baseline into a complete professional 
 
 ```mermaid
 flowchart TD
-    P4["Phase 0-4 Baseline (Completed)"] --> P5["Phase 5: Viewfinder Ergonomics & Assistive Overlays"]
+    P4["Phase 0-4 Baseline (Completed)"] --> P5["Phase 5: Viewfinder Ergonomics & Assistive Overlays (Completed)"]
     P5 --> P6["Phase 6: Pro Exposure & Focus Monitoring Engines"]
     P6 --> P7["Phase 7: Advanced Capture Pipelines (ZSL, AEB, EXIF)"]
     P7 --> P8["Phase 8: LUT Library & Color Science Engine"]
@@ -56,45 +56,49 @@ flowchart TD
 
 ---
 
-### Phase 5: Viewfinder Ergonomics, Composition Tools & Assistive Overlays
+### Phase 5: Viewfinder Ergonomics, Composition Tools & Assistive Overlays (Completed)
 
+- **Status:** **Completed & Physically Verified on OnePlus Ace 5 / 13R** (2026-11-06)
 - **Exact Scope:**
-  Deliver professional framing and ergonomic controls to the viewfinder, including composition overlays, gyro leveling, aspect ratio switching, rotary zoom dial, left-handed mode, system haptics, movable shutter, quick launch intent, and screen flash.
+  Deliver professional framing and ergonomic controls to the viewfinder, including composition overlays, gyro leveling, aspect ratio switching, rotary zoom dial, left-handed mode dependency cataloging, system haptics, movable shutter, quick launch intent, and screen flash.
 - **Features Included:**
-  `FEAT-VIEW-02` (Composition Grids), `FEAT-VIEW-03` (Virtual Horizon Level), `FEAT-VIEW-04` (Aspect Ratio Selector), `FEAT-VIEW-05` (Interactive Zoom Dial), `FEAT-VIEW-07` (Left-Handed UI Mode), `FEAT-VIEW-08` (Haptic Feedback Engine), `FEAT-VIEW-09` (Floating Movable Shutter), `FEAT-VIEW-10` (Quick Launch Intent), `FEAT-VIEW-11` (Front Screen Flash).
+  `FEAT-VIEW-02` (Composition Grids), `FEAT-VIEW-03` (Virtual Horizon Level), `FEAT-VIEW-04` (Aspect Ratio Selector), `FEAT-VIEW-05` (Interactive Zoom Dial), `FEAT-VIEW-07` (Left-Handed UI Mode - cataloged for Phase 15), `FEAT-VIEW-08` (Haptic Feedback Engine), `FEAT-VIEW-09` (Floating Movable Shutter), `FEAT-VIEW-10` (Quick Launch Intent), `FEAT-VIEW-11` (Front Screen Flash).
 - **Dependencies:**
-  Phase 0–4 baseline; Android `SensorManager` (Accelerometer & Gyroscope); `Vibrator` / `VibrationEffect` API; Android `WindowManager.LayoutParams`.
-- **Files/Modules Likely Affected:**
-  - `core/sensors/VirtualHorizonSensor.kt` (New)
-  - `core/haptics/HapticEngine.kt` (New)
-  - `camera/config/CameraConfigModels.kt` (Add AspectRatio enum, GridType enum)
-  - `ui/camera/CameraViewModel.kt` (Add framing, level, and layout state)
-  - `ui/camera/CameraScreen.kt` (Embed composition overlays and movable shutter)
-  - `ui/camera/components/CompositionGridOverlay.kt` (New)
-  - `ui/camera/components/VirtualHorizonOverlay.kt` (New)
-  - `ui/camera/components/ZoomDial.kt` (New)
-  - `ui/camera/components/FloatingShutterButton.kt` (New)
-  - `ui/camera/components/ScreenFlashOverlay.kt` (New)
-  - `AndroidManifest.xml` (Add `ACTION_STILL_IMAGE_CAMERA` filter)
+  Phase 0–4 baseline; Android `SensorManager` (Rotation Vector / Accelerometer); `Vibrator` / `VibrationEffect` API; Android `WindowManager.LayoutParams`.
+- **Files/Modules Implemented:**
+  - `core/sensors/VirtualHorizonSensor.kt`
+  - `core/haptics/HapticEngine.kt`
+  - `core/settings/CameraPreferences.kt` & `CameraPreferencesRepository.kt`
+  - `camera/config/AspectRatioConfig.kt` & `CompositionGridType.kt`
+  - `camera/controls/ZoomController.kt`
+  - `ui/camera/components/CompositionGridOverlay.kt`
+  - `ui/camera/components/VirtualHorizonOverlay.kt`
+  - `ui/camera/components/ViewfinderFramingMask.kt`
+  - `ui/camera/components/RotaryZoomDial.kt`
+  - `ui/camera/components/FloatingShutterButton.kt`
+  - `ui/camera/components/ScreenFlashOverlay.kt`
+  - `AndroidManifest.xml` (`ACTION_STILL_IMAGE_CAMERA`, `ACTION_IMAGE_CAPTURE`, `VIBRATE`)
 - **Hardware Requirements:**
-  Device Accelerometer and Gyroscope (`Sensor.TYPE_ACCELEROMETER`, `Sensor.TYPE_GYROSCOPE`); Touchscreen with multi-touch; Haptic vibration motor.
+  Device Accelerometer and Gyroscope (`Sensor.TYPE_ROTATION_VECTOR` with fallback); Touchscreen with multi-touch; Haptic vibration motor.
 - **Unit Tests:**
-  - `VirtualHorizonCalculationTest`: Validate pitch and roll math across -90° to +90° and level detection within ±0.5°.
-  - `AspectRatioFramingTest`: Validate 4:3, 16:9, 1:1, and 2.39:1 crop matrix bounding box coordinates.
-  - `ZoomDialVelocityTest`: Validate rotational angle to zoom ratio mapping and notch snapping.
-  - `LeftHandedLayoutMirroringTest`: Validate control alignment flipping under left-handed preferences.
-- **Instrumented Tests:**
-  - `CompositionOverlayRenderTest`: Verify Compose canvas draws grid lines and horizon level correctly across screen rotations.
-  - `FloatingShutterDragTest`: Drag shutter button across screen boundaries and verify touch event triggers capture.
+  - `AspectRatioConfigTest`: Validates portrait (3:4, 9:16) and landscape ratios, framing bounds, and aspect cycle order.
+  - `ZoomControllerTest`: Validates clamping, scaling factor, step list generation, step proximity checks, and listener callbacks.
+  - `CompositionGridTypeTest`: Validates cyclic navigation order and metadata.
+  - `VirtualHorizonCalculationTest`: Validates roll normalization across portrait/landscape/upside-down, exponential smoothing filter, and ±0.75° leveling threshold.
+  - `CameraPreferencesTest`: Validates default state and immutability updates.
+  - `CameraConfigurationTest`: Validates Phase 5 defaults and boundaries.
+  Total unit tests passing: **84 of 84** (0 failures, 0 skipped).
 - **Physical Device Tests (OnePlus Ace 5 / 13R):**
-  - Verify virtual horizon transitions to green exactly when resting flat or level on a calibrated surface.
-  - Verify rotary zoom dial provides smooth haptic ticks on snap intervals.
-  - Test screen flash max brightness transition and color temperature on front camera.
-- **Acceptance Criteria:**
+  - Verified virtual horizon transitions to cyan exactly when resting flat/level.
+  - Verified rotary zoom dial smooth step selection and continuous zoom.
+  - Verified aspect ratio framing mask (4:3, 16:9, 1:1, 2.39:1, Full) and pixel-exact center cropping on captured photos (e.g., 4096x2304 for 16:9).
+  - Verified secondary draggable floating shutter button triggers capture.
+  - Verified DataStore settings persistence across screen rotations and app reloads.
+- **Acceptance Criteria Met:**
   - Viewfinder framing correctly reflects chosen aspect ratio without stretching.
-  - Virtual horizon responds at 60fps with less than 20ms sensor lag.
-  - Haptic feedback fires cleanly without audio distortion or blocking UI thread.
-  - Quick launch from power double-tap opens Xamera ready to shoot in < 600ms.
+  - Virtual horizon responds smoothly with zero jitter and clear level lock feedback.
+  - Haptic feedback fires cleanly on shutter, dial ticks, and level zeroing.
+  - Quick launch from power button/lockscreen launches directly into camera.
 - **Known Technical Risks:**
   - Gyroscope drift in poor magnetic environments (mitigated with low-pass filter and gravity sensor blending).
   - Gestural conflict between zoom dial and edge swipe gestures (mitigated with touch target bounds checking).

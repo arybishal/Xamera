@@ -293,6 +293,10 @@ class CameraXEngine(
         _configuration.update { it.copy(timer = timer) }
     }
 
+    override fun setAspectRatio(aspectRatio: com.bishal.adaptivecamera.camera.config.AspectRatioConfig) {
+        _configuration.update { it.copy(aspectRatio = aspectRatio) }
+    }
+
     override fun setZoomRatio(ratio: Float) {
         val cam = camera ?: return
         val clamped = ratio.coerceIn(
@@ -399,6 +403,7 @@ class CameraXEngine(
                     _sessionState.value = CameraSessionState.READY
                     val savedUri = outputFileResults.savedUri
                     if (savedUri != null) {
+                        mediaStoreManager.cropPhotoUri(savedUri, _configuration.value.aspectRatio)
                         mediaStoreManager.markPhotoPendingComplete(savedUri)
                         val latest = mediaStoreManager.queryLatestMedia()
                         if (latest != null) {

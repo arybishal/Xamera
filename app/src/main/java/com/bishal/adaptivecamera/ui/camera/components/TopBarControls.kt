@@ -14,6 +14,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FlashAuto
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.GridOn
+import androidx.compose.material.icons.filled.GridOff
 import androidx.compose.material.icons.filled.Highlight
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Timer
@@ -32,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bishal.adaptivecamera.camera.config.CameraConfiguration
+import com.bishal.adaptivecamera.camera.config.CompositionGridType
 import com.bishal.adaptivecamera.camera.config.FlashMode
 import com.bishal.adaptivecamera.camera.config.PhotoTimer
 import com.bishal.adaptivecamera.ui.theme.AccentAmber
@@ -46,16 +49,18 @@ fun TopBarControls(
     onToggleTimer: () -> Unit,
     onToggleExposure: () -> Unit,
     onOpenSettings: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onCycleAspectRatio: () -> Unit = {},
+    onCycleGrid: () -> Unit = {}
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Flash Mode
+        // 1. Flash Mode
         IconButton(
             onClick = onToggleFlash,
             modifier = Modifier
@@ -70,7 +75,39 @@ fun TopBarControls(
             }
         }
 
-        // Timer
+        // 2. Aspect Ratio Quick Pill
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.Black.copy(alpha = 0.45f))
+                .clickable(onClick = onCycleAspectRatio)
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = config.aspectRatio.displayName,
+                color = if (config.aspectRatio != com.bishal.adaptivecamera.camera.config.AspectRatioConfig.RATIO_4_3) PrimaryCyan else TextPrimary,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        // 3. Composition Grid Quick Button
+        IconButton(
+            onClick = onCycleGrid,
+            modifier = Modifier
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.45f))
+        ) {
+            val isGridActive = config.gridType != CompositionGridType.OFF
+            Icon(
+                imageVector = if (isGridActive) Icons.Default.GridOn else Icons.Default.GridOff,
+                contentDescription = "Composition Grid: ${config.gridType.displayName}",
+                tint = if (isGridActive) PrimaryCyan else TextSecondary
+            )
+        }
+
+        // 4. Timer
         IconButton(
             onClick = onToggleTimer,
             modifier = Modifier
@@ -84,7 +121,7 @@ fun TopBarControls(
             }
         }
 
-        // Exposure indicator / toggle
+        // 5. Exposure indicator / toggle
         val isExposureAvailable = config.isExposureControlAvailable
         Box(
             modifier = Modifier
@@ -114,7 +151,7 @@ fun TopBarControls(
             }
         }
 
-        // Settings Screen Button
+        // 6. Settings Screen Button
         IconButton(
             onClick = onOpenSettings,
             modifier = Modifier

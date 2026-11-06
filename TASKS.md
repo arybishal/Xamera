@@ -5,7 +5,7 @@
 **Workspace:** `D:\Webapp\xamera`  
 **Repository:** https://github.com/arybishal/Xamera  
 **Developer:** Bishal Aryal  
-**Version:** 0.5.1  
+**Version:** 0.6.0  
 **Date:** 2026-11-06  
 
 ---
@@ -107,18 +107,18 @@
 ---
 
 ## Phase 5: Viewfinder Ergonomics, Composition Tools & Assistive Overlays
-- [ ] Implement Composition Grids: Rule of thirds, golden ratio, square (1:1), crosshairs, diagonal grid (`FEAT-VIEW-02`).
-- [ ] Implement Virtual Horizon level indicator using device Accelerometer and Gyroscope with zero-angle color shift (`FEAT-VIEW-03`).
-- [ ] Implement unified Aspect Ratio Selector: 4:3, 16:9, 1:1, Full (20:9), and 2.39:1 anamorphic framing masks and output crop matrices (`FEAT-VIEW-04`).
-- [ ] Build interactive rotary Zoom Dial with velocity acceleration and notch snapping (`FEAT-VIEW-05`).
-- [ ] Implement Left-Handed UI mode mirroring shutter button, pro bar, and zoom controls (`FEAT-VIEW-07`).
-- [ ] Implement tactile Haptic Feedback engine for shutter trip, dial notches, level zeroing, and mode switches (`FEAT-VIEW-08`).
-- [ ] Implement Floating Movable Shutter button draggable across the viewfinder for one-handed capture (`FEAT-VIEW-09`).
-- [ ] Add Android Quick Launch intent handling (`ACTION_STILL_IMAGE_CAMERA` / double-tap power button) (`FEAT-VIEW-10`).
-- [ ] Implement Front Screen Flash with full-screen warm/cool white display illumination boost (`FEAT-VIEW-11`).
-- [ ] Write Phase 5 unit tests (`VirtualHorizonCalculationTest`, `AspectRatioFramingTest`, `ZoomDialVelocityTest`, `LeftHandedLayoutMirroringTest`).
-- [ ] Write Phase 5 instrumented tests (`CompositionOverlayRenderTest`, `FloatingShutterDragTest`).
-- [ ] Phase 5 physical device validation on OnePlus Ace 5 / 13R and completion report.
+- [x] Redesign camera viewfinder UI with Apple Camera-inspired, dark-first photography aesthetics.
+- [x] Implement Composition Grids: Rule of Thirds, Golden Ratio, Golden Spiral, and Center Crosshairs (`FEAT-VIEW-02`).
+- [x] Implement Virtual Horizon level indicator using `Sensor.TYPE_ROTATION_VECTOR` with fallback and cyan level feedback (`FEAT-VIEW-03`).
+- [x] Implement unified Aspect Ratio Selector: 4:3 (3:4 portrait), 16:9, 1:1, Full, and 2.39:1 framing masks and Bitmap center-crop on save (`FEAT-VIEW-04`).
+- [x] Build interactive rotary Zoom Dial with log scale, step snapping pills, and single `ZoomController` (`FEAT-VIEW-05`).
+- [x] Implement tactile Haptic Feedback engine for shutter trip, dial notches, level zeroing, and mode switches (`FEAT-VIEW-08`).
+- [x] Implement Floating Movable Shutter button draggable across the viewfinder with tap vs drag detection (`FEAT-VIEW-09`).
+- [x] Add Android Quick Launch intent handling (`ACTION_STILL_IMAGE_CAMERA`, `ACTION_IMAGE_CAPTURE`, double-tap power button) (`FEAT-VIEW-10`).
+- [x] Implement Front Screen Flash with full-screen warm white display illumination boost (`FEAT-VIEW-11`).
+- [x] Implement DataStore preferences persistence via `CameraPreferencesRepository` and Settings UI integration.
+- [x] Write Phase 5 unit tests (`AspectRatioConfigTest`, `ZoomControllerTest`, `CompositionGridTypeTest`, `VirtualHorizonCalculationTest`, `CameraPreferencesTest`, `CameraConfigurationTest` - 23 new tests, 84 total).
+- [x] Phase 5 physical device validation on OnePlus Ace 5 / 13R and completion report.
 
 ---
 

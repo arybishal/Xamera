@@ -478,7 +478,8 @@ class Camera2ManualEngine(
 
             val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
             val filename = "IMG_${timeStamp}.jpg"
-            val item = mediaStoreManager.saveImageBytes(bytes, filename)
+            val croppedBytes = mediaStoreManager.cropJpegBytes(bytes, _configuration.value.aspectRatio)
+            val item = mediaStoreManager.saveImageBytes(croppedBytes, filename)
             Result.success(item)
         } catch (e: Exception) {
             Result.failure(e)
@@ -580,6 +581,10 @@ class Camera2ManualEngine(
 
     override fun setTimer(timer: PhotoTimer) {
         _configuration.update { it.copy(timer = timer) }
+    }
+
+    override fun setAspectRatio(aspectRatio: com.bishal.adaptivecamera.camera.config.AspectRatioConfig) {
+        _configuration.update { it.copy(aspectRatio = aspectRatio) }
     }
 
     override fun setZoomRatio(ratio: Float) {

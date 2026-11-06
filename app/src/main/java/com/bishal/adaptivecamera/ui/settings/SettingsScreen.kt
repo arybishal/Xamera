@@ -87,6 +87,14 @@ import com.bishal.adaptivecamera.ui.theme.ErrorRed
 import com.bishal.adaptivecamera.ui.theme.PrimaryCyan
 import com.bishal.adaptivecamera.ui.theme.SuccessGreen
 import com.bishal.adaptivecamera.ui.theme.TextMuted
+import com.bishal.adaptivecamera.camera.config.AspectRatioConfig
+import com.bishal.adaptivecamera.camera.config.CompositionGridType
+import com.bishal.adaptivecamera.ui.camera.CameraViewModel
+import androidx.compose.material.icons.filled.Crop
+import androidx.compose.material.icons.filled.GridOn
+import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material.icons.filled.ScreenRotation
+import androidx.compose.material.icons.filled.TouchApp
 import com.bishal.adaptivecamera.ui.theme.TextPrimary
 import com.bishal.adaptivecamera.ui.theme.TextSecondary
 
@@ -95,10 +103,12 @@ import com.bishal.adaptivecamera.ui.theme.TextSecondary
 fun SettingsScreen(
     diagnosticsViewModel: DiagnosticsViewModel,
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    cameraViewModel: CameraViewModel? = null
 ) {
     val context = LocalContext.current
     val diagState by diagnosticsViewModel.uiState.collectAsState()
+    val camUiState = cameraViewModel?.uiState?.collectAsState()?.value
 
     var isHardwareExpanded by remember { mutableStateOf(true) }
 
@@ -176,13 +186,186 @@ fun SettingsScreen(
                         SettingRow(
                             icon = Icons.Default.Info,
                             title = "Application Version",
-                            subtitle = "v0.5.0 · Phase 4 Pro Photography & Settings"
+                            subtitle = "v0.6.0 · Phase 5 Viewfinder Ergonomics & Overlays"
                         )
                     }
                 }
             }
 
-            // Section 2: Prominent "Check Hardware Capability" Section
+            // Section 2: Viewfinder & Ergonomics (Phase 5)
+            item {
+                SettingsSectionHeader("Viewfinder & Composition", Icons.Default.Crop)
+            }
+
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, DividerColor, RoundedCornerShape(14.dp))
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        // Aspect Ratio Selector
+                        Text(
+                            text = "Aspect Ratio Framing",
+                            color = TextPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Select photographic composition framing (4:3 is 3:4 in portrait)",
+                            color = TextSecondary,
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(top = 2.dp, bottom = 8.dp)
+                        )
+                        val currentRatio = camUiState?.configuration?.aspectRatio ?: AspectRatioConfig.RATIO_4_3
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            AspectRatioConfig.values().forEach { ratio ->
+                                val isSelected = currentRatio == ratio
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) PrimaryCyan else DarkSurfaceVariant)
+                                        .clickable { cameraViewModel?.setAspectRatio(ratio) }
+                                        .padding(vertical = 6.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = ratio.displayName,
+                                        color = if (isSelected) Color.Black else TextPrimary,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Composition Grid Selector
+                        Text(
+                            text = "Composition Grid Overlay",
+                            color = TextPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Assists in framing; does not modify captured photos",
+                            color = TextSecondary,
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(top = 2.dp, bottom = 8.dp)
+                        )
+                        val currentGrid = camUiState?.configuration?.gridType ?: CompositionGridType.OFF
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            CompositionGridType.values().forEach { grid ->
+                                val isSelected = currentGrid == grid
+                                val shortName = when (grid) {
+                                    CompositionGridType.OFF -> "Off"
+                                    CompositionGridType.RULE_OF_THIRDS -> "3x3"
+                                    CompositionGridType.GOLDEN_RATIO -> "Golden"
+                                    CompositionGridType.GOLDEN_SPIRAL -> "Spiral"
+                                    CompositionGridType.CENTER_CROSSHAIRS -> "Cross"
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) PrimaryCyan else DarkSurfaceVariant)
+                                        .clickable { cameraViewModel?.setGridType(grid) }
+                                        .padding(vertical = 6.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = shortName,
+                                        color = if (isSelected) Color.Black else TextPrimary,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Virtual Horizon Toggle
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Virtual Horizon Level", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                Text("Real-time gyroscope pitch and roll leveling reticle", color = TextSecondary, fontSize = 11.sp)
+                            }
+                            Switch(
+                                checked = camUiState?.configuration?.isVirtualHorizonEnabled ?: true,
+                                onCheckedChange = { cameraViewModel?.toggleVirtualHorizon() },
+                                colors = SwitchDefaults.colors(checkedThumbColor = PrimaryCyan)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Haptic Feedback Toggle
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Haptic Feedback", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                Text("Tactile response on shutter trip, zoom dial ticks, and horizon lock", color = TextSecondary, fontSize = 11.sp)
+                            }
+                            Switch(
+                                checked = camUiState?.configuration?.isHapticsEnabled ?: true,
+                                onCheckedChange = { cameraViewModel?.toggleHaptics() },
+                                colors = SwitchDefaults.colors(checkedThumbColor = PrimaryCyan)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Movable Floating Shutter Toggle
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Floating Shutter Button", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                Text("Repositionable capture button for one-handed reach", color = TextSecondary, fontSize = 11.sp)
+                            }
+                            Switch(
+                                checked = camUiState?.configuration?.isFloatingShutterEnabled ?: false,
+                                onCheckedChange = { cameraViewModel?.toggleFloatingShutter() },
+                                colors = SwitchDefaults.colors(checkedThumbColor = PrimaryCyan)
+                            )
+                        }
+
+                        if (camUiState?.configuration?.isFloatingShutterEnabled == true) {
+                            OutlinedButton(
+                                onClick = { cameraViewModel?.resetFloatingShutterPosition() },
+                                modifier = Modifier
+                                    .padding(top = 6.dp)
+                                    .align(Alignment.End),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Reset Shutter Position", fontSize = 11.sp, color = PrimaryCyan)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Section 3: Prominent "Check Hardware Capability" Section
             item {
                 SettingsSectionHeader("Hardware Intelligence", Icons.Default.Memory)
             }

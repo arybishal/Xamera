@@ -64,6 +64,75 @@ class MediaStoreManager(private val context: Context) {
         }
     }
 
+    /**
+     * Center-crops a saved photo Uri to match the configured aspect ratio.
+     */
+    fun cropPhotoUri(uri: Uri, aspectRatio: com.bishal.adaptivecamera.camera.config.AspectRatioConfig) {
+        if (aspectRatio == com.bishal.adaptivecamera.camera.config.AspectRatioConfig.FULL) return
+        try {
+            val bitmap = contentResolver.openInputStream(uri)?.use { stream ->
+                android.graphics.BitmapFactory.decodeStream(stream)
+            } ?: return
+
+            val cropRect = aspectRatio.calculateCropRect(bitmap.width, bitmap.height)
+            if (cropRect.width() == bitmap.width && cropRect.height() == bitmap.height) {
+                bitmap.recycle()
+                return
+            }
+
+            val cropped = android.graphics.Bitmap.createBitmap(
+                bitmap,
+                cropRect.left,
+                cropRect.top,
+                cropRect.width(),
+                cropRect.height()
+            )
+
+            contentResolver.openOutputStream(uri, "wt")?.use { out ->
+                cropped.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, out)
+                out.flush()
+            }
+
+            if (cropped != bitmap) cropped.recycle()
+            bitmap.recycle()
+        } catch (e: Exception) {
+            android.util.Log.w("MediaStoreManager", "Failed to crop photo for aspect ratio", e)
+        }
+    }
+
+    /**
+     * Center-crops raw JPEG bytes to match the configured aspect ratio.
+     */
+    fun cropJpegBytes(bytes: ByteArray, aspectRatio: com.bishal.adaptivecamera.camera.config.AspectRatioConfig): ByteArray {
+        if (aspectRatio == com.bishal.adaptivecamera.camera.config.AspectRatioConfig.FULL) return bytes
+        return try {
+            val bitmap = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return bytes
+            val cropRect = aspectRatio.calculateCropRect(bitmap.width, bitmap.height)
+            if (cropRect.width() == bitmap.width && cropRect.height() == bitmap.height) {
+                bitmap.recycle()
+                return bytes
+            }
+
+            val cropped = android.graphics.Bitmap.createBitmap(
+                bitmap,
+                cropRect.left,
+                cropRect.top,
+                cropRect.width(),
+                cropRect.height()
+            )
+
+            val stream = java.io.ByteArrayOutputStream()
+            cropped.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, stream)
+            val outBytes = stream.toByteArray()
+
+            if (cropped != bitmap) cropped.recycle()
+            bitmap.recycle()
+            outBytes
+        } catch (e: Exception) {
+            bytes
+        }
+    }
+
     fun createVideoOutputOptions(): MediaStoreOutputOptions {
         val fileName = generateMediaName(VIDEO_PREFIX, "mp4")
         val contentValues = ContentValues().apply {

@@ -1,6 +1,8 @@
 package com.bishal.adaptivecamera.camera.config
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CameraConfigurationTest {
@@ -65,5 +67,16 @@ class CameraConfigurationTest {
 
         val clampedValid = 3.5f.coerceIn(config.minZoomRatio, config.maxZoomRatio)
         assertEquals(3.5f, clampedValid, 0.001f)
+    }
+
+    @Test
+    fun testPhase5ConfigurationDefaults() {
+        val config = CameraConfiguration()
+        assertEquals(AspectRatioConfig.RATIO_4_3, config.aspectRatio)
+        assertEquals(CompositionGridType.OFF, config.gridType)
+        assertTrue(config.isVirtualHorizonEnabled)
+        assertTrue(config.isHapticsEnabled)
+        org.junit.Assert.assertFalse(config.isFloatingShutterEnabled)
+        org.junit.Assert.assertFalse(config.isFrontScreenFlashActive)
     }
 }

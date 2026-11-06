@@ -5,7 +5,7 @@
 **Workspace:** `D:\Webapp\xamera`  
 **Repository:** https://github.com/arybishal/Xamera  
 **Developer:** Bishal Aryal  
-**Version:** 0.5.1  
+**Version:** 0.6.0  
 **Date:** 2026-11-06  
 
 > [!NOTE]
@@ -23,7 +23,7 @@
 | **3** | **Smart Auto Photography** | Rule-based scene categorization (Portrait, Landscape, Night, Macro, etc.), lighting analysis, motion estimation, recommendation policies, explainable UI suggestion chip. | **COMPLETED** |
 | **4** | **Pro Photography & RAW** | Camera2 manual sensor session (`Camera2ManualEngine`), manual ISO/shutter/focus/WB, real-time 4-channel histogram, spatial focus peaking, Adobe DNG capture via `DngCreator`. | **COMPLETED** |
 | **4A**| **Settings, Diagnostics & Exposure Reliability** | Relocated diagnostics to Settings ("Check Hardware Capability"), fixed exposure desync/HAL flooding, dynamic range checks, immersive viewfinder hiding status bar. | **COMPLETED** |
-| **5** | **Viewfinder Ergonomics & Assistive Overlays** | Composition grids (thirds, golden, square, crosshairs), virtual horizon level, aspect ratio selection & framing, rotary zoom dial, left-handed mode, haptics, floating shutter, screen flash. | *QUEUED* |
+| **5** | **Viewfinder Ergonomics & Assistive Overlays** | Composition grids (thirds, golden ratio, golden spiral, crosshairs), virtual horizon level, aspect ratio selection & framing (4:3, 16:9, 1:1, 2.39:1, Full), rotary zoom dial, haptics, floating shutter, screen flash. | **COMPLETED** |
 | **6** | **Pro Exposure & Focus Monitoring Engines** | Live zebra striping (IRE 70%–100%), full-spectrum false color heatmap, AE/AF lock, fine Kelvin white balance slider (2000K–10000K), focus assist magnifier loupe. | *QUEUED* |
 | **7** | **Advanced Capture Pipelines** | Zero Shutter Lag (ZSL) circular buffer, Auto Exposure Bracketing (AEB), dual-format saving (RAW+JPEG/HEIC), watermarking engine, EXIF metadata management & privacy strip, RAW vault. | *QUEUED* |
 | **8** | **LUT Library & Color Science Engine** | Built-in original 3D LUT presets (Natural, Warm, Cool, Contrast, Vintage), `.cube` parser (17, 33, 64), Room database, SAF import, Log tone curve profiles (Flat, S-Log/Log-C). | *QUEUED* |

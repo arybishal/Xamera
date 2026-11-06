@@ -156,6 +156,7 @@ fun MainAppNavHost(
         AppDestination.SETTINGS -> {
             SettingsScreen(
                 diagnosticsViewModel = diagnosticsViewModel,
+                cameraViewModel = cameraViewModel,
                 onNavigateBack = {
                     currentDestination = AppDestination.CAMERA
                     cameraViewModel.refreshLatestThumbnail()

@@ -5,7 +5,7 @@
 **Workspace:** `D:\Webapp\xamera`  
 **Repository:** https://github.com/arybishal/Xamera  
 **Developer:** Bishal Aryal  
-**Version:** 0.5.1  
+**Version:** 0.6.0  
 **Date:** 2026-11-06  
 
 ---
@@ -35,6 +35,12 @@
   2. Implemented readiness guards (`isExposureStateReady` and `isExposureControlAvailable`).
   3. Added visual loading and disabled states in `ExposureSlider` (e.g. "Exposure Fixed - Sensor does not support compensation") with a close button and reset button.
   4. Attached `future.addListener` to `setExposureCompensationIndex` on `cameraExecutor` to read actual applied indices and synchronize UI state with the HAL without flooding.
+
+### Issue 11: Missing `android.permission.VIBRATE` Manifest Declaration
+- **Status:** **RESOLVED** (Phase 5)
+- **Symptom:** In Android 11+ runtime logs, `Vibrator` calls triggered `java.lang.SecurityException: vibrate: Neither user nor current process has android.permission.VIBRATE`.
+- **Root Cause:** Android requires explicit `VIBRATE` permission in `AndroidManifest.xml` for apps invoking `Vibrator` or `VibratorManager` APIs for tactile feedback.
+- **Fix:** Added `<uses-permission android:name="android.permission.VIBRATE" />` to `app/src/main/AndroidManifest.xml` and wrapped all `Vibrator` invocations inside safe exception handlers in `HapticEngineImpl` for graceful silent fallback if disabled by system policy. Verified on OnePlus Ace 5 / 13R.
 
 ---
 
