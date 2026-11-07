@@ -10,3 +10,9 @@
 .cxx
 *.apk
 !/app/build/outputs/apk/**/*.apk
+
+# Keystores & Release Signing Secrets
+*.jks
+*.keystore
+keystore.properties
+release-signing.properties

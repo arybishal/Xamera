@@ -639,7 +639,7 @@ fun CameraScreen(
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Adaptive Camera needs camera access to provide live preview, photo capture, and video recording.",
+                                text = "Xamera needs camera access to provide live preview, photo capture, and video recording.",
                                 color = TextSecondary,
                                 fontSize = 12.sp,
                                 modifier = Modifier.padding(vertical = 10.dp)

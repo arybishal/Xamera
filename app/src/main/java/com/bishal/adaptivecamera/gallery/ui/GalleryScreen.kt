@@ -124,7 +124,7 @@ fun GalleryScreen(
                         fontWeight = FontWeight.Medium
                     )
                     Text(
-                        text = "Captured media in Adaptive Camera will appear here",
+                        text = "Captured media in Xamera will appear here",
                         color = TextMuted,
                         fontSize = 12.sp,
                         modifier = Modifier.padding(top = 4.dp)

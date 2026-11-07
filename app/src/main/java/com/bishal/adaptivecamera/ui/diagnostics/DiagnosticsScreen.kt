@@ -109,7 +109,7 @@ fun DiagnosticsScreen(
                 title = {
                     Column {
                         Text(
-                            text = "ADAPTIVE CAMERA",
+                            text = "XAMERA",
                             color = TextPrimary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 17.sp,

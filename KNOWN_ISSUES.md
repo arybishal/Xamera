@@ -5,8 +5,8 @@
 **Workspace:** `D:\Webapp\xamera`  
 **Repository:** https://github.com/arybishal/Xamera  
 **Developer:** Bishal Aryal  
-**Version:** 0.12.0  
-**Date:** 2026-11-06  
+**Version:** 1.0.0 (Production Release)  
+**Date:** 2026-11-07  
 
 ---
 

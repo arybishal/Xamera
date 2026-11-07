@@ -13,7 +13,7 @@ data class DeviceCapabilityReport(
     fun toFormattedText(): String {
         val sb = StringBuilder()
         sb.appendLine("==================================================")
-        sb.appendLine("       ADAPTIVE CAMERA HARDWARE INTELLIGENCE REPORT")
+        sb.appendLine("       XAMERA HARDWARE INTELLIGENCE REPORT")
         sb.appendLine("==================================================")
         sb.appendLine("Source: ${if (isFromCache) "OFFLINE CACHE (Timestamp: $cachedTimestamp)" else "LIVE HARDWARE SCAN (Timestamp: $scannedTimestamp)"}")
         sb.appendLine("Reported Model: ${deviceInfo.reportedModel}")

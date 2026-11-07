@@ -1,12 +1,12 @@
-# Architecture Specification | Xamera (Adaptive Camera)
+# Architecture Specification | Xamera
 
 **Project:** Xamera  
 **Package:** `com.bishal.adaptivecamera`  
 **Workspace:** `D:\Webapp\xamera`  
 **Repository:** https://github.com/arybishal/Xamera  
 **Developer:** Bishal Aryal  
-**Version:** 0.15.0  
-**Date:** 2026-11-06  
+**Version:** 1.0.0 (Production Release)  
+**Date:** 2026-11-07  
 
 > [!NOTE]
 > The full living architectural specification is maintained at [docs/ARCHITECTURE.md](file:///D:/Webapp/xamera/docs/ARCHITECTURE.md).

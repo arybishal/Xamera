@@ -188,7 +188,7 @@ fun SettingsScreen(
                         SettingRow(
                             icon = Icons.Default.Folder,
                             title = "Storage Location",
-                            subtitle = "DCIM/AdaptiveCamera (Scoped Storage)"
+                            subtitle = "DCIM/Xamera (Scoped Storage)"
                         )
                         Spacer(modifier = Modifier.height(10.dp))
                         SettingRow(
@@ -200,7 +200,7 @@ fun SettingsScreen(
                         SettingRow(
                             icon = Icons.Default.Info,
                             title = "Application Version",
-                            subtitle = "v0.14.0 · Phase 13 Computational Photography & Portrait Mode"
+                            subtitle = "Xamera v1.0.0 (Build 17) · Production Release"
                         )
                     }
                 }

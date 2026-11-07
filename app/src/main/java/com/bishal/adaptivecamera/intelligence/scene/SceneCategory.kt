@@ -1,7 +1,7 @@
 package com.bishal.adaptivecamera.intelligence.scene
 
 /**
- * Categorization of photographic scenes supported by Adaptive Camera intelligence.
+ * Categorization of photographic scenes supported by Xamera intelligence.
  */
 enum class SceneCategory(
     val displayName: String,

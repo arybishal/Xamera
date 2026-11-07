@@ -84,7 +84,7 @@ class DiagnosticsViewModel @JvmOverloads constructor(
     fun shareReport(context: Context, asJson: Boolean) {
         val currentReport = _uiState.value.report ?: return
         val content = if (asJson) currentReport.toJson() else currentReport.toFormattedText()
-        val title = if (asJson) "Adaptive Camera Diagnostics (JSON)" else "Adaptive Camera Diagnostics"
+        val title = if (asJson) "Xamera Diagnostics (JSON)" else "Xamera Diagnostics"
 
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = if (asJson) "application/json" else "text/plain"

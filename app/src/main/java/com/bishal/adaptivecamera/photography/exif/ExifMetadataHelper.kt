@@ -123,7 +123,7 @@ object ExifMetadataHelper {
                 exif.setAttribute(ExifInterface.TAG_MODEL, Build.MODEL)
             }
             if (!attributes.containsKey(ExifInterface.TAG_SOFTWARE)) {
-                exif.setAttribute(ExifInterface.TAG_SOFTWARE, "Xamera Adaptive Camera")
+                exif.setAttribute(ExifInterface.TAG_SOFTWARE, "Xamera")
             }
             if (!attributes.containsKey(ExifInterface.TAG_DATETIME)) {
                 val formatted = SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.US).format(Date())
@@ -144,7 +144,7 @@ object ExifMetadataHelper {
         val map = mapOf(
             ExifInterface.TAG_MAKE to Build.MANUFACTURER,
             ExifInterface.TAG_MODEL to Build.MODEL,
-            ExifInterface.TAG_SOFTWARE to "Xamera Adaptive Camera",
+            ExifInterface.TAG_SOFTWARE to "Xamera",
             ExifInterface.TAG_ORIENTATION to orientation.toString(),
             ExifInterface.TAG_DATETIME to SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.US).format(Date())
         )

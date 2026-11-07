@@ -17,7 +17,8 @@ import java.util.Locale
 class MediaStoreManager(private val context: Context) {
 
     companion object {
-        const val ALBUM_DIRECTORY = "DCIM/AdaptiveCamera"
+        const val ALBUM_DIRECTORY = "DCIM/Xamera"
+        const val LEGACY_ALBUM_DIRECTORY = "DCIM/AdaptiveCamera"
         private const val PHOTO_PREFIX = "IMG"
         private const val VIDEO_PREFIX = "VID"
         private const val PHOTO_MIME_TYPE = "image/jpeg"
@@ -223,8 +224,8 @@ class MediaStoreManager(private val context: Context) {
             MediaStore.Images.Media.WIDTH,
             MediaStore.Images.Media.HEIGHT
         )
-        val selection = "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?"
-        val selectionArgs = arrayOf("%$ALBUM_DIRECTORY%")
+        val selection = "(${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ? OR ${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?)"
+        val selectionArgs = arrayOf("%$ALBUM_DIRECTORY%", "%$LEGACY_ALBUM_DIRECTORY%")
         val sortOrder = "${MediaStore.Images.Media.DATE_TAKEN} DESC"
 
         try {
@@ -286,8 +287,8 @@ class MediaStoreManager(private val context: Context) {
             MediaStore.Video.Media.HEIGHT,
             MediaStore.Video.Media.DURATION
         )
-        val selection = "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?"
-        val selectionArgs = arrayOf("%$ALBUM_DIRECTORY%")
+        val selection = "(${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ? OR ${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?)"
+        val selectionArgs = arrayOf("%$ALBUM_DIRECTORY%", "%$LEGACY_ALBUM_DIRECTORY%")
         val sortOrder = "${MediaStore.Video.Media.DATE_TAKEN} DESC"
 
         try {
