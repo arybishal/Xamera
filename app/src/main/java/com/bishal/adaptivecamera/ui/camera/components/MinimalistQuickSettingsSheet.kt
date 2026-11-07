@@ -18,16 +18,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.GridOn
-import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Icon
@@ -53,9 +51,9 @@ import com.bishal.adaptivecamera.ui.theme.DarkCharcoalElevated
 import com.bishal.adaptivecamera.ui.theme.MinimalistGold
 
 /**
- * Floating 2-row modal bottom sheet inspired by the reference screenshot.
+ * Floating 2-row modal bottom sheet matching the reference screenshot.
  * Houses 6 large circular quick-action tiles:
- * Aspect ratio, Soft light, Auto HDR, Timer, Grid / Composition, and Settings.
+ * Aspect ratio, Soft light, Auto HDR, Timer, Stacking (Interval / Multi-frame), Grid, and Settings.
  */
 @Composable
 fun MinimalistQuickSettingsSheet(
@@ -110,7 +108,7 @@ fun MinimalistQuickSettingsSheet(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
                     ) {} // Prevent click-through to backdrop
-                    .padding(horizontal = 18.dp, vertical = 22.dp),
+                    .padding(horizontal = 16.dp, vertical = 22.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Row 1: Aspect ratio | Soft light | Auto HDR | Timer
@@ -119,22 +117,36 @@ fun MinimalistQuickSettingsSheet(
                     horizontalArrangement = Arrangement.SpaceAround,
                     verticalAlignment = Alignment.Top
                 ) {
-                    // 1. Aspect Ratio
-                    QuickActionTile(
-                        icon = Icons.Default.Crop,
+                    // 1. Aspect Ratio (Outline aspect rectangle matching reference screenshot)
+                    QuickCustomTile(
                         label = "Aspect ratio",
                         badge = config.aspectRatio.displayName,
                         onClick = onCycleAspectRatio
-                    )
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(22.dp, 17.dp)
+                                .border(1.8.dp, Color.White.copy(alpha = 0.9f), RoundedCornerShape(3.dp))
+                        )
+                    }
 
-                    // 2. Soft Light (Screen Flash)
-                    QuickActionTile(
-                        icon = Icons.Default.Lightbulb,
+                    // 2. Soft Light (Hollow ring matching reference screenshot)
+                    QuickCustomTile(
                         label = "Soft light",
                         isActive = isScreenFlashActive,
                         badge = if (isScreenFlashActive) "ON" else null,
                         onClick = onToggleSoftLight
-                    )
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(22.dp)
+                                .border(
+                                    2.dp,
+                                    if (isScreenFlashActive) Color.Black else Color.White.copy(alpha = 0.9f),
+                                    CircleShape
+                                )
+                        )
+                    }
 
                     // 3. Auto HDR (Distinctive Gold Button when active, matching screenshot)
                     val isHdrActive = config.hdrPlusMode != HdrPlusMode.OFF
@@ -166,19 +178,53 @@ fun MinimalistQuickSettingsSheet(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Row 2: Grid | Stacking | Settings
+                // Row 2: Stacking / Multi-frame | Grid | Settings
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceAround,
                     verticalAlignment = Alignment.Top
                 ) {
-                    // 5. Grid / Composition Overlay
+                    // 5. Image Stacking / Multi-frame (Overlapping frames matching screenshot)
+                    val isStackingActive = imageStackingConfig.isEnabled
+                    val stackingBadge = if (isStackingActive) "${imageStackingConfig.frameCount.count}F" else null
+                    QuickCustomTile(
+                        label = "Stacking",
+                        badge = stackingBadge,
+                        isActive = isStackingActive,
+                        onClick = onToggleImageStacking
+                    ) {
+                        Box(
+                            modifier = Modifier.size(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(15.dp, 17.dp)
+                                    .offset(x = (-3).dp, y = (-2).dp)
+                                    .border(
+                                        1.5.dp,
+                                        if (isStackingActive) Color.Black.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.5f),
+                                        RoundedCornerShape(2.5.dp)
+                                    )
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(15.dp, 17.dp)
+                                    .offset(x = 3.dp, y = 2.dp)
+                                    .background(if (isStackingActive) MinimalistGold else DarkCharcoalElevated)
+                                    .border(
+                                        1.5.dp,
+                                        if (isStackingActive) Color.Black else Color.White.copy(alpha = 0.9f),
+                                        RoundedCornerShape(2.5.dp)
+                                    )
+                            )
+                        }
+                    }
+
+                    // 6. Grid / Composition Overlay
                     val gridLabel = when (config.gridType) {
                         CompositionGridType.OFF -> "Off"
-                        CompositionGridType.RULE_OF_THIRDS -> "3x3"
-                        CompositionGridType.GOLDEN_RATIO -> "Golden"
-                        CompositionGridType.GOLDEN_SPIRAL -> "Spiral"
-                        CompositionGridType.CENTER_CROSSHAIRS -> "Cross"
+                        else -> config.gridType.displayName
                     }
                     QuickActionTile(
                         icon = Icons.Default.GridOn,
@@ -186,17 +232,6 @@ fun MinimalistQuickSettingsSheet(
                         badge = gridLabel,
                         isActive = config.gridType != CompositionGridType.OFF,
                         onClick = onCycleGrid
-                    )
-
-                    // 6. Image Stacking Shortcut
-                    val isStackingActive = imageStackingConfig.isEnabled
-                    val stackingBadge = if (isStackingActive) "${imageStackingConfig.frameCount.count}F" else null
-                    QuickActionTile(
-                        icon = Icons.Default.Layers,
-                        label = "Stacking",
-                        badge = stackingBadge,
-                        isActive = isStackingActive,
-                        onClick = onToggleImageStacking
                     )
 
                     // 7. Settings
@@ -210,9 +245,62 @@ fun MinimalistQuickSettingsSheet(
                     )
 
                     // 4th slot spacer to maintain balanced 4-column alignment with Row 1
-                    Spacer(modifier = Modifier.size(56.dp))
+                    Spacer(modifier = Modifier.size(64.dp))
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun QuickCustomTile(
+    label: String,
+    badge: String? = null,
+    isActive: Boolean = false,
+    onClick: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
+            .padding(4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+                .background(if (isActive) MinimalistGold else DarkCharcoalElevated)
+                .border(
+                    1.dp,
+                    if (isActive) MinimalistGold else Color.White.copy(alpha = 0.1f),
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            content()
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = label,
+            color = Color.White.copy(alpha = 0.9f),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium
+        )
+
+        if (badge != null) {
+            Text(
+                text = badge,
+                color = if (isActive) MinimalistGold else Color.White.copy(alpha = 0.5f),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }

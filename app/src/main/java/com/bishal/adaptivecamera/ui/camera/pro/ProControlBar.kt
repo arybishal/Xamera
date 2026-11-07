@@ -236,7 +236,7 @@ fun ProControlBar(
             ProTabChip("SHUTTER", activeTab == ProControlTab.SHUTTER, proConfig.isManualShutter) {
                 activeTab = if (activeTab == ProControlTab.SHUTTER) ProControlTab.NONE else ProControlTab.SHUTTER
             }
-            ProTabChip("APERTURE", activeTab == ProControlTab.APERTURE, true) {
+            ProTabChip("APERTURE", activeTab == ProControlTab.APERTURE, false) {
                 activeTab = if (activeTab == ProControlTab.APERTURE) ProControlTab.NONE else ProControlTab.APERTURE
             }
             ProTabChip("FOCUS", activeTab == ProControlTab.FOCUS, proConfig.isManualFocus || proConfig.isAfLocked) {

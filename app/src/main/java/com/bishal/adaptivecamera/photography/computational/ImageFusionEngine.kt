@@ -96,22 +96,18 @@ object ImageFusionEngine {
         referenceIndex: Int
     ): Bitmap {
         val outBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val pixelArrays = frames.map { frame ->
-            val arr = IntArray(width * height)
-            frame.getPixels(arr, 0, width, 0, 0, width, height)
-            arr
-        }
-
-        val outPixels = IntArray(width * height)
         val numFrames = frames.size
+        val rowBuffers = Array(numFrames) { IntArray(width) }
+        val outRow = IntArray(width)
 
         for (y in 0 until height) {
-            val rowOffset = y * width
-            for (x in 0 until width) {
-                val idx = rowOffset + x
+            for (f in 0 until numFrames) {
+                frames[f].getPixels(rowBuffers[f], 0, width, 0, y, width, 1)
+            }
 
+            for (x in 0 until width) {
                 var totalWeight = 1.0f
-                val refPixel = pixelArrays[referenceIndex][idx]
+                val refPixel = rowBuffers[referenceIndex][x]
                 var accR = ((refPixel shr 16) and 0xFF).toFloat()
                 var accG = ((refPixel shr 8) and 0xFF).toFloat()
                 var accB = (refPixel and 0xFF).toFloat()
@@ -128,7 +124,7 @@ object ImageFusionEngine {
 
                     val frameWeight = (1.0f - motionWeight).coerceIn(0.0f, 1.0f)
                     if (frameWeight > 0.01f) {
-                        val p = pixelArrays[f][idx]
+                        val p = rowBuffers[f][x]
                         accR += ((p shr 16) and 0xFF) * frameWeight
                         accG += ((p shr 8) and 0xFF) * frameWeight
                         accB += (p and 0xFF) * frameWeight
@@ -140,11 +136,12 @@ object ImageFusionEngine {
                 val finalG = (accG / totalWeight).roundToInt().coerceIn(0, 255)
                 val finalB = (accB / totalWeight).roundToInt().coerceIn(0, 255)
 
-                outPixels[idx] = (0xFF shl 24) or (finalR shl 16) or (finalG shl 8) or finalB
+                outRow[x] = (0xFF shl 24) or (finalR shl 16) or (finalG shl 8) or finalB
             }
+
+            outBitmap.setPixels(outRow, 0, width, 0, y, width, 1)
         }
 
-        outBitmap.setPixels(outPixels, 0, width, 0, 0, width, height)
         return outBitmap
     }
 
@@ -156,27 +153,23 @@ object ImageFusionEngine {
         referenceIndex: Int
     ): Bitmap {
         val outBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val pixelArrays = frames.map { frame ->
-            val arr = IntArray(width * height)
-            frame.getPixels(arr, 0, width, 0, 0, width, height)
-            arr
-        }
-
-        val outPixels = IntArray(width * height)
         val numFrames = frames.size
+        val rowBuffers = Array(numFrames) { IntArray(width) }
+        val outRow = IntArray(width)
 
         for (y in 0 until height) {
-            val rowOffset = y * width
-            for (x in 0 until width) {
-                val idx = rowOffset + x
+            for (f in 0 until numFrames) {
+                frames[f].getPixels(rowBuffers[f], 0, width, 0, y, width, 1)
+            }
 
+            for (x in 0 until width) {
                 var totalWeight = 0.0001f
                 var accR = 0f
                 var accG = 0f
                 var accB = 0f
 
                 for (f in 0 until numFrames) {
-                    val p = pixelArrays[f][idx]
+                    val p = rowBuffers[f][x]
                     val r = ((p shr 16) and 0xFF)
                     val g = ((p shr 8) and 0xFF)
                     val b = (p and 0xFF)
@@ -204,11 +197,12 @@ object ImageFusionEngine {
                 val finalG = (accG / totalWeight).roundToInt().coerceIn(0, 255)
                 val finalB = (accB / totalWeight).roundToInt().coerceIn(0, 255)
 
-                outPixels[idx] = (0xFF shl 24) or (finalR shl 16) or (finalG shl 8) or finalB
+                outRow[x] = (0xFF shl 24) or (finalR shl 16) or (finalG shl 8) or finalB
             }
+
+            outBitmap.setPixels(outRow, 0, width, 0, y, width, 1)
         }
 
-        outBitmap.setPixels(outPixels, 0, width, 0, 0, width, height)
         return outBitmap
     }
 
@@ -221,29 +215,42 @@ object ImageFusionEngine {
     ): Bitmap {
         // 1. First obtain noise-reduced baseline via multi-frame temporal blend
         val denoised = fuseLowLight(frames, masks, width, height, referenceIndex)
-
-        // 2. Apply unsharp masking on the denoised result to enhance micro-contrast and edges
         val outBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val pixels = IntArray(width * height)
-        denoised.getPixels(pixels, 0, width, 0, 0, width, height)
 
-        val sharpened = IntArray(width * height)
+        var prevRow = IntArray(width)
+        var currRow = IntArray(width)
+        var nextRow = IntArray(width)
+        val outRow = IntArray(width)
         val sharpnessAmount = 0.45f
 
+        // Initial read for y = 0 and y = 1
+        denoised.getPixels(currRow, 0, width, 0, 0, width, 1)
+        outBitmap.setPixels(currRow, 0, width, 0, 0, width, 1) // Border row 0
+
+        if (height > 1) {
+            denoised.getPixels(nextRow, 0, width, 0, 1, width, 1)
+        }
+
         for (y in 1 until height - 1) {
-            val rowOffset = y * width
+            // Shift rows: prev = curr, curr = next, next = read y+1
+            val temp = prevRow
+            prevRow = currRow
+            currRow = nextRow
+            nextRow = temp
+            denoised.getPixels(nextRow, 0, width, 0, y + 1, width, 1)
+
+            outRow[0] = currRow[0] // Left border
             for (x in 1 until width - 1) {
-                val idx = rowOffset + x
-                val center = pixels[idx]
+                val center = currRow[x]
                 val cR = (center shr 16) and 0xFF
                 val cG = (center shr 8) and 0xFF
                 val cB = center and 0xFF
 
                 // 3x3 Laplacian edge kernel
-                val top = pixels[(y - 1) * width + x]
-                val bottom = pixels[(y + 1) * width + x]
-                val left = pixels[rowOffset + x - 1]
-                val right = pixels[rowOffset + x + 1]
+                val top = prevRow[x]
+                val bottom = nextRow[x]
+                val left = currRow[x - 1]
+                val right = currRow[x + 1]
 
                 val blurR = (((top shr 16) and 0xFF) + ((bottom shr 16) and 0xFF) + ((left shr 16) and 0xFF) + ((right shr 16) and 0xFF)) shr 2
                 val blurG = (((top shr 8) and 0xFF) + ((bottom shr 8) and 0xFF) + ((left shr 8) and 0xFF) + ((right shr 8) and 0xFF)) shr 2
@@ -257,21 +264,16 @@ object ImageFusionEngine {
                 val outG = (cG + (edgeG * sharpnessAmount)).roundToInt().coerceIn(0, 255)
                 val outB = (cB + (edgeB * sharpnessAmount)).roundToInt().coerceIn(0, 255)
 
-                sharpened[idx] = (0xFF shl 24) or (outR shl 16) or (outG shl 8) or outB
+                outRow[x] = (0xFF shl 24) or (outR shl 16) or (outG shl 8) or outB
             }
+            outRow[width - 1] = currRow[width - 1] // Right border
+            outBitmap.setPixels(outRow, 0, width, 0, y, width, 1)
         }
 
-        // Fill border pixels from original
-        for (x in 0 until width) {
-            sharpened[x] = pixels[x]
-            sharpened[(height - 1) * width + x] = pixels[(height - 1) * width + x]
-        }
-        for (y in 0 until height) {
-            sharpened[y * width] = pixels[y * width]
-            sharpened[y * width + (width - 1)] = pixels[y * width + (width - 1)]
+        if (height > 1) {
+            outBitmap.setPixels(nextRow, 0, width, 0, height - 1, width, 1) // Bottom border
         }
 
-        outBitmap.setPixels(sharpened, 0, width, 0, 0, width, height)
         denoised.recycle()
         return outBitmap
     }

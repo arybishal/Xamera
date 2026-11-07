@@ -73,7 +73,7 @@ fun MinimalistModeSelector(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = 6.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -105,15 +105,17 @@ fun MinimalistModeSelector(
                                 onModeChanged(mode)
                             }
                         }
-                        .padding(horizontal = 14.dp, vertical = 7.dp),
+                        .padding(horizontal = 9.dp, vertical = 6.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = mode.displayName.uppercase(),
                         color = textColor,
-                        fontSize = 13.sp,
+                        fontSize = 12.sp,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        letterSpacing = 0.6.sp
+                        letterSpacing = 0.4.sp,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }
@@ -142,15 +144,17 @@ fun MinimalistModeSelector(
                         onHapticTick()
                         onOpenMoreModes()
                     }
-                    .padding(horizontal = 14.dp, vertical = 7.dp),
+                .padding(horizontal = 9.dp, vertical = 6.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "MORE",
                     color = moreTextColor,
-                    fontSize = 13.sp,
+                    fontSize = 12.sp,
                     fontWeight = if (isMoreSelected) FontWeight.Bold else FontWeight.Medium,
-                    letterSpacing = 0.6.sp
+                    letterSpacing = 0.4.sp,
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
         }

@@ -91,13 +91,18 @@ class ComputationalPhotographyCoordinator(
             }
         }
 
-        // 3. Multi-frame fusion
-        val fusedBitmap = ImageFusionEngine.fuseFrames(
-            alignedFrames = alignedFrames,
-            motionMasks = motionMasks,
-            mode = config.mode,
-            referenceIndex = 0
-        )
+        // 3. Multi-frame fusion with safe fallback
+        val fusedBitmap = try {
+            ImageFusionEngine.fuseFrames(
+                alignedFrames = alignedFrames,
+                motionMasks = motionMasks,
+                mode = config.mode,
+                referenceIndex = 0
+            )
+        } catch (e: Throwable) {
+            Log.e(TAG, "Multi-frame fusion exception, falling back to reference anchor frame", e)
+            refFrame.copy(Bitmap.Config.ARGB_8888, true)
+        }
 
         // 4. Optionally save original burst frames if requested
         if (config.retainOriginalFrames) {

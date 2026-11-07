@@ -1,5 +1,6 @@
 package com.bishal.adaptivecamera.ui.camera.components
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,14 +14,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import com.bishal.adaptivecamera.ui.theme.DarkCharcoal
 import com.bishal.adaptivecamera.ui.theme.MinimalistGold
@@ -28,7 +30,7 @@ import com.bishal.adaptivecamera.ui.theme.MinimalistGold
 /**
  * Mid-viewfinder control row matching the reference screenshot.
  * Houses the left accessory icon (Beauty/AI Filter), the central zoom selector,
- * and the right accessory icon (3D LUT & Color Science studio).
+ * and the right accessory icon (3D LUT & Color Science triple-circle symbol).
  */
 @Composable
 fun MinimalistViewfinderControls(
@@ -82,7 +84,8 @@ fun MinimalistViewfinderControls(
             onHapticTick = onHapticTick
         )
 
-        // Right Accessory Icon: 3D LUT & Creative Color Science (Venn diagram / Palette)
+        // Right Accessory Icon: 3D LUT & Color Science (Three interlocking circles matching reference screenshot)
+        val ringColor = if (isLookActive) MinimalistGold else MinimalistGold.copy(alpha = 0.85f)
         Box(
             modifier = Modifier
                 .size(40.dp)
@@ -90,7 +93,7 @@ fun MinimalistViewfinderControls(
                 .background(DarkCharcoal.copy(alpha = 0.65f))
                 .border(
                     1.dp,
-                    if (isLookActive) MinimalistGold else Color.White.copy(alpha = 0.08f),
+                    ringColor,
                     CircleShape
                 )
                 .clickable(
@@ -100,12 +103,32 @@ fun MinimalistViewfinderControls(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.Palette,
-                contentDescription = "3D LUTs & Film Grain",
-                tint = if (isLookActive) MinimalistGold else Color.White.copy(alpha = 0.85f),
-                modifier = Modifier.size(20.dp)
-            )
+            Canvas(modifier = Modifier.size(20.dp)) {
+                val strokePx = 1.3.dp.toPx()
+                val r = size.minDimension * 0.28f
+                val cx = size.width / 2f
+                val cy = size.height / 2f
+
+                // Three interlocking circles (Venn diagram style)
+                drawCircle(
+                    color = ringColor,
+                    radius = r,
+                    center = Offset(cx, cy - r * 0.5f),
+                    style = Stroke(width = strokePx)
+                )
+                drawCircle(
+                    color = ringColor,
+                    radius = r,
+                    center = Offset(cx - r * 0.55f, cy + r * 0.45f),
+                    style = Stroke(width = strokePx)
+                )
+                drawCircle(
+                    color = ringColor,
+                    radius = r,
+                    center = Offset(cx + r * 0.55f, cy + r * 0.45f),
+                    style = Stroke(width = strokePx)
+                )
+            }
         }
     }
 }

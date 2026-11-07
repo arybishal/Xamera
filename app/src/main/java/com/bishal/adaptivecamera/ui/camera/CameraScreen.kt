@@ -7,6 +7,7 @@ import android.view.Surface
 import android.view.TextureView
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.view.PreviewView
@@ -152,6 +153,11 @@ fun CameraScreen(
 
     var isQuickSettingsVisible by remember { mutableStateOf(false) }
     var isMoreModesSheetVisible by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = isMoreModesSheetVisible || isQuickSettingsVisible) {
+        isMoreModesSheetVisible = false
+        isQuickSettingsVisible = false
+    }
 
     var previewWidthPx by remember { mutableFloatStateOf(0f) }
     var previewHeightPx by remember { mutableFloatStateOf(0f) }
@@ -481,7 +487,7 @@ fun CameraScreen(
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "STACK · ${uiState.imageStackingConfig.mode.label.uppercase()} (${uiState.imageStackingConfig.frameCount.count}F)",
+                            text = "STACK Â· ${uiState.imageStackingConfig.mode.label.uppercase()} (${uiState.imageStackingConfig.frameCount.count}F)",
                             color = MinimalistGold,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
@@ -575,7 +581,7 @@ fun CameraScreen(
                             .padding(horizontal = 12.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "⚡ Thermal Throttle: Overlays Paused",
+                            text = "âš¡ Thermal Throttle: Overlays Paused",
                             color = Color.Black,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
@@ -681,6 +687,7 @@ fun CameraScreen(
                     currentMode = uiState.configuration.mode,
                     onModeSelected = { mode ->
                         viewModel.setCameraMode(mode)
+                        isMoreModesSheetVisible = false
                     },
                     onDismiss = { isMoreModesSheetVisible = false }
                 )

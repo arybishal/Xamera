@@ -32,7 +32,20 @@ class DirectLensSelector(private val context: Context) {
 
         try {
             val cameraIds = manager.cameraIdList
+            val allPhysicalIds = mutableSetOf<String>()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                for (id in cameraIds) {
+                    try {
+                        val chars = manager.getCameraCharacteristics(id)
+                        allPhysicalIds.addAll(chars.physicalCameraIds)
+                    } catch (_: Exception) {}
+                }
+            }
+
             for (id in cameraIds) {
+                // Skip standalone physical sub-cameras from being added as pseudo-logical cameras
+                if (id in allPhysicalIds) continue
+
                 val chars = manager.getCameraCharacteristics(id)
                 val facing = chars.get(CameraCharacteristics.LENS_FACING)
                 if (facing != CameraMetadata.LENS_FACING_BACK) continue
@@ -68,9 +81,9 @@ class DirectLensSelector(private val context: Context) {
                             }
 
                             val label = when (lensType) {
-                                PhysicalLensType.ULTRA_WIDE -> "UW ${String.format("%.1f", pFocal)}mm (ID $pId)"
-                                PhysicalLensType.WIDE_MAIN -> "Main ${String.format("%.1f", pFocal)}mm (ID $pId)"
-                                PhysicalLensType.TELEPHOTO -> "Tele ${String.format("%.1f", pFocal)}mm (ID $pId)"
+                                PhysicalLensType.ULTRA_WIDE -> "0.6x UW (${String.format("%.1f", pFocal)}mm)"
+                                PhysicalLensType.WIDE_MAIN -> "1x MAIN (${String.format("%.1f", pFocal)}mm)"
+                                PhysicalLensType.TELEPHOTO -> "3x TELE (${String.format("%.1f", pFocal)}mm)"
                                 else -> "Sensor #$pId"
                             }
 
