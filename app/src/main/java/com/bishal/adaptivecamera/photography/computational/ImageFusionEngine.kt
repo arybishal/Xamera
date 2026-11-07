@@ -174,8 +174,8 @@ object ImageFusionEngine {
                     val g = ((p shr 8) and 0xFF)
                     val b = (p and 0xFF)
 
-                    // Well-exposedness weight: Gaussian centered at 128
-                    val normY = (77 * r + 150 * g + 29 * b) / 255f
+                    // Well-exposedness weight: Gaussian centered at 0.5 (Mertens exposure fusion)
+                    val normY = (0.299f * r + 0.587f * g + 0.114f * b) / 255f
                     val wellExposedness = exp(-0.5f * ((normY - 0.5f) / 0.2f) * ((normY - 0.5f) / 0.2f))
 
                     // Ghost rejection

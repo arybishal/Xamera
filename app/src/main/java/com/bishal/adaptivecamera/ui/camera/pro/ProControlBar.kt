@@ -294,13 +294,32 @@ private fun IsoControlRow(
     onIsoChanged: (Int) -> Unit,
     onAutoSelected: () -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    val effectiveMin = kotlin.math.max(50, minIso)
+    val effectiveMax = kotlin.math.max(effectiveMin + 100, maxIso)
+
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AutoOptionChip(isSelected = !isManual, onClick = onAutoSelected)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                AutoOptionChip(isSelected = !isManual, onClick = onAutoSelected)
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (isManual) MinimalistGold else DarkSurface)
+                        .clickable { onIsoChanged(currentIso.coerceIn(effectiveMin, effectiveMax)) }
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = "MANUAL",
+                        color = if (isManual) Color.Black else TextPrimary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
             Text(
                 text = if (isManual) "ISO $currentIso" else "ISO AUTO",
                 color = if (isManual) MinimalistGold else TextSecondary,
@@ -309,17 +328,17 @@ private fun IsoControlRow(
                 fontFamily = FontFamily.Monospace
             )
         }
-        if (isManual) {
-            Slider(
-                value = currentIso.toFloat(),
-                onValueChange = { onIsoChanged(it.roundToInt()) },
-                valueRange = minIso.toFloat()..maxIso.toFloat(),
-                colors = SliderDefaults.colors(
-                    thumbColor = MinimalistGold,
-                    activeTrackColor = MinimalistGold
-                )
+
+        Slider(
+            value = currentIso.coerceIn(effectiveMin, effectiveMax).toFloat(),
+            onValueChange = { onIsoChanged(it.roundToInt()) },
+            valueRange = effectiveMin.toFloat()..effectiveMax.toFloat(),
+            colors = SliderDefaults.colors(
+                thumbColor = MinimalistGold,
+                activeTrackColor = MinimalistGold,
+                inactiveTrackColor = Color.White.copy(alpha = 0.2f)
             )
-        }
+        )
     }
 }
 
@@ -332,13 +351,35 @@ private fun ShutterControlRow(
     onShutterChanged: (Long) -> Unit,
     onAutoSelected: () -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    val effectiveMinNs = kotlin.math.max(100_000L, minNs)
+    val effectiveMaxNs = kotlin.math.max(effectiveMinNs + 1_000_000L, maxNs)
+    val minLog = kotlin.math.ln(effectiveMinNs.toDouble())
+    val maxLog = kotlin.math.ln(effectiveMaxNs.toDouble())
+    val currentLog = kotlin.math.ln(currentShutterNs.toDouble().coerceIn(effectiveMinNs.toDouble(), effectiveMaxNs.toDouble()))
+
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AutoOptionChip(isSelected = !isManual, onClick = onAutoSelected)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                AutoOptionChip(isSelected = !isManual, onClick = onAutoSelected)
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (isManual) MinimalistGold else DarkSurface)
+                        .clickable { onShutterChanged(currentShutterNs.coerceIn(effectiveMinNs, effectiveMaxNs)) }
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = "MANUAL",
+                        color = if (isManual) Color.Black else TextPrimary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
             Text(
                 text = if (isManual) ShutterSpeedHelper.formatNanoseconds(currentShutterNs) else "SHUTTER AUTO",
                 color = if (isManual) MinimalistGold else TextSecondary,
@@ -347,24 +388,20 @@ private fun ShutterControlRow(
                 fontFamily = FontFamily.Monospace
             )
         }
-        if (isManual) {
-            val minLog = kotlin.math.ln(minNs.toDouble())
-            val maxLog = kotlin.math.ln(maxNs.toDouble())
-            val currentLog = kotlin.math.ln(currentShutterNs.toDouble().coerceIn(minNs.toDouble(), maxNs.toDouble()))
 
-            Slider(
-                value = currentLog.toFloat(),
-                onValueChange = { logVal ->
-                    val calculatedNs = kotlin.math.exp(logVal.toDouble()).toLong()
-                    onShutterChanged(calculatedNs)
-                },
-                valueRange = minLog.toFloat()..maxLog.toFloat(),
-                colors = SliderDefaults.colors(
-                    thumbColor = MinimalistGold,
-                    activeTrackColor = MinimalistGold
-                )
+        Slider(
+            value = currentLog.toFloat(),
+            onValueChange = { logVal ->
+                val calculatedNs = kotlin.math.exp(logVal.toDouble()).toLong()
+                onShutterChanged(calculatedNs)
+            },
+            valueRange = minLog.toFloat()..maxLog.toFloat(),
+            colors = SliderDefaults.colors(
+                thumbColor = MinimalistGold,
+                activeTrackColor = MinimalistGold,
+                inactiveTrackColor = Color.White.copy(alpha = 0.2f)
             )
-        }
+        )
     }
 }
 
@@ -382,6 +419,8 @@ private fun FocusControlRow(
     onToggleMagnifier: () -> Unit,
     onSetMagnifierScale: (Float) -> Unit
 ) {
+    val effectiveMaxDiopters = if (maxDiopters > 0.01f) maxDiopters else 10.0f
+
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -390,6 +429,20 @@ private fun FocusControlRow(
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 AutoOptionChip(isSelected = !isManual && !isAfLocked, onClick = onAutoSelected)
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (isManual) MinimalistGold else DarkSurface)
+                        .clickable { onFocusChanged(currentDiopters.coerceIn(0f, effectiveMaxDiopters)) }
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = "MANUAL",
+                        color = if (isManual) Color.Black else TextPrimary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
                 // AF Lock Button
                 Box(
                     modifier = Modifier
@@ -432,17 +485,17 @@ private fun FocusControlRow(
                 fontWeight = FontWeight.Bold
             )
         }
-        if (isManual) {
-            Slider(
-                value = currentDiopters,
-                onValueChange = onFocusChanged,
-                valueRange = 0f..maxDiopters,
-                colors = SliderDefaults.colors(
-                    thumbColor = AccentAmber,
-                    activeTrackColor = AccentAmber
-                )
+
+        Slider(
+            value = currentDiopters.coerceIn(0f, effectiveMaxDiopters),
+            onValueChange = onFocusChanged,
+            valueRange = 0f..effectiveMaxDiopters,
+            colors = SliderDefaults.colors(
+                thumbColor = AccentAmber,
+                activeTrackColor = AccentAmber,
+                inactiveTrackColor = Color.White.copy(alpha = 0.2f)
             )
-        }
+        )
     }
 }
 
