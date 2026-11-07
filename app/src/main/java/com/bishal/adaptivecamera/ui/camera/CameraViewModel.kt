@@ -588,17 +588,19 @@ class CameraViewModel @JvmOverloads constructor(
             return
         }
 
+        // Computational multi-frame photography (Stacking or HDR+)
+        // When Stacking is disabled, Photo mode strictly executes single-frame capture
         if (currentMode == CameraMode.PHOTO && stackingConfig.isEnabled) {
-            executeStackedPhotoCapture()
-            return
-        }
+            val hdrPlusMode = _uiState.value.configuration.hdrPlusMode
+            val isBacklit = _uiState.value.smartAutoState.sceneResult?.primaryCategory == com.bishal.adaptivecamera.intelligence.scene.SceneCategory.BACKLIT
+            val isHdrRecommended = _uiState.value.smartAutoState.configSuggestion?.isHdrRecommended == true
+            val shouldExecuteHdrPlus = hdrPlusMode == HdrPlusMode.ON || (hdrPlusMode == HdrPlusMode.AUTO && (isBacklit || isHdrRecommended))
 
-        val hdrPlusMode = _uiState.value.configuration.hdrPlusMode
-        val shouldExecuteHdrPlus = (currentMode == CameraMode.PHOTO) && (
-            hdrPlusMode == HdrPlusMode.ON || (hdrPlusMode == HdrPlusMode.AUTO && _uiState.value.smartAutoState.sceneResult != null)
-        )
-        if (shouldExecuteHdrPlus) {
-            executeHdrPlusCapture()
+            if (shouldExecuteHdrPlus) {
+                executeHdrPlusCapture()
+            } else {
+                executeStackedPhotoCapture()
+            }
             return
         }
 
@@ -1724,7 +1726,12 @@ class CameraViewModel @JvmOverloads constructor(
     }
 
     fun updateImageStackingEnabled(enabled: Boolean) {
-        _uiState.update { it.copy(imageStackingConfig = it.imageStackingConfig.copy(isEnabled = enabled)) }
+        _uiState.update {
+            it.copy(
+                imageStackingConfig = it.imageStackingConfig.copy(isEnabled = enabled),
+                toastMessage = if (enabled) "Image Stacking Enabled" else "Single-Shot Photo Mode (Stacking Off)"
+            )
+        }
         viewModelScope.launch {
             preferencesRepository.updateImageStackingEnabled(enabled)
             hapticEngine.performClick()
