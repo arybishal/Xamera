@@ -44,7 +44,7 @@
 
 ### Issue 12: Continuous Kelvin White Balance Requires Camera2 RggbChannelVector and CONTROL_AWB_MODE_OFF
 - **Status:** **RESOLVED** (Phase 6)
-- **Symptom:** Setting standard Camera2 `CONTROL_AWB_MODE` only permits coarse discrete presets (e.g. Daylight, Cloudy, Incandescent) and cannot achieve smooth continuous Kelvin color temperature (2000K–10000K) or green/magenta tint bias.
+- **Symptom:** Setting standard Camera2 `CONTROL_AWB_MODE` only permits coarse discrete presets (e.g. Daylight, Cloudy, Incandescent) and cannot achieve smooth continuous Kelvin color temperature (2000Kâ€“10000K) or green/magenta tint bias.
 - **Root Cause:** In Camera2 HAL architecture, fine continuous chromaticity control requires disabling auto white balance (`CONTROL_AWB_MODE_OFF`), enabling transform matrix color correction (`COLOR_CORRECTION_MODE_TRANSFORM_MATRIX`), and passing precise 4-channel chromatic gains via `CaptureRequest.COLOR_CORRECTION_GAINS`.
 - **Fix:** Implemented `KelvinConverter` modeling Planckian locus blackbody radiation to compute normalized `RggbChannelVector(r, gEven, gOdd, b)` with green/magenta tint offset. Conversely, real-time HAL telemetry extracts `CaptureResult.COLOR_CORRECTION_GAINS` and computes dynamic live CCT estimation (`rgbGainsToKelvin`) displayed directly in the pro telemetry badge. Verified on OnePlus Ace 5 / 13R.
 
@@ -90,7 +90,7 @@
 
 ### Issue 19: Android 17 / ColorOS Audio Permission Guard & Graceful Video-Only Fallback
 - **Status:** **RESOLVED** (Phase 10)
-- **Symptom:** In modern Android releases (Android 14–17 / ColorOS), attempting to enable audio recording without explicit runtime user consent or with audio permission restricted by OS policies throws `java.lang.SecurityException` or crashes the recording pipeline.
+- **Symptom:** In modern Android releases (Android 14â€“17 / ColorOS), attempting to enable audio recording without explicit runtime user consent or with audio permission restricted by OS policies throws `java.lang.SecurityException` or crashes the recording pipeline.
 - **Root Cause:** Android requires runtime `RECORD_AUDIO` permission for video recording with sound. In unrooted shells, `pm grant` is restricted by platform security.
 - **Fix:** Architected `VideoRecordingEngine` and `CameraXEngine` with dual permission checking (`ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED`). When audio permission is granted and audio recording is enabled by the user, `pendingRecording.withAudioEnabled()` is configured. If ungranted or disabled, the video recording engine seamlessly falls back to video-only recording without crashing or dropping frames, while the UI displays the audio badge status accordingly. Verified on OnePlus Ace 5 / 13R running Android 17 API 37.
 
@@ -113,10 +113,28 @@
 - **Fix:** Implemented `DisplayRefreshRateManager` which inspects `Display.supportedModes`, locates the mode with the highest refresh rate (120Hz, mode ID 1 on 1264x2780 panel), and applies `window.attributes.preferredDisplayModeId` and `window.attributes.preferredRefreshRate = 120f` during `onCreate`, `onResume`, and window focus restoration.
 
 ### Issue 23: Concurrent Dual-Camera Hardware ISP Concurrency Limitation
-- **Status:** **RESOLVED** via Honest Diagnostic Gating (Phase 11)
+- **Status:** **RESOLVED** via Honest Diagnostic Gating & Smart-Flip Fallback (Phase 11 & v1.1.0)
 - **Symptom:** Attempting simultaneous front and rear video recording (`CameraMode.DUAL`) on Qualcomm Snapdragon 8 Gen 3 (`CPH2691IN` / `OP5D3BL1`) crashes or fails to open sessions.
 - **Root Cause:** Android Camera2 `CameraManager.getConcurrentCameraIds()` returns an empty set on this platform because the OEM vendor HAL restricts ISP pipeline concurrency to a single active stream.
-- **Fix:** Created `DualCameraCapabilityDetector` to query `concurrentCameraIds`. When unsupported, `CameraViewModel` prevents invalid camera session creation, displays an informative toast, and logs an explainable hardware diagnostic message. Verified on OnePlus Ace 5 / 13R.
+- **Fix:** Created `DualCameraCapabilityDetector` to query `concurrentCameraIds`. When unsupported, `CameraViewModel` engages a Smart-Flip fallback engine, allowing rapid alternation between lenses while avoiding session crash exceptions and logging telemetry via `CameraDiagnosticsLogger`.
+
+### Issue 24: Image Stacking & HDR Burst Public MediaStore Conflict & Deletion Denial
+- **Status:** **RESOLVED** (v1.1.0)
+- **Symptom:** Enabling Image Stacking resulted in multiple intermediate burst frames appearing in the user's public gallery. Attempting to delete intermediate frames post-fusion threw `RecoverableSecurityException` on Android 11+ Scoped Storage, corrupting the gallery or failing capture.
+- **Root Cause:** Intermediate burst frames were routed through `cameraEngine.capturePhoto()`, which directly published each temporary frame as an un-isolated MediaStore row. Scoped storage forbids unprompted batch programmatic deletion of media entries.
+- **Fix:** Architected `capturePhotoToFile(outputFile)` in `CameraEngine` and `CameraXEngine`. Multi-frame burst captures now target private application storage (`context.cacheDir/xamera_stacking/frame_*.jpg`). Exactly one final, high-SNR fused photo is committed to the public Android MediaStore. All temporary files in `cacheDir` are safely purged on the background IO dispatcher with zero Scoped Storage permission overhead.
+
+### Issue 25: 0.6x Ultra-Wide Zoom State Stale Snapshot
+- **Status:** **RESOLVED** (v1.1.0)
+- **Symptom:** Viewfinder UI was pinned to minimum zoom `1.0x` even when the device hardware supports 0.6x ultra-wide capture.
+- **Root Cause:** In `CameraXEngine.bindCameraUseCases()`, `cameraInfo.zoomState.value` was read synchronously during binding before the underlying HAL had finished reporting hardware zoom boundaries, locking `minZoomRatio` at `1.0f`.
+- **Fix:** Replaced synchronous snapshot with dynamic LiveData observation: `cameraInfo.zoomState.observe(lifecycleOwner) { ... }`, dynamically updating zoom bounds as soon as the HAL initializes and unlocking the 0.60x ultra-wide lens.
+
+### Issue 26: Sub-Optimal Photo/Video Quality Relative to Stock Camera
+- **Status:** **RESOLVED** (v1.1.0)
+- **Symptom:** Default photos displayed visible compression artifacts and digital edge halos, while video recording lacked high-bitrate HEVC encoding.
+- **Root Cause:** CameraX was configured with latency-first capture (`CAPTURE_MODE_MINIMIZE_LATENCY`), standard 80% JPEG compression, and legacy H.264 video encoding.
+- **Fix:** Configured `ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY`, `setJpegQuality(98)`, Camera2 Interop ISP hardware flags (`NOISE_REDUCTION_MODE_HIGH_QUALITY`, `EDGE_MODE_HIGH_QUALITY`, `COLOR_CORRECTION_MODE_HIGH_QUALITY`, `TONEMAP_MODE_HIGH_QUALITY`, `HOT_PIXEL_MODE_HIGH_QUALITY`), default `VideoCodec.H265_HEVC`, and `VideoBitrateProfile.HIGH` (4K @ 80-120 Mbps). Detailed in `XAMERA_IMAGE_QUALITY_BENCHMARK.md` and `XAMERA_VIDEO_QUALITY_BENCHMARK.md`.
 
 ---
 
@@ -125,7 +143,7 @@
 ### Follow-up 1: Test-Count Reconciliation & Architecture Verification
 - **Context:** Following Phase 7 implementation, the unit test suite expanded from the 102 baseline tests to 116 total tests.
 - **Reconciliation Analysis:**
-  - 102 baseline tests from Phases 0–6 covering CameraX, Camera2 manual controls, focus peaking, histogram analysis, Kelvin white balance, and diagnostics.
+  - 102 baseline tests from Phases 0â€“6 covering CameraX, Camera2 manual controls, focus peaking, histogram analysis, Kelvin white balance, and diagnostics.
   - Phase 7 introduced 6 new test suites:
     1. `ZslRingBufferTest`: 4 tests (initialization, circular overwrite, timestamp ordering, boundary drainage).
     2. `AebExposureCoordinatorTest`: 4 tests (3/5/7 bracket steps, manual EV modulation, zero-bias validation, invariant restoration).

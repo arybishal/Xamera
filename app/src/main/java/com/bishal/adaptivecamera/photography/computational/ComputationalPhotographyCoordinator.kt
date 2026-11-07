@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Log
+import com.bishal.adaptivecamera.core.diagnostics.CameraDiagnosticsLogger
 import com.bishal.adaptivecamera.core.storage.MediaItem
 import com.bishal.adaptivecamera.core.storage.MediaStoreManager
 import kotlinx.coroutines.Dispatchers
@@ -145,7 +146,7 @@ class ComputationalPhotographyCoordinator(
         val tempFile = File(context.cacheDir, "${baseFilename}_temp.jpg")
         try {
             val fos = FileOutputStream(tempFile)
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 95, fos)
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 98, fos)
             fos.flush()
             fos.close()
 
@@ -156,9 +157,20 @@ class ComputationalPhotographyCoordinator(
             }
 
             val mediaItem = mediaStoreManager.savePhoto(tempFile, "$baseFilename.jpg")
+            CameraDiagnosticsLogger.getInstance(context).i(
+                module = "PhotoMerging",
+                eventType = "FUSED_PHOTO_PERSISTED",
+                message = "Saved high-fidelity fused photo to MediaStore: $baseFilename.jpg (Quality=98)"
+            )
             mediaItem
         } catch (e: Exception) {
             Log.e(TAG, "Failed to save bitmap to MediaStore: ${e.message}", e)
+            CameraDiagnosticsLogger.getInstance(context).e(
+                module = "PhotoMerging",
+                eventType = "SAVE_BITMAP_FAILED",
+                message = e.message ?: "",
+                throwable = e
+            )
             null
         } finally {
             if (tempFile.exists()) tempFile.delete()

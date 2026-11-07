@@ -44,7 +44,7 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun AdaptiveCameraTheme(
-    themeMode: AppThemeMode = AppThemeMode.DARK,
+    themeMode: AppThemeMode = AppThemeMode.SYSTEM,
     content: @Composable () -> Unit
 ) {
     val isDark = when (themeMode) {

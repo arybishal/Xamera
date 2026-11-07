@@ -30,7 +30,7 @@ class CameraPreferencesTest {
         assertFalse(prefs.isExifPrivacyEnabled)
         assertTrue(prefs.stripGpsLocation)
         assertTrue(prefs.stripDeviceModel)
-        assertEquals(AppThemeMode.DARK, prefs.themeMode)
+        assertEquals(AppThemeMode.SYSTEM, prefs.themeMode)
         assertFalse(prefs.imageStackingEnabled)
         assertEquals(com.bishal.adaptivecamera.photography.computational.ImageStackingMode.SMART_AUTO, prefs.imageStackingMode)
         assertEquals(com.bishal.adaptivecamera.photography.computational.ImageStackingFrameCount.AUTO, prefs.imageStackingFrameCount)

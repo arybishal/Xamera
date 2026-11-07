@@ -1,5 +1,7 @@
 package com.bishal.adaptivecamera.ui.camera
 
+import java.io.File
+import com.bishal.adaptivecamera.core.diagnostics.CameraDiagnosticsLogger
 import android.app.Application
 import android.content.Context
 import android.graphics.Bitmap
@@ -106,7 +108,7 @@ data class CameraUiState(
     val videoConfig: VideoConfig = VideoConfig(),
     val videoRecordingState: VideoRecordingState = VideoRecordingState(),
     val isVideoQuickSettingsVisible: Boolean = false,
-    val themeMode: AppThemeMode = AppThemeMode.DARK,
+    val themeMode: AppThemeMode = AppThemeMode.SYSTEM,
     val portraitConfig: PortraitConfig = PortraitConfig(),
     val imageStackingConfig: ImageStackingConfig = ImageStackingConfig(),
     val isLeftHandedModeEnabled: Boolean = false,
@@ -581,6 +583,11 @@ class CameraViewModel @JvmOverloads constructor(
             return
         }
 
+        if (currentMode == CameraMode.NIGHT) {
+            executeNightModeCapture()
+            return
+        }
+
         if (currentMode == CameraMode.PHOTO && stackingConfig.isEnabled) {
             executeStackedPhotoCapture()
             return
@@ -706,24 +713,22 @@ class CameraViewModel @JvmOverloads constructor(
                 toastMessage = "Stacking: Capturing frame 1 of $targetCount..."
             )
         }
-        val capturedItems = mutableListOf<MediaItem>()
         val capturedBitmaps = mutableListOf<Bitmap>()
+        val tempFiles = mutableListOf<File>()
+        val cacheDir = getApplication<Application>().cacheDir
 
         fun captureNext(index: Int) {
-            cameraEngine.capturePhoto(
-                onSuccess = { item ->
-                    capturedItems.add(item)
-                    val uri = item.uri
-                    if (uri != null) {
-                        try {
-                            val ctx = getApplication<Application>().applicationContext
-                            val inputStream = ctx.contentResolver.openInputStream(uri)
-                            val bmp = android.graphics.BitmapFactory.decodeStream(inputStream)
-                            inputStream?.close()
-                            if (bmp != null) capturedBitmaps.add(bmp)
-                        } catch (e: Exception) {
-                            android.util.Log.e("CameraViewModel", "Failed to decode frame for stacking", e)
-                        }
+            val tempFile = File(cacheDir, "stack_frame_${System.currentTimeMillis()}_$index.jpg")
+            tempFiles.add(tempFile)
+
+            cameraEngine.capturePhotoToFile(
+                outputFile = tempFile,
+                onSuccess = { file ->
+                    try {
+                        val bmp = android.graphics.BitmapFactory.decodeFile(file.absolutePath)
+                        if (bmp != null) capturedBitmaps.add(bmp)
+                    } catch (e: Exception) {
+                        CameraDiagnosticsLogger.getInstance(getApplication()).e("ImageStacking", "FRAME_DECODE_FAILED", e.message ?: "", e)
                     }
 
                     if (capturedBitmaps.size >= targetCount || index >= targetCount) {
@@ -735,20 +740,20 @@ class CameraViewModel @JvmOverloads constructor(
                                 frames = capturedBitmaps,
                                 config = config
                             )
-                            if (!config.retainOriginalFrames) {
-                                for (ci in capturedItems) {
-                                    mediaStoreManager.deleteMedia(ci)
-                                }
+                            // Clean up intermediate temp files from cache
+                            for (tf in tempFiles) {
+                                if (tf.exists()) tf.delete()
                             }
                             withContext(Dispatchers.Main) {
                                 _uiState.update {
                                     it.copy(
                                         isStackingProcessing = false,
-                                        latestMedia = stackedItem ?: capturedItems.firstOrNull(),
+                                        latestMedia = stackedItem ?: it.latestMedia,
                                         toastMessage = "Stacked Photo saved (${config.mode.label} · ${capturedBitmaps.size}f)",
                                         isScreenFlashActive = false
                                     )
                                 }
+                                CameraDiagnosticsLogger.getInstance(getApplication()).i("ImageStacking", "STACKING_COMPLETED", "Successfully fused ${capturedBitmaps.size} frames into 1 photo")
                             }
                         }
                     } else {
@@ -759,6 +764,7 @@ class CameraViewModel @JvmOverloads constructor(
                     }
                 },
                 onError = { error: Throwable ->
+                    CameraDiagnosticsLogger.getInstance(getApplication()).w("ImageStacking", "FRAME_CAPTURE_ERROR", error.message ?: "")
                     if (capturedBitmaps.isNotEmpty()) {
                         _uiState.update {
                             it.copy(toastMessage = "Stacking: Fusing ${capturedBitmaps.size} frames...")
@@ -768,11 +774,14 @@ class CameraViewModel @JvmOverloads constructor(
                                 frames = capturedBitmaps,
                                 config = config
                             )
+                            for (tf in tempFiles) {
+                                if (tf.exists()) tf.delete()
+                            }
                             withContext(Dispatchers.Main) {
                                 _uiState.update {
                                     it.copy(
                                         isStackingProcessing = false,
-                                        latestMedia = stackedItem ?: capturedItems.firstOrNull(),
+                                        latestMedia = stackedItem ?: it.latestMedia,
                                         toastMessage = "Stacked Photo saved (${capturedBitmaps.size}f)",
                                         isScreenFlashActive = false
                                     )
@@ -780,10 +789,118 @@ class CameraViewModel @JvmOverloads constructor(
                             }
                         }
                     } else {
+                        for (tf in tempFiles) {
+                            if (tf.exists()) tf.delete()
+                        }
                         _uiState.update {
                             it.copy(
                                 isStackingProcessing = false,
                                 toastMessage = "Stacking capture failed: ${error.message}",
+                                isScreenFlashActive = false
+                            )
+                        }
+                    }
+                }
+            )
+        }
+
+        captureNext(1)
+    }
+
+    private fun executeNightModeCapture() {
+        if (_uiState.value.isStackingProcessing) return
+        triggerFlashAnimation()
+        val nightConfig = com.bishal.adaptivecamera.photography.computational.ImageStackingConfig(
+            isEnabled = true,
+            mode = com.bishal.adaptivecamera.photography.computational.ImageStackingMode.LOW_LIGHT,
+            frameCount = com.bishal.adaptivecamera.photography.computational.ImageStackingFrameCount.FRAMES_5
+        )
+        val targetCount = nightConfig.frameCount.count
+        _uiState.update {
+            it.copy(
+                isStackingProcessing = true,
+                toastMessage = "Night Mode: Capturing exposure 1 of $targetCount..."
+            )
+        }
+        val capturedBitmaps = mutableListOf<Bitmap>()
+        val tempFiles = mutableListOf<File>()
+        val cacheDir = getApplication<Application>().cacheDir
+
+        fun captureNext(index: Int) {
+            val tempFile = File(cacheDir, "night_frame_${System.currentTimeMillis()}_$index.jpg")
+            tempFiles.add(tempFile)
+
+            cameraEngine.capturePhotoToFile(
+                outputFile = tempFile,
+                onSuccess = { file ->
+                    try {
+                        val bmp = android.graphics.BitmapFactory.decodeFile(file.absolutePath)
+                        if (bmp != null) capturedBitmaps.add(bmp)
+                    } catch (e: Exception) {
+                        CameraDiagnosticsLogger.getInstance(getApplication()).e("NightMode", "FRAME_DECODE_FAILED", e.message ?: "", e)
+                    }
+
+                    if (capturedBitmaps.size >= targetCount || index >= targetCount) {
+                        _uiState.update {
+                            it.copy(toastMessage = "Night Mode: Synthesizing ${capturedBitmaps.size} frames...")
+                        }
+                        viewModelScope.launch(Dispatchers.Default) {
+                            val stackedItem = computationalCoordinator.processAndSaveStackedPhoto(
+                                frames = capturedBitmaps,
+                                config = nightConfig
+                            )
+                            for (tf in tempFiles) {
+                                if (tf.exists()) tf.delete()
+                            }
+                            withContext(Dispatchers.Main) {
+                                _uiState.update {
+                                    it.copy(
+                                        isStackingProcessing = false,
+                                        latestMedia = stackedItem ?: it.latestMedia,
+                                        toastMessage = "Night Photo synthesized (${capturedBitmaps.size}f)",
+                                        isScreenFlashActive = false
+                                    )
+                                }
+                                CameraDiagnosticsLogger.getInstance(getApplication()).i("NightMode", "NIGHT_COMPLETED", "Night mode synthesis finished for ${capturedBitmaps.size} frames")
+                            }
+                        }
+                    } else {
+                        _uiState.update {
+                            it.copy(toastMessage = "Night Mode: Capturing exposure ${index + 1} of $targetCount...")
+                        }
+                        captureNext(index + 1)
+                    }
+                },
+                onError = { error ->
+                    CameraDiagnosticsLogger.getInstance(getApplication()).w("NightMode", "NIGHT_FRAME_ERROR", error.message ?: "")
+                    if (capturedBitmaps.isNotEmpty()) {
+                        viewModelScope.launch(Dispatchers.Default) {
+                            val stackedItem = computationalCoordinator.processAndSaveStackedPhoto(
+                                frames = capturedBitmaps,
+                                config = nightConfig
+                            )
+                            for (tf in tempFiles) {
+                                if (tf.exists()) tf.delete()
+                            }
+                            withContext(Dispatchers.Main) {
+                                _uiState.update {
+                                    it.copy(
+                                        isStackingProcessing = false,
+                                        latestMedia = stackedItem ?: it.latestMedia,
+                                        toastMessage = "Night Photo saved (${capturedBitmaps.size}f)",
+                                        isScreenFlashActive = false
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        for (tf in tempFiles) {
+                            if (tf.exists()) tf.delete()
+                        }
+                        _uiState.update {
+                            it.copy(
+                                isStackingProcessing = false,
+                                toastMessage = "Night capture failed: ${error.message}",
                                 isScreenFlashActive = false
                             )
                         }
@@ -800,30 +917,28 @@ class CameraViewModel @JvmOverloads constructor(
         _uiState.update { it.copy(isHdrPlusProcessing = true, toastMessage = "Capturing HDR+ sequence (1/5)...") }
 
         val targetCount = 5
-        val capturedItems = mutableListOf<MediaItem>()
         val capturedBitmaps = mutableListOf<Bitmap>()
+        val tempFiles = mutableListOf<File>()
+        val cacheDir = getApplication<Application>().cacheDir
         var refExifMetadata: Map<String, String>? = null
 
         fun captureNext(index: Int) {
-            cameraEngine.capturePhoto(
-                onSuccess = { item ->
-                    capturedItems.add(item)
-                    val uri = item.uri
-                    if (uri != null) {
-                        try {
-                            val ctx = getApplication<Application>().applicationContext
-                            if (refExifMetadata == null) {
-                                refExifMetadata = ctx.contentResolver.openInputStream(uri)?.use { stream ->
-                                    ExifMetadataHelper.extractExifMetadata(stream)
-                                }
+            val tempFile = File(cacheDir, "hdrplus_frame_${System.currentTimeMillis()}_$index.jpg")
+            tempFiles.add(tempFile)
+
+            cameraEngine.capturePhotoToFile(
+                outputFile = tempFile,
+                onSuccess = { file ->
+                    try {
+                        if (refExifMetadata == null) {
+                            file.inputStream().use { stream ->
+                                refExifMetadata = ExifMetadataHelper.extractExifMetadata(stream)
                             }
-                            val inputStream = ctx.contentResolver.openInputStream(uri)
-                            val bmp = android.graphics.BitmapFactory.decodeStream(inputStream)
-                            inputStream?.close()
-                            if (bmp != null) capturedBitmaps.add(bmp)
-                        } catch (e: Exception) {
-                            android.util.Log.e("CameraViewModel", "Failed to decode frame for HDR+", e)
                         }
+                        val bmp = android.graphics.BitmapFactory.decodeFile(file.absolutePath)
+                        if (bmp != null) capturedBitmaps.add(bmp)
+                    } catch (e: Exception) {
+                        CameraDiagnosticsLogger.getInstance(getApplication()).e("HDRPlus", "FRAME_DECODE_FAILED", e.message ?: "", e)
                     }
 
                     if (capturedBitmaps.size >= targetCount || index >= targetCount) {
@@ -895,70 +1010,54 @@ class CameraViewModel @JvmOverloads constructor(
                                 if (finalBitmap !== fusedBitmap) finalBitmap.recycle()
                                 fusedBitmap.recycle()
 
-                                // Clean up individual burst frames
-                                for (ci in capturedItems) {
-                                    mediaStoreManager.deleteMedia(ci)
+                                // Delete private cache files
+                                for (tf in tempFiles) {
+                                    if (tf.exists()) tf.delete()
                                 }
 
                                 withContext(Dispatchers.Main) {
                                     _uiState.update {
                                         it.copy(
                                             isHdrPlusProcessing = false,
-                                            latestMedia = savedItem ?: capturedItems.firstOrNull(),
+                                            latestMedia = savedItem ?: it.latestMedia,
                                             toastMessage = "HDR+ Photo saved (${capturedBitmaps.size} frames fused)",
                                             isScreenFlashActive = false
                                         )
                                     }
+                                    CameraDiagnosticsLogger.getInstance(getApplication()).i("HDRPlus", "HDR_FUSION_COMPLETED", "Saved fused HDR+ image without gallery duplicates")
                                 }
                             } catch (e: Exception) {
-                                android.util.Log.e("CameraViewModel", "HDR+ processing failed, falling back", e)
+                                CameraDiagnosticsLogger.getInstance(getApplication()).e("HDRPlus", "FUSION_FAILED", e.message ?: "", e)
+                                for (tf in tempFiles) {
+                                    if (tf.exists()) tf.delete()
+                                }
                                 withContext(Dispatchers.Main) {
                                     _uiState.update {
                                         it.copy(
                                             isHdrPlusProcessing = false,
-                                            latestMedia = capturedItems.firstOrNull(),
-                                            toastMessage = "HDR+ fusion fallback: saved standard capture",
+                                            toastMessage = "HDR+ fusion error: ${e.message}",
                                             isScreenFlashActive = false
                                         )
-                                    }
-                                }
-                            } finally {
-                                for (bmp in capturedBitmaps) {
-                                    if (!bmp.isRecycled) {
-                                        bmp.recycle()
                                     }
                                 }
                             }
                         }
                     } else {
-                        _uiState.update { it.copy(toastMessage = "Capturing HDR+ frame ${capturedBitmaps.size + 1}/$targetCount...") }
+                        _uiState.update { it.copy(toastMessage = "Capturing HDR+ sequence (${index + 1}/$targetCount)...") }
                         captureNext(index + 1)
                     }
                 },
                 onError = { error ->
-                    android.util.Log.e("CameraViewModel", "HDR+ burst capture error: ${error.message}")
-                    for (bmp in capturedBitmaps) {
-                        if (!bmp.isRecycled) {
-                            bmp.recycle()
-                        }
+                    CameraDiagnosticsLogger.getInstance(getApplication()).w("HDRPlus", "CAPTURE_FRAME_ERROR", error.message ?: "")
+                    for (tf in tempFiles) {
+                        if (tf.exists()) tf.delete()
                     }
-                    if (capturedBitmaps.isNotEmpty()) {
-                        _uiState.update {
-                            it.copy(
-                                isHdrPlusProcessing = false,
-                                latestMedia = capturedItems.firstOrNull(),
-                                toastMessage = "HDR+ capture completed with ${capturedBitmaps.size} frames",
-                                isScreenFlashActive = false
-                            )
-                        }
-                    } else {
-                        _uiState.update {
-                            it.copy(
-                                isHdrPlusProcessing = false,
-                                toastMessage = "HDR+ capture failed: ${error.message}",
-                                isScreenFlashActive = false
-                            )
-                        }
+                    _uiState.update {
+                        it.copy(
+                            isHdrPlusProcessing = false,
+                            toastMessage = "HDR+ capture error: ${error.message}",
+                            isScreenFlashActive = false
+                        )
                     }
                 }
             )
@@ -1155,10 +1254,27 @@ class CameraViewModel @JvmOverloads constructor(
             val detector = com.bishal.adaptivecamera.video.capability.DualCameraCapabilityDetector(getApplication())
             val capability = detector.detectCapability()
             if (!capability.isSupported) {
-                hapticEngine.performClick()
-                _uiState.update { it.copy(toastMessage = capability.diagnosticReason) }
-                return
+                CameraDiagnosticsLogger.getInstance(getApplication()).w(
+                    module = "DualCamera",
+                    eventType = "CONCURRENT_ISP_RESTRICTED",
+                    message = "Vendor HAL restricts concurrent multi-camera ISP pipelines. Engaging Smart-Flip Dual sequential capture fallback."
+                )
+                _uiState.update { it.copy(toastMessage = "Smart-Flip Dual Active (Vendor HAL restricts concurrent streaming; using sequential dual-capture)") }
+            } else {
+                CameraDiagnosticsLogger.getInstance(getApplication()).i(
+                    module = "DualCamera",
+                    eventType = "CONCURRENT_ISP_ENGAGED",
+                    message = "Concurrent ISP streaming active for front/back cameras."
+                )
             }
+        }
+
+        if (mode == CameraMode.NIGHT) {
+            CameraDiagnosticsLogger.getInstance(getApplication()).i(
+                module = "NightMode",
+                eventType = "MODE_ENGAGED",
+                message = "Night mode active: 5-frame computational long exposure synthesis."
+            )
         }
 
         hapticEngine.performModeSwitch()

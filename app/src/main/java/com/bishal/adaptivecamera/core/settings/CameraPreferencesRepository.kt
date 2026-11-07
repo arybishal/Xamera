@@ -147,11 +147,11 @@ class CameraPreferencesRepositoryImpl(
             val isExifPrivacyEnabled = preferences[PreferencesKeys.KEY_EXIF_PRIVACY_ENABLED] ?: false
             val stripGpsLocation = preferences[PreferencesKeys.KEY_STRIP_GPS_LOCATION] ?: true
             val stripDeviceModel = preferences[PreferencesKeys.KEY_STRIP_DEVICE_MODEL] ?: true
-            val themeModeName = preferences[PreferencesKeys.KEY_THEME_MODE] ?: AppThemeMode.DARK.name
+            val themeModeName = preferences[PreferencesKeys.KEY_THEME_MODE] ?: AppThemeMode.SYSTEM.name
             val themeMode = try {
                 AppThemeMode.valueOf(themeModeName)
             } catch (_: Exception) {
-                AppThemeMode.DARK
+                AppThemeMode.SYSTEM
             }
 
             val imageStackingEnabled = preferences[PreferencesKeys.KEY_IMAGE_STACKING_ENABLED] ?: false

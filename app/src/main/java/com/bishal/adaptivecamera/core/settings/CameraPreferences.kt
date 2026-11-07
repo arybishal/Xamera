@@ -31,7 +31,7 @@ data class CameraPreferences(
     val isExifPrivacyEnabled: Boolean = false,
     val stripGpsLocation: Boolean = true,
     val stripDeviceModel: Boolean = true,
-    val themeMode: AppThemeMode = AppThemeMode.DARK,
+    val themeMode: AppThemeMode = AppThemeMode.SYSTEM,
     val hdrPlusMode: HdrPlusMode = HdrPlusMode.OFF,
     val imageStackingEnabled: Boolean = false,
     val imageStackingMode: ImageStackingMode = ImageStackingMode.SMART_AUTO,

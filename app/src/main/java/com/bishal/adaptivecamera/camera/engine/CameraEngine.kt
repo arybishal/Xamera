@@ -49,6 +49,12 @@ interface CameraEngine {
         onError: (Throwable) -> Unit
     )
 
+    fun capturePhotoToFile(
+        outputFile: java.io.File,
+        onSuccess: (java.io.File) -> Unit,
+        onError: (Throwable) -> Unit
+    ) {}
+
     fun startVideoRecording(
         withAudio: Boolean,
         onStarted: () -> Unit,

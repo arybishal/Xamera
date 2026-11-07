@@ -18,6 +18,7 @@ import android.util.Log
 import android.view.Surface
 import androidx.camera.view.PreviewView
 import androidx.lifecycle.LifecycleOwner
+import com.bishal.adaptivecamera.core.diagnostics.CameraDiagnosticsLogger
 import com.bishal.adaptivecamera.camera.capability.CameraCapabilityRepository
 import com.bishal.adaptivecamera.camera.capability.CameraCapabilityRepositoryImpl
 import com.bishal.adaptivecamera.camera.config.CameraConfiguration
@@ -197,6 +198,7 @@ class Camera2ManualEngine(
             cameraManager.openCamera(activeCameraId, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {
                     cameraDevice = camera
+                    CameraDiagnosticsLogger.getInstance(context).i("ProManual", "CAMERA2_OPENED", "Camera2 device $activeCameraId opened successfully", cameraId = activeCameraId, mode = "PRO")
                     setupCaptureSession()
                 }
 
@@ -204,6 +206,7 @@ class Camera2ManualEngine(
                     camera.close()
                     cameraDevice = null
                     _sessionState.value = CameraSessionState.CLOSED
+                    CameraDiagnosticsLogger.getInstance(context).w("ProManual", "CAMERA2_DISCONNECTED", "Camera2 device $activeCameraId disconnected", details = "onDisconnected callback")
                 }
 
                 override fun onError(camera: CameraDevice, error: Int) {
@@ -211,11 +214,13 @@ class Camera2ManualEngine(
                     cameraDevice = null
                     _sessionState.value = CameraSessionState.ERROR
                     Log.e(TAG, "CameraDevice error code: $error")
+                    CameraDiagnosticsLogger.getInstance(context).e("ProManual", "CAMERA2_DEVICE_ERROR", "CameraDevice failed with error code: $error", errorCode = error.toString())
                 }
             }, backgroundHandler)
         } catch (e: Exception) {
             Log.e(TAG, "Error opening Camera2 device", e)
             _sessionState.value = CameraSessionState.ERROR
+            CameraDiagnosticsLogger.getInstance(context).e("ProManual", "CAMERA2_OPEN_EXCEPTION", e.message ?: "", e)
         }
     }
 

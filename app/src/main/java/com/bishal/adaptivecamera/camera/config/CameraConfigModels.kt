@@ -56,6 +56,7 @@ enum class HdrPlusMode(val displayName: String, val shortLabel: String) {
 }
 
 enum class CameraMode(val displayName: String) {
+    NIGHT("NIGHT"),
     PORTRAIT("PORTRAIT"),
     PHOTO("PHOTO"),
     PRO("PRO"),
@@ -66,6 +67,9 @@ enum class CameraMode(val displayName: String) {
 
     val isVideoMode: Boolean
         get() = this == VIDEO || this == TIME_LAPSE || this == SLOW_MO || this == DUAL
+
+    val isNightMode: Boolean
+        get() = this == NIGHT
 }
 
 data class CameraConfiguration(

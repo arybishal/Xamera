@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
@@ -67,16 +68,22 @@ import com.bishal.adaptivecamera.ui.theme.DarkSurface
 import com.bishal.adaptivecamera.ui.theme.DarkSurfaceVariant
 import com.bishal.adaptivecamera.ui.theme.DividerColor
 import com.bishal.adaptivecamera.ui.theme.ErrorRed
+import com.bishal.adaptivecamera.ui.theme.MinimalistGold
 import com.bishal.adaptivecamera.ui.theme.PrimaryCyan
 import com.bishal.adaptivecamera.ui.theme.SuccessGreen
 import com.bishal.adaptivecamera.ui.theme.TextMuted
 import com.bishal.adaptivecamera.ui.theme.TextPrimary
 import com.bishal.adaptivecamera.ui.theme.TextSecondary
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DiagnosticsScreen(
-    viewModel: DiagnosticsViewModel
+    viewModel: DiagnosticsViewModel,
+    onNavigateBack: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
@@ -105,45 +112,101 @@ fun DiagnosticsScreen(
     Scaffold(
         containerColor = DarkBackground,
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "XAMERA",
-                            color = TextPrimary,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 17.sp,
-                            letterSpacing = 1.sp
-                        )
-                        Text(
-                            text = "Hardware Intelligence & Capability Audit",
-                            color = PrimaryCyan,
-                            fontSize = 11.sp
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = { viewModel.refreshHardwareScan(context) }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Rescan",
-                            tint = PrimaryCyan
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkSurface
+            Column {
+                TopAppBar(
+                    navigationIcon = {
+                        if (onNavigateBack != null) {
+                            IconButton(onClick = onNavigateBack) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = TextPrimary
+                                )
+                            }
+                        }
+                    },
+                    title = {
+                        Column {
+                            Text(
+                                text = "XAMERA",
+                                color = TextPrimary,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 17.sp,
+                                letterSpacing = 1.sp
+                            )
+                            Text(
+                                text = if (uiState.selectedTab == 0) "Camera Diagnostics & Event Logs" else "Hardware Intelligence & Capability Audit",
+                                color = MinimalistGold,
+                                fontSize = 11.sp
+                            )
+                        }
+                    },
+                    actions = {
+                        if (uiState.selectedTab == 1) {
+                            IconButton(
+                                onClick = { viewModel.refreshHardwareScan(context) }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = "Rescan",
+                                    tint = MinimalistGold
+                                )
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = DarkSurface
+                    )
                 )
-            )
+
+                // Navigation Tabs: Logs vs Specs
+                TabRow(
+                    selectedTabIndex = uiState.selectedTab,
+                    containerColor = DarkSurface,
+                    contentColor = MinimalistGold,
+                    indicator = { tabPositions ->
+                        TabRowDefaults.Indicator(
+                            modifier = Modifier.tabIndicatorOffset(tabPositions[uiState.selectedTab]),
+                            color = MinimalistGold,
+                            height = 2.dp
+                        )
+                    }
+                ) {
+                    Tab(
+                        selected = uiState.selectedTab == 0,
+                        onClick = { viewModel.setSelectedTab(0) },
+                        text = {
+                            Text(
+                                text = "CAMERA LOGS (${uiState.allLogs.size})",
+                                fontSize = 11.sp,
+                                fontWeight = if (uiState.selectedTab == 0) FontWeight.Bold else FontWeight.Normal,
+                                color = if (uiState.selectedTab == 0) MinimalistGold else TextSecondary
+                            )
+                        }
+                    )
+                    Tab(
+                        selected = uiState.selectedTab == 1,
+                        onClick = { viewModel.setSelectedTab(1) },
+                        text = {
+                            Text(
+                                text = "HARDWARE SPECS",
+                                fontSize = 11.sp,
+                                fontWeight = if (uiState.selectedTab == 1) FontWeight.Bold else FontWeight.Normal,
+                                color = if (uiState.selectedTab == 1) MinimalistGold else TextSecondary
+                            )
+                        }
+                    )
+                }
+            }
         },
         bottomBar = {
-            BottomExportBar(
-                onCopyText = { viewModel.copyToClipboard(context, asJson = false) },
-                onCopyJson = { viewModel.copyToClipboard(context, asJson = true) },
-                onShare = { viewModel.shareReport(context, asJson = true) }
-            )
+            if (uiState.selectedTab == 1) {
+                BottomExportBar(
+                    onCopyText = { viewModel.copyToClipboard(context, asJson = false) },
+                    onCopyJson = { viewModel.copyToClipboard(context, asJson = true) },
+                    onShare = { viewModel.shareReport(context, asJson = true) }
+                )
+            }
         }
     ) { innerPadding ->
         Box(
@@ -151,13 +214,18 @@ fun DiagnosticsScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            if (uiState.isLoading) {
+            if (uiState.selectedTab == 0) {
+                CameraLogsSection(
+                    uiState = uiState,
+                    viewModel = viewModel
+                )
+            } else if (uiState.isLoading) {
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    CircularProgressIndicator(color = PrimaryCyan)
+                    CircularProgressIndicator(color = MinimalistGold)
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = "Auditing Camera Hardware & HAL Capabilities...",

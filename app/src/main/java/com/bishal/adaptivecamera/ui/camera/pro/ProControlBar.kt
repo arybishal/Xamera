@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -39,7 +41,10 @@ import com.bishal.adaptivecamera.photography.pro.ShutterSpeedHelper
 import com.bishal.adaptivecamera.photography.capture.CaptureFormat
 import com.bishal.adaptivecamera.ui.theme.AccentAmber
 import com.bishal.adaptivecamera.ui.theme.DarkBackground
+import com.bishal.adaptivecamera.ui.theme.DarkCharcoal
 import com.bishal.adaptivecamera.ui.theme.DarkSurface
+import com.bishal.adaptivecamera.ui.theme.DarkSurfaceVariant
+import com.bishal.adaptivecamera.ui.theme.MinimalistGold
 import com.bishal.adaptivecamera.ui.theme.PrimaryCyan
 import com.bishal.adaptivecamera.ui.theme.SuccessGreen
 import com.bishal.adaptivecamera.ui.theme.TextMuted
@@ -51,6 +56,7 @@ enum class ProControlTab {
     NONE,
     ISO,
     SHUTTER,
+    APERTURE,
     FOCUS,
     WB,
     LOCKS,
@@ -97,8 +103,8 @@ fun ProControlBar(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-            .background(DarkBackground.copy(alpha = 0.92f))
-            .border(1.dp, PrimaryCyan.copy(alpha = 0.25f), RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+            .background(DarkBackground.copy(alpha = 0.94f))
+            .border(0.5.dp, MinimalistGold.copy(alpha = 0.35f), RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
             .padding(vertical = 8.dp)
     ) {
         // 1. Parameter Adjuster Drawer (Visible when a tab is active)
@@ -132,6 +138,12 @@ fun ProControlBar(
                             maxNs = maxExpNs,
                             onShutterChanged = { onSetManualShutter(true, it) },
                             onAutoSelected = { onSetManualShutter(false, 16_666_666L) }
+                        )
+                    }
+
+                    ProControlTab.APERTURE -> {
+                        ApertureControlRow(
+                            availableApertures = activeProfile?.lensInfo?.availableApertures?.ifEmpty { null } ?: listOf(1.8f)
                         )
                     }
 
@@ -224,6 +236,9 @@ fun ProControlBar(
             ProTabChip("SHUTTER", activeTab == ProControlTab.SHUTTER, proConfig.isManualShutter) {
                 activeTab = if (activeTab == ProControlTab.SHUTTER) ProControlTab.NONE else ProControlTab.SHUTTER
             }
+            ProTabChip("APERTURE", activeTab == ProControlTab.APERTURE, true) {
+                activeTab = if (activeTab == ProControlTab.APERTURE) ProControlTab.NONE else ProControlTab.APERTURE
+            }
             ProTabChip("FOCUS", activeTab == ProControlTab.FOCUS, proConfig.isManualFocus || proConfig.isAfLocked) {
                 activeTab = if (activeTab == ProControlTab.FOCUS) ProControlTab.NONE else ProControlTab.FOCUS
             }
@@ -250,20 +265,20 @@ private fun ProTabChip(
     isActive: Boolean,
     onClick: () -> Unit
 ) {
-    val borderColor = if (isSelected) PrimaryCyan else if (isActive) AccentAmber else Color.Transparent
-    val bg = if (isSelected) PrimaryCyan.copy(alpha = 0.2f) else if (isActive) AccentAmber.copy(alpha = 0.15f) else DarkSurface
+    val borderColor = if (isSelected) MinimalistGold else if (isActive) AccentAmber else Color.Transparent
+    val bg = if (isSelected) MinimalistGold.copy(alpha = 0.2f) else if (isActive) AccentAmber.copy(alpha = 0.15f) else DarkSurface
 
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(bg)
-            .border(1.dp, borderColor, RoundedCornerShape(8.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
             .clickable { onClick() }
             .padding(horizontal = 10.dp, vertical = 6.dp)
     ) {
         Text(
             text = label,
-            color = if (isSelected) PrimaryCyan else if (isActive) AccentAmber else TextPrimary,
+            color = if (isSelected) MinimalistGold else if (isActive) AccentAmber else TextPrimary,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold
         )
@@ -288,7 +303,7 @@ private fun IsoControlRow(
             AutoOptionChip(isSelected = !isManual, onClick = onAutoSelected)
             Text(
                 text = if (isManual) "ISO $currentIso" else "ISO AUTO",
-                color = if (isManual) PrimaryCyan else TextSecondary,
+                color = if (isManual) MinimalistGold else TextSecondary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace
@@ -300,8 +315,8 @@ private fun IsoControlRow(
                 onValueChange = { onIsoChanged(it.roundToInt()) },
                 valueRange = minIso.toFloat()..maxIso.toFloat(),
                 colors = SliderDefaults.colors(
-                    thumbColor = PrimaryCyan,
-                    activeTrackColor = PrimaryCyan
+                    thumbColor = MinimalistGold,
+                    activeTrackColor = MinimalistGold
                 )
             )
         }
@@ -326,7 +341,7 @@ private fun ShutterControlRow(
             AutoOptionChip(isSelected = !isManual, onClick = onAutoSelected)
             Text(
                 text = if (isManual) ShutterSpeedHelper.formatNanoseconds(currentShutterNs) else "SHUTTER AUTO",
-                color = if (isManual) PrimaryCyan else TextSecondary,
+                color = if (isManual) MinimalistGold else TextSecondary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace
@@ -345,8 +360,8 @@ private fun ShutterControlRow(
                 },
                 valueRange = minLog.toFloat()..maxLog.toFloat(),
                 colors = SliderDefaults.colors(
-                    thumbColor = PrimaryCyan,
-                    activeTrackColor = PrimaryCyan
+                    thumbColor = MinimalistGold,
+                    activeTrackColor = MinimalistGold
                 )
             )
         }
@@ -394,7 +409,7 @@ private fun FocusControlRow(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .background(if (isMagnifierEnabled) PrimaryCyan else DarkSurface)
+                        .background(if (isMagnifierEnabled) MinimalistGold else DarkSurface)
                         .clickable { onToggleMagnifier() }
                         .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
@@ -455,7 +470,7 @@ private fun WbControlRow(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
-                    .background(if (isAwbLocked) PrimaryCyan else DarkSurface)
+                    .background(if (isAwbLocked) MinimalistGold else DarkSurface)
                     .clickable { onToggleAwbLock() }
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
@@ -472,7 +487,7 @@ private fun WbControlRow(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .background(if (selected) PrimaryCyan else DarkSurface)
+                        .background(if (selected) MinimalistGold else DarkSurface)
                         .clickable { onModeSelected(wb) }
                         .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
@@ -493,14 +508,14 @@ private fun WbControlRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Color Temperature: ${currentKelvin}K", color = PrimaryCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text("Color Temperature: ${currentKelvin}K", color = MinimalistGold, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     Text("Tint: ${if (currentTint > 0) "+$currentTint M" else if (currentTint < 0) "$currentTint G" else "0"}", color = TextSecondary, fontSize = 11.sp)
                 }
                 Slider(
                     value = currentKelvin.toFloat(),
                     onValueChange = { onKelvinChanged(it.roundToInt(), currentTint) },
                     valueRange = KelvinConverter.MIN_KELVIN.toFloat()..KelvinConverter.MAX_KELVIN.toFloat(),
-                    colors = SliderDefaults.colors(thumbColor = PrimaryCyan, activeTrackColor = PrimaryCyan)
+                    colors = SliderDefaults.colors(thumbColor = MinimalistGold, activeTrackColor = MinimalistGold)
                 )
             }
         }
@@ -562,7 +577,7 @@ private fun LocksControlRow(
             modifier = Modifier
                 .weight(1f)
                 .clip(RoundedCornerShape(6.dp))
-                .background(if (isAwbLocked) PrimaryCyan else DarkSurface)
+                .background(if (isAwbLocked) MinimalistGold else DarkSurface)
                 .clickable { onToggleAwbLock() }
                 .padding(vertical = 8.dp),
             contentAlignment = Alignment.Center
@@ -604,7 +619,7 @@ private fun MonitorControlRow(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
-                    .background(if (isHistogramVisible) PrimaryCyan else DarkSurface)
+                    .background(if (isHistogramVisible) MinimalistGold else DarkSurface)
                     .clickable { onToggleHistogram() }
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
@@ -733,7 +748,7 @@ private fun RawControlRow(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(6.dp))
-                        .background(if (isSelected) PrimaryCyan else DarkSurface)
+                        .background(if (isSelected) MinimalistGold else DarkSurface)
                         .clickable(enabled = isEnabled) { onFormatSelected(fmt) }
                         .padding(vertical = 6.dp),
                     contentAlignment = Alignment.Center
@@ -815,7 +830,7 @@ private fun AutoOptionChip(
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
-            .background(if (isSelected) PrimaryCyan else DarkSurface)
+            .background(if (isSelected) MinimalistGold else DarkSurface)
             .clickable { onClick() }
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
@@ -825,5 +840,71 @@ private fun AutoOptionChip(
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold
         )
+    }
+}
+
+@Composable
+private fun ApertureControlRow(
+    availableApertures: List<Float>
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "PHYSICAL OPTICAL APERTURE",
+                color = MinimalistGold,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.8.sp
+            )
+            val isFixed = availableApertures.size <= 1
+            Text(
+                text = if (isFixed) "f/${availableApertures.firstOrNull() ?: 1.8f} Fixed" else "Variable Aperture",
+                color = TextPrimary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace
+            )
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        if (availableApertures.size > 1) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                availableApertures.forEach { aperture ->
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(DarkSurfaceVariant)
+                            .border(1.dp, MinimalistGold, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = "f/$aperture",
+                            color = MinimalistGold,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        } else {
+            Text(
+                text = "Physical aperture: f/${availableApertures.firstOrNull() ?: 1.8f} (Fixed optic). Sensor depth-of-field and optical transmission are determined by native lens aperture.",
+                color = TextSecondary,
+                fontSize = 11.sp,
+                lineHeight = 15.sp
+            )
+        }
     }
 }

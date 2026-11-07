@@ -114,7 +114,8 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     cameraViewModel: CameraViewModel? = null,
     onNavigateToRawVault: () -> Unit = {},
-    onNavigateToLutLibrary: () -> Unit = {}
+    onNavigateToLutLibrary: () -> Unit = {},
+    onNavigateToDiagnostics: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val diagState by diagnosticsViewModel.uiState.collectAsState()
@@ -221,40 +222,41 @@ fun SettingsScreen(
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         Text(
-                            text = "Theme Palette",
+                            text = "System Theme",
                             color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Select Dark, Light (Yellow/Black/White), or System default theme",
+                            text = "Automatic: Dynamically matches Android system Dark/Light theme mode",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 11.sp,
                             modifier = Modifier.padding(top = 2.dp, bottom = 8.dp)
                         )
-                        val currentTheme = camUiState?.themeMode ?: AppThemeMode.DARK
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f))
+                                .padding(horizontal = 12.dp, vertical = 10.dp)
                         ) {
-                            AppThemeMode.values().forEach { mode ->
-                                val isSelected = currentTheme == mode
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
-                                        .clickable { cameraViewModel?.updateThemeMode(mode) }
-                                        .padding(vertical = 8.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = mode.displayName,
-                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "FOLLOW SYSTEM MODE",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "AUTOMATIC",
+                                    color = SuccessGreen,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
                         }
                     }
@@ -1027,6 +1029,22 @@ fun SettingsScreen(
                         }
 
                         Spacer(modifier = Modifier.height(12.dp))
+
+                        // Dedicated entry to full Camera Diagnostics & Log Center
+                        Button(
+                            onClick = onNavigateToDiagnostics,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Default.Tune, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Open Camera Diagnostics & Logs", color = MaterialTheme.colorScheme.onPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.weight(1f))
+                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(16.dp))
+                        }
 
                         // Status Banner: Cached vs Fresh Scan
                         Row(

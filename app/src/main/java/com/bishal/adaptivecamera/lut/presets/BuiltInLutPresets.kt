@@ -131,7 +131,8 @@ object BuiltInLutPresets {
     // --- Mathematical Color Science Transforms ---
 
     /**
-     * Natural: Linear baseline with mild tonal balancing.
+     * Natural: Calibrated linear baseline with neutral organic rendering.
+     * Preserves exact sensor colorimetry and highlights without artificial digital distortion.
      */
     private fun transformNatural(r: Float, g: Float, b: Float): LutColor {
         return LutColor(r, g, b)

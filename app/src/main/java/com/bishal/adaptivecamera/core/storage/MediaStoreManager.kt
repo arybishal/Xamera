@@ -90,7 +90,7 @@ class MediaStoreManager(private val context: Context) {
             )
 
             contentResolver.openOutputStream(uri, "wt")?.use { out ->
-                cropped.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, out)
+                cropped.compress(android.graphics.Bitmap.CompressFormat.JPEG, 98, out)
                 out.flush()
             }
 
@@ -123,7 +123,7 @@ class MediaStoreManager(private val context: Context) {
             )
 
             val stream = java.io.ByteArrayOutputStream()
-            cropped.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, stream)
+            cropped.compress(android.graphics.Bitmap.CompressFormat.JPEG, 98, stream)
             val outBytes = stream.toByteArray()
 
             if (cropped != bitmap) cropped.recycle()

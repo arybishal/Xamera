@@ -133,7 +133,7 @@ object PhotoWatermarkCompositor {
 
             // Encode to JPEG at 95% quality
             val outputStream = ByteArrayOutputStream()
-            originalBitmap.compress(Bitmap.CompressFormat.JPEG, 95, outputStream)
+            originalBitmap.compress(Bitmap.CompressFormat.JPEG, 98, outputStream)
             originalBitmap.recycle()
             val watermarkedBytes = outputStream.toByteArray()
 

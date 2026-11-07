@@ -22,6 +22,7 @@ import androidx.camera.video.Recording
 import androidx.camera.video.VideoCapture
 import androidx.camera.video.VideoRecordEvent
 import androidx.core.content.ContextCompat
+import com.bishal.adaptivecamera.core.diagnostics.CameraDiagnosticsLogger
 import com.bishal.adaptivecamera.core.storage.MediaItem
 import com.bishal.adaptivecamera.core.storage.MediaStoreManager
 import com.bishal.adaptivecamera.photography.pro.KelvinConverter
@@ -254,6 +255,11 @@ class VideoRecordingEngine(
                             errorMessage = null
                         )
                     }
+                    CameraDiagnosticsLogger.getInstance(context).i(
+                        module = "VideoRecording",
+                        eventType = "RECORDING_STARTED",
+                        message = "Recording started: ${config.resolution.label} @ ${config.frameRate.label}, ${config.targetBitrateBps / 1_000_000}Mbps, Codec=${config.videoCodec.shortLabel}"
+                    )
                     onStarted()
                 }
 
@@ -281,6 +287,11 @@ class VideoRecordingEngine(
                     // Check low storage threshold during recording (< 25MB remaining)
                     if (getAvailableStorageBytes() < 25L * 1024L * 1024L) {
                         Log.w(TAG, "Low storage boundary reached, stopping recording safely")
+                        CameraDiagnosticsLogger.getInstance(context).w(
+                            module = "VideoRecording",
+                            eventType = "STORAGE_LIMIT_REACHED",
+                            message = "Remaining storage dropped below 25MB threshold. Auto-finalizing video recording."
+                        )
                         stopRecording()
                     }
                 }
@@ -296,6 +307,13 @@ class VideoRecordingEngine(
                                 errorMessage = err.message
                             )
                         }
+                        CameraDiagnosticsLogger.getInstance(context).e(
+                            module = "VideoRecording",
+                            eventType = "RECORDING_ERROR",
+                            message = "Recording finalized with error code ${event.error}: ${err.message}",
+                            throwable = err,
+                            errorCode = event.error.toString()
+                        )
                         onError(err)
                     } else {
                         val outputUri = event.outputResults.outputUri
@@ -306,6 +324,11 @@ class VideoRecordingEngine(
                                 outputUri = outputUri
                             )
                         }
+                        CameraDiagnosticsLogger.getInstance(context).i(
+                            module = "VideoRecording",
+                            eventType = "RECORDING_SUCCESS",
+                            message = "Video saved successfully. Duration: ${event.recordingStats.recordedDurationNanos / 1_000_000_000}s, Size: ${event.recordingStats.numBytesRecorded} bytes"
+                        )
                         onFinalized(latestMedia)
                     }
                 }

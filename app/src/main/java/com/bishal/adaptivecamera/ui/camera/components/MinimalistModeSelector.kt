@@ -44,10 +44,9 @@ fun MinimalistModeSelector(
     currentMode: CameraMode,
     onModeChanged: (CameraMode) -> Unit,
     onHapticTick: () -> Unit = {},
+    onOpenMoreModes: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    var isMoreExpanded by remember { mutableStateOf(false) }
-
     // Primary modes directly visible in the carousel
     val primaryModes = listOf(
         CameraMode.PRO,
@@ -58,6 +57,7 @@ fun MinimalistModeSelector(
 
     // Additional modes revealed under "MORE"
     val moreModes = listOf(
+        CameraMode.NIGHT,
         CameraMode.TIME_LAPSE,
         CameraMode.SLOW_MO,
         CameraMode.DUAL
@@ -69,44 +69,6 @@ fun MinimalistModeSelector(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Expandable sub-sheet for secondary modes when "MORE" is tapped
-        AnimatedVisibility(
-            visible = isMoreExpanded,
-            enter = fadeIn(tween(150)),
-            exit = fadeOut(tween(150))
-        ) {
-            Row(
-                modifier = Modifier
-                    .padding(bottom = 8.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(DarkCharcoalElevated.copy(alpha = 0.95f))
-                    .border(0.5.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                moreModes.forEach { mode ->
-                    val isSelected = currentMode == mode
-                    Text(
-                        text = mode.displayName.uppercase(),
-                        color = if (isSelected) MinimalistGold else Color.White.copy(alpha = 0.75f),
-                        fontSize = 12.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        modifier = Modifier
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) {
-                                onHapticTick()
-                                onModeChanged(mode)
-                                isMoreExpanded = false
-                            }
-                            .padding(horizontal = 6.dp, vertical = 4.dp)
-                    )
-                }
-            }
-        }
-
         // Main Horizontal Carousel: PRO | VIDEO | PHOTO | PORTRAIT | MORE
         Row(
             modifier = Modifier
@@ -141,7 +103,6 @@ fun MinimalistModeSelector(
                             if (!isSelected) {
                                 onHapticTick()
                                 onModeChanged(mode)
-                                isMoreExpanded = false
                             }
                         }
                         .padding(horizontal = 14.dp, vertical = 7.dp),
@@ -158,7 +119,7 @@ fun MinimalistModeSelector(
             }
 
             // "MORE" Capsule
-            val isMoreSelected = isMoreActive || isMoreExpanded
+            val isMoreSelected = isMoreActive
             val moreTextColor by animateColorAsState(
                 targetValue = if (isMoreSelected) MinimalistGold else Color.White.copy(alpha = 0.55f),
                 animationSpec = tween(durationMillis = 150),
@@ -179,7 +140,7 @@ fun MinimalistModeSelector(
                         indication = null
                     ) {
                         onHapticTick()
-                        isMoreExpanded = !isMoreExpanded
+                        onOpenMoreModes()
                     }
                     .padding(horizontal = 14.dp, vertical = 7.dp),
                 contentAlignment = Alignment.Center

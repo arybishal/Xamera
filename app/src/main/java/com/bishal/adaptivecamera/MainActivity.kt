@@ -241,6 +241,9 @@ fun MainAppNavHost(
                 },
                 onNavigateToLutLibrary = {
                     currentDestination = AppDestination.LUT_LIBRARY
+                },
+                onNavigateToDiagnostics = {
+                    currentDestination = AppDestination.DIAGNOSTICS
                 }
             )
         }
@@ -261,7 +264,10 @@ fun MainAppNavHost(
         }
         AppDestination.DIAGNOSTICS -> {
             DiagnosticsScreen(
-                viewModel = diagnosticsViewModel
+                viewModel = diagnosticsViewModel,
+                onNavigateBack = {
+                    currentDestination = AppDestination.SETTINGS
+                }
             )
         }
     }

@@ -1,5 +1,9 @@
 package com.bishal.adaptivecamera.camera.engine
 
+import android.hardware.camera2.CaptureRequest
+import androidx.camera.camera2.interop.Camera2Interop
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop
+import com.bishal.adaptivecamera.core.diagnostics.CameraDiagnosticsLogger
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
@@ -150,14 +154,39 @@ class CameraXEngine(
                 it.surfaceProvider = currentSurfaceProvider ?: previewView.surfaceProvider
             }
 
-            // 3. ImageCapture
-            val newImageCapture = ImageCapture.Builder()
+            // 3. ImageCapture with Maximum Photo Quality Optimization (Part B)
+            val imageCaptureBuilder = ImageCapture.Builder()
                 .setCaptureMode(
                     if (_configuration.value.isZslEnabled) ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG
-                    else ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
+                    else ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY
                 )
+                .setJpegQuality(98)
                 .setFlashMode(_configuration.value.flashMode.imageCaptureFlashMode)
-                .build()
+
+            @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
+            val captureExtender = Camera2Interop.Extender(imageCaptureBuilder)
+            captureExtender.setCaptureRequestOption(
+                CaptureRequest.NOISE_REDUCTION_MODE,
+                CaptureRequest.NOISE_REDUCTION_MODE_HIGH_QUALITY
+            )
+            captureExtender.setCaptureRequestOption(
+                CaptureRequest.EDGE_MODE,
+                CaptureRequest.EDGE_MODE_HIGH_QUALITY
+            )
+            captureExtender.setCaptureRequestOption(
+                CaptureRequest.COLOR_CORRECTION_MODE,
+                CaptureRequest.COLOR_CORRECTION_MODE_HIGH_QUALITY
+            )
+            captureExtender.setCaptureRequestOption(
+                CaptureRequest.HOT_PIXEL_MODE,
+                CaptureRequest.HOT_PIXEL_MODE_HIGH_QUALITY
+            )
+            captureExtender.setCaptureRequestOption(
+                CaptureRequest.TONEMAP_MODE,
+                CaptureRequest.TONEMAP_MODE_HIGH_QUALITY
+            )
+
+            val newImageCapture = imageCaptureBuilder.build()
 
             // 4. ImageAnalysis
             val newImageAnalysis = ImageAnalysis.Builder()
@@ -237,6 +266,27 @@ class CameraXEngine(
                     isExposureStateReady = true
                 )
             }
+
+            // Dynamic LiveData observation to ensure 0.6x ultra-wide bounds are reflected
+            newCamera.cameraInfo.zoomState.observe(lifecycleOwner) { state ->
+                if (state != null) {
+                    _configuration.update { current ->
+                        current.copy(
+                            zoomRatio = state.zoomRatio,
+                            minZoomRatio = state.minZoomRatio,
+                            maxZoomRatio = state.maxZoomRatio
+                        )
+                    }
+                }
+            }
+
+            CameraDiagnosticsLogger.getInstance(context).i(
+                module = "CameraInit",
+                eventType = "CAMERA_BOUND",
+                message = "CameraX pipeline bound. Zoom: [${zoomState?.minZoomRatio ?: 1f}x - ${zoomState?.maxZoomRatio ?: 10f}x]",
+                cameraId = if (_configuration.value.facing == CameraFacing.BACK) "0" else "1",
+                mode = _configuration.value.mode.name
+            )
 
             // Apply torch if configured
             if (_configuration.value.flashMode == FlashMode.TORCH) {
@@ -468,6 +518,50 @@ class CameraXEngine(
                 override fun onError(exception: ImageCaptureException) {
                     _sessionState.value = CameraSessionState.READY
                     Log.e(TAG, "Image capture failed", exception)
+                    CameraDiagnosticsLogger.getInstance(context).e("ImageCapture", "CAPTURE_FAILED", exception.message ?: "", exception)
+                    onError(exception)
+                }
+            }
+        )
+    }
+
+    override fun capturePhotoToFile(
+        outputFile: java.io.File,
+        onSuccess: (java.io.File) -> Unit,
+        onError: (Throwable) -> Unit
+    ) {
+        val imgCap = imageCapture
+        if (imgCap == null) {
+            val err = IllegalStateException("Camera capture pipeline not initialized")
+            CameraDiagnosticsLogger.getInstance(context).e("ImageCapture", "BURST_UNINITIALIZED", err.message ?: "", err)
+            onError(err)
+            return
+        }
+
+        if (!_sessionState.value.canCapturePhoto) {
+            val err = IllegalStateException("Camera is not in ready state (${_sessionState.value})")
+            CameraDiagnosticsLogger.getInstance(context).w("ImageCapture", "BURST_SESSION_BUSY", err.message ?: "")
+            onError(err)
+            return
+        }
+
+        _sessionState.value = CameraSessionState.CAPTURING
+        val outputOptions = ImageCapture.OutputFileOptions.Builder(outputFile).build()
+        val executor = ContextCompat.getMainExecutor(context)
+
+        imgCap.takePicture(
+            outputOptions,
+            executor,
+            object : ImageCapture.OnImageSavedCallback {
+                override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                    _sessionState.value = CameraSessionState.READY
+                    CameraDiagnosticsLogger.getInstance(context).i("ImageCapture", "BURST_FRAME_SAVED", "Burst frame saved to cache: ${outputFile.name} (${outputFile.length()} bytes)")
+                    onSuccess(outputFile)
+                }
+
+                override fun onError(exception: ImageCaptureException) {
+                    _sessionState.value = CameraSessionState.READY
+                    CameraDiagnosticsLogger.getInstance(context).e("ImageCapture", "BURST_FRAME_ERROR", exception.message ?: "", exception)
                     onError(exception)
                 }
             }

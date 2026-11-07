@@ -16,3 +16,6 @@
 *.keystore
 keystore.properties
 release-signing.properties
+
+# Kotlin build cache
+.kotlin/

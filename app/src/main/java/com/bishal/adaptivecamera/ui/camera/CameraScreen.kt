@@ -72,6 +72,8 @@ import com.bishal.adaptivecamera.ui.camera.components.FocusRingOverlay
 import com.bishal.adaptivecamera.ui.camera.components.MinimalistBottomDeck
 import com.bishal.adaptivecamera.ui.camera.components.MinimalistQuickSettingsSheet
 import com.bishal.adaptivecamera.ui.camera.components.MinimalistSceneBadge
+import com.bishal.adaptivecamera.ui.camera.components.MoreModesSheet
+import androidx.compose.material.icons.filled.Bedtime
 import com.bishal.adaptivecamera.ui.camera.components.MinimalistTopBar
 import com.bishal.adaptivecamera.ui.camera.components.MinimalistViewfinderControls
 import com.bishal.adaptivecamera.ui.camera.components.ScreenFlashOverlay
@@ -149,6 +151,7 @@ fun CameraScreen(
     }
 
     var isQuickSettingsVisible by remember { mutableStateOf(false) }
+    var isMoreModesSheetVisible by remember { mutableStateOf(false) }
 
     var previewWidthPx by remember { mutableFloatStateOf(0f) }
     var previewHeightPx by remember { mutableFloatStateOf(0f) }
@@ -213,7 +216,8 @@ fun CameraScreen(
                     onSwitchCamera = { viewModel.switchCamera() },
                     onOpenGallery = onOpenGallery,
                     isLeftHanded = uiState.isLeftHandedModeEnabled,
-                    onHapticTick = { viewModel.hapticEngine.performTick() }
+                    onHapticTick = { viewModel.hapticEngine.performTick() },
+                    onOpenMoreModes = { isMoreModesSheetVisible = true }
                 )
             }
         }
@@ -408,6 +412,34 @@ fun CameraScreen(
                     )
                 }
 
+                // 6c. Minimalist Night Mode Exposure Badge (Lower-Left floating amber capsule matching reference screenshot)
+                if (uiState.configuration.mode == CameraMode.NIGHT) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(start = 24.dp, bottom = 64.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(MinimalistGold)
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Bedtime,
+                                contentDescription = "Night Mode",
+                                tint = PureBlack,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "1s",
+                                color = PureBlack,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
                 // 6b. Minimalist Scene Suggestion Badge (Photo Mode: Lower-Left floating chip above zoom bar)
                 if (uiState.configuration.mode == CameraMode.PHOTO) {
                     MinimalistSceneBadge(
@@ -563,6 +595,7 @@ fun CameraScreen(
                         onToggleLooks = { viewModel.toggleLookControlPanel() },
                         onToggleBeautyOrAi = { viewModel.applySmartAutoSuggestion() },
                         onHapticTick = { viewModel.hapticEngine.performTick() },
+
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .padding(bottom = 12.dp)
@@ -641,6 +674,16 @@ fun CameraScreen(
                         modifier = Modifier.align(Alignment.BottomCenter)
                     )
                 }
+
+                // 17. More Modes Modal Grid Sheet
+                MoreModesSheet(
+                    isVisible = isMoreModesSheetVisible,
+                    currentMode = uiState.configuration.mode,
+                    onModeSelected = { mode ->
+                        viewModel.setCameraMode(mode)
+                    },
+                    onDismiss = { isMoreModesSheetVisible = false }
+                )
 
                 // 16. Minimalist Quick Settings Floating Modal Sheet
                 MinimalistQuickSettingsSheet(

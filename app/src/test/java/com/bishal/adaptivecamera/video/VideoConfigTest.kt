@@ -21,7 +21,7 @@ class VideoConfigTest {
         val config = VideoConfig()
         assertEquals(VideoResolution.FHD_1080P, config.resolution)
         assertEquals(VideoFrameRate.FPS_30, config.frameRate)
-        assertEquals(VideoCodec.H264_AVC, config.videoCodec)
+        assertEquals(VideoCodec.H265_HEVC, config.videoCodec)
         assertEquals(VideoExposureMode.AUTO, config.exposureMode)
         assertEquals(180f, config.shutterAngle)
         assertTrue(config.audioEnabled)

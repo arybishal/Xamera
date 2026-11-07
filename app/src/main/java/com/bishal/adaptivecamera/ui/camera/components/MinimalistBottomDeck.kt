@@ -45,7 +45,8 @@ fun MinimalistBottomDeck(
     onOpenGallery: () -> Unit,
     modifier: Modifier = Modifier,
     isLeftHanded: Boolean = false,
-    onHapticTick: () -> Unit = {}
+    onHapticTick: () -> Unit = {},
+    onOpenMoreModes: () -> Unit = {}
 ) {
     val isRecording = sessionState == CameraSessionState.RECORDING
 
@@ -106,7 +107,8 @@ fun MinimalistBottomDeck(
         MinimalistModeSelector(
             currentMode = mode,
             onModeChanged = onModeChanged,
-            onHapticTick = onHapticTick
+            onHapticTick = onHapticTick,
+            onOpenMoreModes = onOpenMoreModes
         )
     }
 }

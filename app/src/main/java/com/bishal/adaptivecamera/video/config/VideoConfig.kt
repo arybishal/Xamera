@@ -17,12 +17,12 @@ enum class VideoDynamicRange(val label: String, val bitDepth: Int) {
 data class VideoConfig(
     val resolution: VideoResolution = VideoResolution.FHD_1080P,
     val frameRate: VideoFrameRate = VideoFrameRate.FPS_30,
-    val bitrateProfile: VideoBitrateProfile = VideoBitrateProfile.STANDARD,
-    val targetBitrateBps: Long = VideoBitrateProfile.STANDARD.getTargetBitrateBps(
+    val bitrateProfile: VideoBitrateProfile = VideoBitrateProfile.HIGH,
+    val targetBitrateBps: Long = VideoBitrateProfile.HIGH.getTargetBitrateBps(
         VideoResolution.FHD_1080P,
         VideoFrameRate.FPS_30
     ),
-    val videoCodec: VideoCodec = VideoCodec.H264_AVC,
+    val videoCodec: VideoCodec = VideoCodec.H265_HEVC,
     val audioEnabled: Boolean = true,
     val exposureMode: VideoExposureMode = VideoExposureMode.AUTO,
     val shutterAngle: Float? = 180f,
