@@ -3,5 +3,5 @@
 # Date: 2026-11-07
 # Developer: Bishal Aryal
 
-fdc2a4f0ef4350c82f99da3723ecd91a0ee8ff804b837f59d74b4b30ab6c91b9  app-release.apk
-254b852da36e3aa893673f3e128c1d01c9610a93a87b9678b544bf4860ec2a36  app-debug.apk
+e7ca82cbe0a253d68abf361491af4f8888f847550618d5cf45fb66ee39823c1e  app-release.apk
+4e7dc370c7f8d6c692cf37563ace8c0976fbede4dade23c34aa98ea440d853c7  app-debug.apk
