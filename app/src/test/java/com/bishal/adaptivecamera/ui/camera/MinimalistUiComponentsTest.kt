@@ -196,4 +196,23 @@ class MinimalistUiComponentsTest {
         assertEquals(HdrPlusMode.OFF, config.hdrPlusMode)
         assertEquals(1.0f, config.zoomRatio, 0.001f)
     }
+
+    @Test
+    fun testImageStackingPreservation() {
+        val defaultStacking = com.bishal.adaptivecamera.photography.computational.ImageStackingConfig()
+        assertFalse("Stacking should be optional and off by default", defaultStacking.isEnabled)
+        assertEquals(com.bishal.adaptivecamera.photography.computational.ImageStackingMode.SMART_AUTO, defaultStacking.mode)
+        assertEquals(com.bishal.adaptivecamera.photography.computational.ImageStackingFrameCount.AUTO, defaultStacking.frameCount)
+        assertEquals("Default configuration must capture 5 frames", 5, defaultStacking.frameCount.count)
+
+        // Verify frame counts across all options
+        assertEquals(3, com.bishal.adaptivecamera.photography.computational.ImageStackingFrameCount.FRAMES_3.count)
+        assertEquals(5, com.bishal.adaptivecamera.photography.computational.ImageStackingFrameCount.FRAMES_5.count)
+        assertEquals(7, com.bishal.adaptivecamera.photography.computational.ImageStackingFrameCount.FRAMES_7.count)
+
+        // Verify quick settings badge formatting
+        val enabledStacking = defaultStacking.copy(isEnabled = true)
+        val badge = if (enabledStacking.isEnabled) "${enabledStacking.frameCount.count}F" else null
+        assertEquals("5F", badge)
+    }
 }

@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.GridOn
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Timer
@@ -46,6 +47,7 @@ import com.bishal.adaptivecamera.camera.config.CameraConfiguration
 import com.bishal.adaptivecamera.camera.config.CompositionGridType
 import com.bishal.adaptivecamera.camera.config.HdrPlusMode
 import com.bishal.adaptivecamera.camera.config.PhotoTimer
+import com.bishal.adaptivecamera.photography.computational.ImageStackingConfig
 import com.bishal.adaptivecamera.ui.theme.DarkCharcoal
 import com.bishal.adaptivecamera.ui.theme.DarkCharcoalElevated
 import com.bishal.adaptivecamera.ui.theme.MinimalistGold
@@ -67,7 +69,9 @@ fun MinimalistQuickSettingsSheet(
     onCycleGrid: () -> Unit,
     onOpenSettings: () -> Unit,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    imageStackingConfig: ImageStackingConfig = ImageStackingConfig(),
+    onToggleImageStacking: () -> Unit = {}
 ) {
     if (!isVisible) return
 
@@ -162,14 +166,12 @@ fun MinimalistQuickSettingsSheet(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Row 2: Grid / Composition | Settings
+                // Row 2: Grid | Stacking | Settings
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Start,
+                    horizontalArrangement = Arrangement.SpaceAround,
                     verticalAlignment = Alignment.Top
                 ) {
-                    Spacer(modifier = Modifier.width(12.dp))
-
                     // 5. Grid / Composition Overlay
                     val gridLabel = when (config.gridType) {
                         CompositionGridType.OFF -> "Off"
@@ -186,9 +188,18 @@ fun MinimalistQuickSettingsSheet(
                         onClick = onCycleGrid
                     )
 
-                    Spacer(modifier = Modifier.width(36.dp))
+                    // 6. Image Stacking Shortcut
+                    val isStackingActive = imageStackingConfig.isEnabled
+                    val stackingBadge = if (isStackingActive) "${imageStackingConfig.frameCount.count}F" else null
+                    QuickActionTile(
+                        icon = Icons.Default.Layers,
+                        label = "Stacking",
+                        badge = stackingBadge,
+                        isActive = isStackingActive,
+                        onClick = onToggleImageStacking
+                    )
 
-                    // 6. Settings
+                    // 7. Settings
                     QuickActionTile(
                         icon = Icons.Default.Settings,
                         label = "Settings",
@@ -197,6 +208,9 @@ fun MinimalistQuickSettingsSheet(
                             onOpenSettings()
                         }
                     )
+
+                    // 4th slot spacer to maintain balanced 4-column alignment with Row 1
+                    Spacer(modifier = Modifier.size(56.dp))
                 }
             }
         }

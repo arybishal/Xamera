@@ -102,6 +102,7 @@ data class CameraUiState(
     val gpuColorConfig: GpuColorConfig = GpuColorConfig.DEFAULT,
     val isLookControlPanelVisible: Boolean = false,
     val isHdrPlusProcessing: Boolean = false,
+    val isStackingProcessing: Boolean = false,
     val videoConfig: VideoConfig = VideoConfig(),
     val videoRecordingState: VideoRecordingState = VideoRecordingState(),
     val isVideoQuickSettingsVisible: Boolean = false,
@@ -494,6 +495,11 @@ class CameraViewModel @JvmOverloads constructor(
             return
         }
 
+        // Guard: prevent duplicate shutter requests during active computational stacking or HDR+
+        if (state.isStackingProcessing || state.isHdrPlusProcessing) {
+            return
+        }
+
         val isFront = state.configuration.facing == CameraFacing.FRONT
         val isScreenFlashActive = isFront && state.configuration.flashMode != FlashMode.OFF
 
@@ -690,9 +696,16 @@ class CameraViewModel @JvmOverloads constructor(
     }
 
     private fun executeStackedPhotoCapture() {
+        if (_uiState.value.isStackingProcessing) return
         triggerFlashAnimation()
         val config = _uiState.value.imageStackingConfig
         val targetCount = config.frameCount.count
+        _uiState.update {
+            it.copy(
+                isStackingProcessing = true,
+                toastMessage = "Stacking: Capturing frame 1 of $targetCount..."
+            )
+        }
         val capturedItems = mutableListOf<MediaItem>()
         val capturedBitmaps = mutableListOf<Bitmap>()
 
@@ -714,6 +727,9 @@ class CameraViewModel @JvmOverloads constructor(
                     }
 
                     if (capturedBitmaps.size >= targetCount || index >= targetCount) {
+                        _uiState.update {
+                            it.copy(toastMessage = "Stacking: Aligning & fusing ${capturedBitmaps.size} frames...")
+                        }
                         viewModelScope.launch(Dispatchers.Default) {
                             val stackedItem = computationalCoordinator.processAndSaveStackedPhoto(
                                 frames = capturedBitmaps,
@@ -727,6 +743,7 @@ class CameraViewModel @JvmOverloads constructor(
                             withContext(Dispatchers.Main) {
                                 _uiState.update {
                                     it.copy(
+                                        isStackingProcessing = false,
                                         latestMedia = stackedItem ?: capturedItems.firstOrNull(),
                                         toastMessage = "Stacked Photo saved (${config.mode.label} · ${capturedBitmaps.size}f)",
                                         isScreenFlashActive = false
@@ -735,11 +752,17 @@ class CameraViewModel @JvmOverloads constructor(
                             }
                         }
                     } else {
+                        _uiState.update {
+                            it.copy(toastMessage = "Stacking: Capturing frame ${index + 1} of $targetCount...")
+                        }
                         captureNext(index + 1)
                     }
                 },
                 onError = { error: Throwable ->
                     if (capturedBitmaps.isNotEmpty()) {
+                        _uiState.update {
+                            it.copy(toastMessage = "Stacking: Fusing ${capturedBitmaps.size} frames...")
+                        }
                         viewModelScope.launch(Dispatchers.Default) {
                             val stackedItem = computationalCoordinator.processAndSaveStackedPhoto(
                                 frames = capturedBitmaps,
@@ -748,6 +771,7 @@ class CameraViewModel @JvmOverloads constructor(
                             withContext(Dispatchers.Main) {
                                 _uiState.update {
                                     it.copy(
+                                        isStackingProcessing = false,
                                         latestMedia = stackedItem ?: capturedItems.firstOrNull(),
                                         toastMessage = "Stacked Photo saved (${capturedBitmaps.size}f)",
                                         isScreenFlashActive = false
@@ -758,6 +782,7 @@ class CameraViewModel @JvmOverloads constructor(
                     } else {
                         _uiState.update {
                             it.copy(
+                                isStackingProcessing = false,
                                 toastMessage = "Stacking capture failed: ${error.message}",
                                 isScreenFlashActive = false
                             )
@@ -1588,6 +1613,11 @@ class CameraViewModel @JvmOverloads constructor(
             preferencesRepository.updateImageStackingEnabled(enabled)
             hapticEngine.performClick()
         }
+    }
+
+    fun toggleImageStacking() {
+        val current = _uiState.value.imageStackingConfig.isEnabled
+        updateImageStackingEnabled(!current)
     }
 
     fun updateImageStackingMode(mode: ImageStackingMode) {

@@ -42,8 +42,8 @@ This milestone represents the **v1.0.0 Production Release**, featuring the new *
 
 | Artifact | Type | File Size | SHA-256 Checksum |
 |---|:---:|:---:|---|
-| **`app-release.apk`** | Production Signed APK | 49,096,523 bytes (~46.8 MB) | `e7ca82cbe0a253d68abf361491af4f8888f847550618d5cf45fb66ee39823c1e` |
-| **`app-debug.apk`** | Developer Debug APK | 68,128,443 bytes (~65.0 MB) | `4e7dc370c7f8d6c692cf37563ace8c0976fbede4dade23c34aa98ea440d853c7` |
+| **`app-release.apk`** | Production Signed APK | 49,099,039 bytes (~46.8 MB) | `420a36e670be66292ff31903fe1e5b6fcd03b9b81ce4c75702e490bc1edb22d6` |
+| **`app-debug.apk`** | Developer Debug APK | 68,131,235 bytes (~65.0 MB) | `bca352a35ce62c3f72954827d1330c1814b8851bdac064c1fcb852771ee70306` |
 
 #### Signature Telemetry
 - **Signer:** `CN=Bishal Aryal, OU=Xamera, O=Adaptive Camera Project, L=Kathmandu, C=NP`
@@ -53,5 +53,5 @@ This milestone represents the **v1.0.0 Production Release**, featuring the new *
 ---
 
 ### 🧪 Automated Test Verification
-- **Total Tests Run:** 294
-- **Pass Rate:** 100% (294 Passed, 0 Failed, 0 Skipped across 63 test suites)
+- **Total Tests Run:** 295
+- **Pass Rate:** 100% (295 Passed, 0 Failed, 0 Skipped across 63 test suites)

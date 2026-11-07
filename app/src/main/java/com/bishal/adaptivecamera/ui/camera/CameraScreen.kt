@@ -90,7 +90,9 @@ import com.bishal.adaptivecamera.ui.camera.pro.ProControlBar
 import com.bishal.adaptivecamera.ui.camera.pro.ZebraStripingOverlay
 import com.bishal.adaptivecamera.ui.theme.AccentAmber
 import com.bishal.adaptivecamera.ui.theme.DarkBackground
+import com.bishal.adaptivecamera.ui.theme.DarkCharcoal
 import com.bishal.adaptivecamera.ui.theme.DarkSurface
+import com.bishal.adaptivecamera.ui.theme.MinimalistGold
 import com.bishal.adaptivecamera.ui.theme.PrimaryCyan
 import com.bishal.adaptivecamera.ui.theme.PureBlack
 import com.bishal.adaptivecamera.ui.theme.TextPrimary
@@ -441,14 +443,15 @@ fun CameraScreen(
                         modifier = Modifier
                             .align(Alignment.TopStart)
                             .padding(top = 12.dp, start = 14.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(Color.Black.copy(alpha = 0.55f))
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(DarkCharcoal.copy(alpha = 0.85f))
+                            .border(0.5.dp, MinimalistGold.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "STACK: ${uiState.imageStackingConfig.mode.label.uppercase()} (${uiState.imageStackingConfig.frameCount.count}F)",
-                            color = PrimaryCyan,
-                            fontSize = 11.sp,
+                            text = "STACK · ${uiState.imageStackingConfig.mode.label.uppercase()} (${uiState.imageStackingConfig.frameCount.count}F)",
+                            color = MinimalistGold,
+                            fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace
                         )
@@ -494,6 +497,34 @@ fun CameraScreen(
                             Text(
                                 text = "HDR+ Processing...",
                                 color = PrimaryCyan,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                // 8d. Image Stacking Processing Non-blocking Indicator
+                if (uiState.isStackingProcessing) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 64.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color.Black.copy(alpha = 0.75f))
+                            .border(1.dp, MinimalistGold.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(12.dp),
+                                strokeWidth = 2.dp,
+                                color = MinimalistGold
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Stacking & Fusing...",
+                                color = MinimalistGold,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -625,7 +656,9 @@ fun CameraScreen(
                         isQuickSettingsVisible = false
                         onOpenSettings()
                     },
-                    onDismiss = { isQuickSettingsVisible = false }
+                    onDismiss = { isQuickSettingsVisible = false },
+                    imageStackingConfig = uiState.imageStackingConfig,
+                    onToggleImageStacking = { viewModel.toggleImageStacking() }
                 )
 
             } else {
