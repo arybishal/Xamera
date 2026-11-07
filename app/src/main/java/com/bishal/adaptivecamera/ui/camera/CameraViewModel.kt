@@ -1275,6 +1275,11 @@ class CameraViewModel @JvmOverloads constructor(
         cameraEngine.setTimer(next)
     }
 
+    fun toggleSoftLight() {
+        hapticEngine.performClick()
+        _uiState.update { it.copy(isScreenFlashActive = !it.isScreenFlashActive) }
+    }
+
     fun setZoomRatio(ratio: Float) {
         zoomController.setZoomRatio(ratio)
         _uiState.update { it.copy(configuration = it.configuration.copy(zoomRatio = ratio)) }

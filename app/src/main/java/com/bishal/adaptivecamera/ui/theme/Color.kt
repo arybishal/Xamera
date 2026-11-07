@@ -34,3 +34,13 @@ val LightTextSecondary = Color(0xFF555555)      // Medium-contrast secondary tex
 val LightTextMuted = Color(0xFF888888)          // Muted metadata text
 val LightDivider = Color(0xFFE0E0E0)            // Structural hairline dividers
 val LightBorder = Color(0xFFD6D6D6)             // Card & outline borders
+
+// ==========================================
+// 3. Minimalist Premium Palette (Screenshot References)
+// ==========================================
+val PureBlack = Color(0xFF000000)
+val DarkCharcoal = Color(0xFF1C1C1E)
+val DarkCharcoalElevated = Color(0xFF292929)
+val MinimalistGold = Color(0xFFFFB800)
+val TextSoftGray = Color(0xFFA0A0A0)
+val ShutterRingWhite = Color(0xFFFFFFFF)

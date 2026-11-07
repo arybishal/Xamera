@@ -63,17 +63,18 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.bishal.adaptivecamera.camera.config.CameraMode
-import com.bishal.adaptivecamera.ui.camera.components.BottomCaptureControls
 import com.bishal.adaptivecamera.ui.camera.components.CompositionGridOverlay
 import com.bishal.adaptivecamera.ui.camera.components.CountdownOverlay
 import com.bishal.adaptivecamera.ui.camera.components.DirectLensSelectorBar
 import com.bishal.adaptivecamera.ui.camera.components.ExposureSlider
 import com.bishal.adaptivecamera.ui.camera.components.FloatingShutterButton
 import com.bishal.adaptivecamera.ui.camera.components.FocusRingOverlay
-import com.bishal.adaptivecamera.ui.camera.components.RotaryZoomDial
-import com.bishal.adaptivecamera.ui.camera.components.SceneSuggestionChip
+import com.bishal.adaptivecamera.ui.camera.components.MinimalistBottomDeck
+import com.bishal.adaptivecamera.ui.camera.components.MinimalistQuickSettingsSheet
+import com.bishal.adaptivecamera.ui.camera.components.MinimalistSceneBadge
+import com.bishal.adaptivecamera.ui.camera.components.MinimalistTopBar
+import com.bishal.adaptivecamera.ui.camera.components.MinimalistViewfinderControls
 import com.bishal.adaptivecamera.ui.camera.components.ScreenFlashOverlay
-import com.bishal.adaptivecamera.ui.camera.components.TopBarControls
 import com.bishal.adaptivecamera.ui.camera.components.ViewfinderFramingMask
 import com.bishal.adaptivecamera.ui.camera.components.VirtualHorizonOverlay
 import com.bishal.adaptivecamera.ui.camera.lut.LookControlPanel
@@ -91,6 +92,7 @@ import com.bishal.adaptivecamera.ui.theme.AccentAmber
 import com.bishal.adaptivecamera.ui.theme.DarkBackground
 import com.bishal.adaptivecamera.ui.theme.DarkSurface
 import com.bishal.adaptivecamera.ui.theme.PrimaryCyan
+import com.bishal.adaptivecamera.ui.theme.PureBlack
 import com.bishal.adaptivecamera.ui.theme.TextPrimary
 import com.bishal.adaptivecamera.ui.theme.TextSecondary
 
@@ -144,6 +146,8 @@ fun CameraScreen(
         }
     }
 
+    var isQuickSettingsVisible by remember { mutableStateOf(false) }
+
     var previewWidthPx by remember { mutableFloatStateOf(0f) }
     var previewHeightPx by remember { mutableFloatStateOf(0f) }
 
@@ -153,19 +157,14 @@ fun CameraScreen(
     }
 
     Scaffold(
-        containerColor = DarkBackground,
+        containerColor = PureBlack,
         topBar = {
-            TopBarControls(
+            MinimalistTopBar(
                 config = uiState.configuration,
                 onToggleFlash = { viewModel.toggleFlash() },
-                onToggleTimer = { viewModel.toggleTimer() },
                 onToggleExposure = { viewModel.toggleExposureSlider() },
-                onCycleAspectRatio = { viewModel.cycleAspectRatio() },
-                onCycleGrid = { viewModel.cycleGridType() },
-                isLookActive = uiState.gpuColorConfig.lutEnabled || uiState.gpuColorConfig.grainEnabled || uiState.gpuColorConfig.halationEnabled,
-                onToggleColorLooks = { viewModel.toggleLookControlPanel() },
-                onToggleHdrPlus = { viewModel.toggleHdrPlusMode() },
-                onOpenSettings = onOpenSettings
+                onToggleQuickSettings = { isQuickSettingsVisible = !isQuickSettingsVisible },
+                onToggleAiMode = { viewModel.applySmartAutoSuggestion() }
             )
         },
         bottomBar = {
@@ -202,7 +201,7 @@ fun CameraScreen(
                         onLightingStyleChanged = { viewModel.updatePortraitLightingStyle(it) }
                     )
                 }
-                BottomCaptureControls(
+                MinimalistBottomDeck(
                     mode = uiState.configuration.mode,
                     sessionState = uiState.sessionState,
                     latestMedia = uiState.latestMedia,
@@ -211,7 +210,8 @@ fun CameraScreen(
                     onShutterPressed = { viewModel.onShutterPressed() },
                     onSwitchCamera = { viewModel.switchCamera() },
                     onOpenGallery = onOpenGallery,
-                    isLeftHanded = uiState.isLeftHandedModeEnabled
+                    isLeftHanded = uiState.isLeftHandedModeEnabled,
+                    onHapticTick = { viewModel.hapticEngine.performTick() }
                 )
             }
         }
@@ -404,16 +404,17 @@ fun CameraScreen(
                             .align(Alignment.TopCenter)
                             .padding(top = 10.dp)
                     )
-                } else {
-                    // Smart Scene Suggestion Overlay (Photo Mode)
-                    SceneSuggestionChip(
+                }
+
+                // 6b. Minimalist Scene Suggestion Badge (Photo Mode: Lower-Left floating chip above zoom bar)
+                if (uiState.configuration.mode == CameraMode.PHOTO) {
+                    MinimalistSceneBadge(
                         autoState = uiState.smartAutoState,
                         isDismissed = uiState.isSuggestionDismissed,
                         onApplySuggestion = { viewModel.applySmartAutoSuggestion() },
-                        onDismiss = { viewModel.dismissSmartAutoSuggestion() },
                         modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .padding(top = 12.dp)
+                            .align(Alignment.BottomStart)
+                            .padding(start = 24.dp, bottom = 64.dp)
                     )
                 }
 
@@ -519,14 +520,17 @@ fun CameraScreen(
                     }
                 }
 
-                // 9. Rotary Zoom Dial and Step Pills (Photo & Video mode) / Direct Lens Selector (Pro mode)
+                // 9. Minimalist Viewfinder Controls (Zoom bar flanked by Beauty & 3D LUT icons) / Direct Lens Selector (Pro mode)
                 if (uiState.configuration.mode != CameraMode.PRO) {
-                    RotaryZoomDial(
+                    MinimalistViewfinderControls(
                         currentZoom = uiState.configuration.zoomRatio,
                         minZoom = uiState.configuration.minZoomRatio,
                         maxZoom = uiState.configuration.maxZoomRatio,
                         availableSteps = viewModel.zoomController.getAvailableSteps(),
+                        isLookActive = uiState.gpuColorConfig.lutEnabled || uiState.gpuColorConfig.grainEnabled || uiState.gpuColorConfig.halationEnabled,
                         onZoomChanged = { viewModel.setZoomRatio(it) },
+                        onToggleLooks = { viewModel.toggleLookControlPanel() },
+                        onToggleBeautyOrAi = { viewModel.applySmartAutoSuggestion() },
                         onHapticTick = { viewModel.hapticEngine.performTick() },
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -606,6 +610,23 @@ fun CameraScreen(
                         modifier = Modifier.align(Alignment.BottomCenter)
                     )
                 }
+
+                // 16. Minimalist Quick Settings Floating Modal Sheet
+                MinimalistQuickSettingsSheet(
+                    isVisible = isQuickSettingsVisible,
+                    config = uiState.configuration,
+                    isScreenFlashActive = uiState.isScreenFlashActive,
+                    onCycleAspectRatio = { viewModel.cycleAspectRatio() },
+                    onToggleSoftLight = { viewModel.toggleSoftLight() },
+                    onCycleHdrPlus = { viewModel.toggleHdrPlusMode() },
+                    onCycleTimer = { viewModel.toggleTimer() },
+                    onCycleGrid = { viewModel.cycleGridType() },
+                    onOpenSettings = {
+                        isQuickSettingsVisible = false
+                        onOpenSettings()
+                    },
+                    onDismiss = { isQuickSettingsVisible = false }
+                )
 
             } else {
                 // Permission Denied Card
